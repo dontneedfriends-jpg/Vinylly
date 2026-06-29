@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Collection {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items     Item[]
+}
+
+model Item {
+  id              String    @id @default(cuid())
+  type            String
+  barcode         String?
+  catalogNumber   String?
+  sleeveCondition String?
+  mediaCondition  String?
+  notes           String?
+  acquiredAt      DateTime?
+  location        String?
+  tags            String    @default("[]")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  releaseId String
+  release   Release @relation(fields: [releaseId], references: [id])
+
+  @@index([collectionId])
+  @@index([releaseId])
+  @@index([barcode])
+  @@index([catalogNumber])
+}
+
+model Release {
+  id            String   @id @default(cuid())
+  source        String
+  sourceId      String
+  title         String
+  artist        String
+  year          Int?
+  genres        String   @default("[]")
+  styles        String   @default("[]")
+  coverPath     String?
+  thumbPath     String?
+  coverRemote   String?
+  thumbRemote   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items    Item[]
+  tracks   Track[]
+
+  @@unique([source, sourceId])
+  @@index([artist])
+  @@index([title])
+}
+
+model Track {
+  id        String  @id @default(cuid())
+  position  String
+  title     String
+  duration  Int?
+  lyrics    String?
+  lyricsSrc String?
+  extras    String  @default("{}")
+
+  releaseId String
+  release   Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@index([releaseId])
+}
+
+model Artist {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  bio        String?
+  imagePath  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ApiCache {
+  key        String   @id
+  value      String
+  expiresAt  DateTime
+  updatedAt  DateTime @updatedAt
+
+  @@index([expiresAt])
+}

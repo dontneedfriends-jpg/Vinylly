@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+
+    /* surface tokens */
+    --color-surface: #ecf0f3;
+
+    /* foreground tokens */
+    --color-fg-heading: #31344b;
+    --color-fg-body: #44476a;
+    --color-fg-body-subtle: #66799e;
+    --color-fg-brand: #128759;
+    --color-fg-secondary: #389dc6;
+    --color-fg-disabled: #93a5be;
+
+    /* border tokens */
+    --color-border-default: rgba(184, 185, 190, 0.25);
+    --color-border-default-medium: rgba(184, 185, 190, 0.45);
+    --color-border-default-strong: rgba(184, 185, 190, 0.7);
+
+    /* shadow tokens — dual-directional neumorphic */
+    --shadow-2xs: 1px 1px 2px #b8b9be, -1px -1px 2px #ffffff;
+    --shadow-xs: 2px 2px 4px #b8b9be, -2px -2px 4px #ffffff;
+    --shadow-sm: 3px 3px 6px #b8b9be, -3px -3px 6px #ffffff;
+    --shadow-md: 6px 6px 12px #b8b9be, -6px -6px 12px #ffffff;
+    --shadow-lg: 8px 8px 16px #b8b9be, -8px -8px 16px #ffffff;
+    --shadow-xl: 10px 10px 20px #b8b9be, -10px -10px 20px #ffffff;
+    --shadow-2xl: 12px 12px 24px #b8b9be, -12px -12px 24px #ffffff;
+    --shadow-inset: inset 2px 2px 5px #b8b9be, inset -3px -3px 7px #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-surface: #262833;
+
+      --color-fg-heading: #ecf0f3;
+      --color-fg-body: #93a5be;
+      --color-fg-body-subtle: #93a5be;
+      --color-fg-brand: #20b27a;
+      --color-fg-secondary: #389dc6;
+      --color-fg-disabled: #66799e;
+
+      --color-border-default: rgba(0, 0, 0, 0.3);
+      --color-border-default-medium: rgba(0, 0, 0, 0.45);
+      --color-border-default-strong: rgba(0, 0, 0, 0.65);
+
+      --shadow-2xs: 1px 1px 2px #181924, -1px -1px 2px #2c2f3e;
+      --shadow-xs: 2px 2px 4px #181924, -2px -2px 4px #2c2f3e;
+      --shadow-sm: 3px 3px 6px #181924, -3px -3px 6px #2c2f3e;
+      --shadow-md: 6px 6px 12px #181924, -6px -6px 12px #2c2f3e;
+      --shadow-lg: 8px 8px 16px #181924, -8px -8px 16px #2c2f3e;
+      --shadow-xl: 10px 10px 20px #181924, -10px -10px 20px #2c2f3e;
+      --shadow-2xl: 12px 12px 24px #181924, -12px -12px 24px #2c2f3e;
+      --shadow-inset: inset 2px 2px 5px #181924, inset -3px -3px 7px #2c2f3e;
+    }
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-fg-body);
+    font-family:
+      'Nunito Sans',
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-fg-heading);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  h1 {
+    font-size: 48px;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+  }
+  h2 {
+    font-size: 36px;
+    line-height: 1.2;
+  }
+  h3 {
+    font-size: 28px;
+    line-height: 1.25;
+  }
+  h4 {
+    font-size: 24px;
+    line-height: 1.3;
+  }
+  h5 {
+    font-size: 20px;
+    line-height: 1.5;
+  }
+  h6 {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+
+  @media (max-width: 1024px) {
+    h1 {
+      font-size: 36px;
+    }
+    h2 {
+      font-size: 30px;
+    }
+    h3 {
+      font-size: 24px;
+    }
+    h4 {
+      font-size: 22px;
+    }
+    h5 {
+      font-size: 18px;
+    }
+    h6 {
+      font-size: 16px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    h1 {
+      font-size: 28px;
+    }
+    h2 {
+      font-size: 24px;
+    }
+    h3 {
+      font-size: 20px;
+    }
+    h4 {
+      font-size: 18px;
+    }
+    h5 {
+      font-size: 16px;
+    }
+    h6 {
+      font-size: 14px;
+    }
+  }
+
+  a {
+    color: var(--color-fg-brand);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  a:hover {
+    text-decoration: none;
+  }
+
+  button {
+    font-family: inherit;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-fg-brand);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}

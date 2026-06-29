@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+pnpm exec prettier --check $(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx|json|css|md)$' || true) || true
+pnpm exec eslint --max-warnings 0 $(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx)$' || true) || true

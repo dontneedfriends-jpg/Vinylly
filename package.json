@@ -1,0 +1,34 @@
+{
+  "name": "vinylly",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vinylly — каталогизатор физической аудио-коллекции (винил, CD, кассеты, другое)",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "pnpm -r --parallel run lint",
+    "typecheck": "pnpm -r --parallel run typecheck",
+    "test": "pnpm -r --parallel run test",
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r --parallel run dev",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\" --ignore-path .gitignore",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.7.0",
+    "@types/node": "^20.12.7",
+    "eslint": "^9.7.0",
+    "eslint-plugin-react": "^7.34.4",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^15.8.0",
+    "husky": "^9.0.11",
+    "prettier": "^3.2.5",
+    "prettier-plugin-tailwindcss": "^0.6.5",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
