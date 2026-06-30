@@ -27,6 +27,11 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -76,14 +81,68 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build desktop
+      - name: Build desktop (Linux AppImage)
+        if: matrix.platform == 'ubuntu-latest'
+        run: pnpm --filter @vinylly/desktop build
+
+      - name: Build desktop (Windows portable)
+        if: matrix.platform == 'windows-latest'
         run: pnpm --filter @vinylly/desktop build --no-bundle
 
-      - name: Upload artifact
+      - name: Upload Linux AppImage
+        if: matrix.platform == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: vinylly-${{ matrix.platform }}
-          path: |
-            apps/desktop/src-tauri/target/release/vinylly
-            apps/desktop/src-tauri/target/release/vinylly.exe
+          name: vinylly-linux-appimage
+          path: apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: ignore
+
+      - name: Upload Windows portable binary
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vinylly-windows-portable
+          path: apps/desktop/src-tauri/target/release/vinylly.exe
+          if-no-files-found: ignore
+
+  release:
+    name: Create Release
+    needs: desktop
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Linux AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: vinylly-linux-appimage
+          path: artifacts/linux
+
+      - name: Download Windows portable binary
+        uses: actions/download-artifact@v4
+        with:
+          name: vinylly-windows-portable
+          path: artifacts/windows
+
+      - name: Collect release assets
+        run: |
+          mv artifacts/linux/*.AppImage artifacts/vinylly-linux-x64.AppImage
+          mv artifacts/windows/vinylly.exe artifacts/vinylly-windows-x64.exe
+          rm -rf artifacts/linux artifacts/windows
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly-${{ github.sha }}
+          name: Nightly ${{ github.sha }}
+          body: |
+            Автоматическая сборка коммита `${{ github.sha }}`.
+
+            Содержит:
+            - `vinylly-linux-x64.AppImage` — portable AppImage для Linux
+            - `vinylly-windows-x64.exe` — portable бинарник для Windows
+          files: |
+            artifacts/vinylly-linux-x64.AppImage
+            artifacts/vinylly-windows-x64.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
