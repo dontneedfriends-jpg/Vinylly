@@ -5,9 +5,9 @@ export default defineConfig({
     globals: true,
     testTimeout: 20000,
     hookTimeout: 20000,
-    pool: 'forks',
+    pool: 'threads',
     poolOptions: {
-      forks: { singleFork: true },
+      threads: { singleThread: true },
     },
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     setupFiles: ['./src/test/setup.ts'],

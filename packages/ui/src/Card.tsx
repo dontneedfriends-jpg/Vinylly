@@ -25,11 +25,7 @@ export function Card({
       ? 'shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset cursor-pointer'
       : 'shadow-neu-md';
 
-  return createElement(
-    as,
-    { className: `${base} ${shadow} ${className}`, ...rest },
-    children,
-  );
+  return createElement(as, { className: `${base} ${shadow} ${className}`, ...rest }, children);
 }
 
 export function CardBody({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {

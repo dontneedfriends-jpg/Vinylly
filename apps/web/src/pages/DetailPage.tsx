@@ -109,7 +109,9 @@ export function DetailPage() {
       setAboutLoading(false);
     }
     void load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [item, item?.release.sourceId, item?.release.source, item?.release.title, setReleaseVideos]);
 
   if (!itemId) {
@@ -196,9 +198,7 @@ export function DetailPage() {
             <Badge tone="brand" pill>
               {typeLabels[item.type]}
             </Badge>
-            {item.release.year ? (
-              <Badge tone="neutral">{item.release.year}</Badge>
-            ) : null}
+            {item.release.year ? <Badge tone="neutral">{item.release.year}</Badge> : null}
             {item.release.genres.slice(0, 4).map((g) => (
               <Badge key={g} tone="secondary">
                 {g}
@@ -228,7 +228,7 @@ export function DetailPage() {
       {/* ─── Full-width Info Sections ─── */}
       <div className="mt-10 flex flex-col gap-8">
         {/* Об альбоме */}
-        {(albumNotes || wikipediaHtml || extendedMeta || aboutLoading) ? (
+        {albumNotes || wikipediaHtml || extendedMeta || aboutLoading ? (
           <section>
             <h2 className="text-fg-heading mb-5 text-2xl font-semibold">Об альбоме</h2>
             {aboutLoading ? (
@@ -241,48 +241,62 @@ export function DetailPage() {
                   {extendedMeta ? (
                     <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
                       {extendedMeta.country ? (
-                        <div className="flex items-center justify-between gap-4 border-b border-border-default pb-2">
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
                           <span className="text-fg-body-subtle text-sm">Страна</span>
-                          <span className="text-fg-heading text-sm font-medium">{extendedMeta.country}</span>
+                          <span className="text-fg-heading text-sm font-medium">
+                            {extendedMeta.country}
+                          </span>
                         </div>
                       ) : null}
                       {extendedMeta.released ? (
-                        <div className="flex items-center justify-between gap-4 border-b border-border-default pb-2">
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
                           <span className="text-fg-body-subtle text-sm">Релиз</span>
-                          <span className="text-fg-heading text-sm font-medium">{extendedMeta.released}</span>
+                          <span className="text-fg-heading text-sm font-medium">
+                            {extendedMeta.released}
+                          </span>
                         </div>
                       ) : null}
                       {extendedMeta.format ? (
-                        <div className="flex items-center justify-between gap-4 border-b border-border-default pb-2">
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
                           <span className="text-fg-body-subtle text-sm">Формат</span>
-                          <span className="text-fg-heading text-sm font-medium">{extendedMeta.format}</span>
+                          <span className="text-fg-heading text-sm font-medium">
+                            {extendedMeta.format}
+                          </span>
                         </div>
                       ) : null}
                       {extendedMeta.labels?.length ? (
-                        <div className="flex items-center justify-between gap-4 border-b border-border-default pb-2">
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
                           <span className="text-fg-body-subtle text-sm">Лейбл</span>
-                          <span className="text-fg-heading text-right text-sm font-medium">{extendedMeta.labels.join(', ')}</span>
+                          <span className="text-fg-heading text-right text-sm font-medium">
+                            {extendedMeta.labels.join(', ')}
+                          </span>
                         </div>
                       ) : null}
                       {extendedMeta.barcode?.length ? (
-                        <div className="flex items-center justify-between gap-4 border-b border-border-default pb-2">
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
                           <span className="text-fg-body-subtle text-sm">Штрих-код</span>
-                          <span className="text-fg-heading text-right font-mono text-xs font-medium">{extendedMeta.barcode.join(', ')}</span>
+                          <span className="text-fg-heading text-right font-mono text-xs font-medium">
+                            {extendedMeta.barcode.join(', ')}
+                          </span>
                         </div>
                       ) : null}
                       {extendedMeta.community ? (
-                        <div className="flex items-center justify-between gap-4 border-b border-border-default pb-2">
-                          <span className="text-fg-body-subtle text-sm">Сообщество (have/want)</span>
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                          <span className="text-fg-body-subtle text-sm">
+                            Сообщество (have/want)
+                          </span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.community.have} / {extendedMeta.community.want}
                           </span>
                         </div>
                       ) : null}
                       {extendedMeta.extraArtists?.length ? (
-                        <div className="col-span-full flex flex-col gap-1 border-b border-border-default pb-2">
+                        <div className="border-border-default col-span-full flex flex-col gap-1 border-b pb-2">
                           <span className="text-fg-body-subtle text-sm">Участники</span>
                           <span className="text-fg-heading text-sm font-medium">
-                            {extendedMeta.extraArtists.map((a) => `${a.name}${a.role ? ` (${a.role})` : ''}`).join(', ')}
+                            {extendedMeta.extraArtists
+                              .map((a) => `${a.name}${a.role ? ` (${a.role})` : ''}`)
+                              .join(', ')}
                           </span>
                         </div>
                       ) : null}
@@ -307,7 +321,7 @@ export function DetailPage() {
                       <span className="text-fg-body-subtle block text-xs font-medium uppercase tracking-wide">
                         Заметки Discogs
                       </span>
-                      <p className="text-fg-body mt-2 text-sm leading-relaxed whitespace-pre-wrap">
+                      <p className="text-fg-body mt-2 whitespace-pre-wrap text-sm leading-relaxed">
                         {albumNotes}
                       </p>
                     </div>
@@ -317,9 +331,7 @@ export function DetailPage() {
                       <span className="text-fg-body-subtle block text-xs font-medium uppercase tracking-wide">
                         Wikipedia
                       </span>
-                      <p className="text-fg-body mt-2 text-sm leading-relaxed">
-                        {wikipediaHtml}
-                      </p>
+                      <p className="text-fg-body mt-2 text-sm leading-relaxed">{wikipediaHtml}</p>
                     </div>
                   ) : null}
                 </div>
@@ -404,7 +416,11 @@ function TrashIcon() {
       className="h-4 w-4"
       aria-hidden
     >
-      <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -419,9 +435,11 @@ function ExternalLinkIcon() {
       className="h-3 w-3 shrink-0"
       aria-hidden
     >
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
-
-

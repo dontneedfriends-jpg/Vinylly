@@ -181,18 +181,20 @@ function ItemTile({ item, onOpen }: { item: ItemRecord; onOpen: () => void }) {
       onClick={onOpen}
       role="button"
       tabIndex={0}
-      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') onOpen(); }}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') onOpen();
+      }}
       className="group relative h-full w-full overflow-hidden text-left"
     >
       {deleting ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface/80">
+        <div className="bg-surface/80 absolute inset-0 z-10 flex items-center justify-center">
           <span className="text-fg-body-subtle text-sm">Удаляю…</span>
         </div>
       ) : null}
       <button
         type="button"
         onClick={onDelete}
-        className="absolute right-3 top-3 z-10 rounded-full p-2 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-danger-soft text-fg-danger"
+        className="hover:bg-danger-soft text-fg-danger absolute right-3 top-3 z-10 rounded-full p-2 opacity-0 transition-opacity group-hover:opacity-100"
         aria-label="Удалить"
       >
         <TrashIcon />
@@ -208,7 +210,7 @@ function ItemTile({ item, onOpen }: { item: ItemRecord; onOpen: () => void }) {
           />
         </div>
         <div className="pt-5">
-          <div className="flex items-center gap-2 text-fg-body-subtle text-xs">
+          <div className="text-fg-body-subtle flex items-center gap-2 text-xs">
             <VinylIcon />
             <span>{typeLabels[item.type]}</span>
             {item.release.year ? <span>· {item.release.year}</span> : null}
@@ -266,7 +268,11 @@ function TrashIcon() {
       className="h-4 w-4"
       aria-hidden
     >
-      <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

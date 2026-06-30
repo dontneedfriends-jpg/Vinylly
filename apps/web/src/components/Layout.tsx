@@ -69,7 +69,7 @@ export function Layout({ children }: LayoutProps) {
             as="aside"
             role="navigation"
             aria-label="Главная навигация"
-            className="mr-4 flex h-[calc(100vh-3rem)] w-16 shrink-0 flex-col overflow-hidden transition-all duration-200 ease-in-out sm:mr-6 xl:w-64 sm:h-[calc(100vh-3.5rem)]"
+            className="mr-4 flex h-[calc(100vh-3rem)] w-16 shrink-0 flex-col overflow-hidden transition-all duration-200 ease-in-out sm:mr-6 sm:h-[calc(100vh-3.5rem)] xl:w-64"
           >
             <nav className="scrollbar-neu flex flex-1 flex-col gap-1 overflow-y-auto px-2 pt-5 xl:px-3">
               {navItems.map((it) => {

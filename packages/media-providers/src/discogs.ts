@@ -138,9 +138,10 @@ export class DiscogsProvider implements MediaProvider {
           country: r.country,
           labels: r.label?.length ? r.label : undefined,
           barcode: r.barcode?.length ? r.barcode : undefined,
-          community: r.community?.have != null
-            ? { have: r.community.have, want: r.community.want ?? 0 }
-            : undefined,
+          community:
+            r.community?.have != null
+              ? { have: r.community.have, want: r.community.want ?? 0 }
+              : undefined,
           discogsUrl: r.uri ? `https://www.discogs.com${r.uri}` : undefined,
           masterUrl: r.master_url ?? null,
         },
@@ -203,9 +204,7 @@ export function normalizeDiscogsRelease(
   source: 'discogs',
 ): NormalizedRelease {
   const primary = r.images?.find((i) => i.type === 'primary') ?? r.images?.[0];
-  const barcodeArr = r.identifiers
-    ?.filter((i) => i.type === 'Barcode')
-    .map((i) => i.value);
+  const barcodeArr = r.identifiers?.filter((i) => i.type === 'Barcode').map((i) => i.value);
 
   const fmt = r.formats?.[0];
 
@@ -229,12 +228,11 @@ export function normalizeDiscogsRelease(
     country: r.country,
     released: r.released_formatted ?? r.released,
     labels: r.labels?.map((l) => l.name),
-    format: fmt
-      ? [fmt.name, ...(fmt.descriptions ?? [])].filter(Boolean).join(', ')
-      : undefined,
-    community: r.community?.have != null
-      ? { have: r.community.have, want: r.community.want ?? 0 }
-      : undefined,
+    format: fmt ? [fmt.name, ...(fmt.descriptions ?? [])].filter(Boolean).join(', ') : undefined,
+    community:
+      r.community?.have != null
+        ? { have: r.community.have, want: r.community.want ?? 0 }
+        : undefined,
     discogsUrl: r.uri ?? undefined,
     masterUrl: r.master_url ?? null,
     barcode: barcodeArr?.length ? barcodeArr : undefined,

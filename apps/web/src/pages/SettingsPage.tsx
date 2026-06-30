@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { Badge, Card, CardBody, CardHeader, CardFooter, Button, Input, PageHeader } from '@vinylly/ui';
+import {
+  Badge,
+  Card,
+  CardBody,
+  CardHeader,
+  CardFooter,
+  Button,
+  Input,
+  PageHeader,
+} from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { itemRepo, trackRepo } from '../lib/db';
 import { useDefaultCollection, useItems } from '../lib/queries';
@@ -106,20 +115,16 @@ export function SettingsPage() {
       />
 
       <div className="flex flex-col gap-6">
-        <DiscogsCard
-          token={discogsToken}
-          onSave={setDiscogsToken}
-          onClear={clearDiscogsToken}
-        />
+        <DiscogsCard token={discogsToken} onSave={setDiscogsToken} onClear={clearDiscogsToken} />
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
-            <CardHeader className="pt-8 pb-6">
+            <CardHeader className="pb-6 pt-8">
               <div className="flex items-start gap-5">
                 <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
                   <ExportIcon />
                 </div>
-                <div className="flex-1 min-w-0 pt-0.5">
+                <div className="min-w-0 flex-1 pt-0.5">
                   <h3 className="text-fg-heading text-base font-semibold leading-tight">Экспорт</h3>
                   <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
                     Скачайте коллекцию в файл
@@ -127,14 +132,14 @@ export function SettingsPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardBody className="py-6 px-12">
+            <CardBody className="px-12 py-6">
               <p className="text-fg-body-subtle text-[15px] leading-relaxed">
                 В коллекции сейчас:{' '}
                 <span className="text-fg-heading font-medium">{items.length}</span> релиз(ов).
                 Экспорт включает метаданные и треклист (без обложек).
               </p>
             </CardBody>
-            <CardFooter className="pt-5 pb-8">
+            <CardFooter className="pb-8 pt-5">
               <div className="ml-auto flex flex-wrap items-center gap-3">
                 <Button variant="neutral" onClick={onExportCsv} disabled={items.length === 0}>
                   Скачать CSV
@@ -147,12 +152,12 @@ export function SettingsPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pt-8 pb-6">
+            <CardHeader className="pb-6 pt-8">
               <div className="flex items-start gap-5">
                 <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
                   <ImportIcon />
                 </div>
-                <div className="flex-1 min-w-0 pt-0.5">
+                <div className="min-w-0 flex-1 pt-0.5">
                   <h3 className="text-fg-heading text-base font-semibold leading-tight">Импорт</h3>
                   <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
                     Загрузите ранее экспортированный файл
@@ -160,14 +165,14 @@ export function SettingsPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardBody className="py-6 px-12">
+            <CardBody className="px-12 py-6">
               <p className="text-fg-body-subtle text-[15px] leading-relaxed">
                 Импортируйте ранее экспортированный JSON. Релизы добавляются к коллекции; дубликаты
                 по source+sourceId не создаются.
               </p>
               {busy ? <p className="text-fg-body-subtle mt-3 text-sm">Импортирую…</p> : null}
             </CardBody>
-            <CardFooter className="pt-5 pb-8">
+            <CardFooter className="pb-8 pt-5">
               <div className="ml-auto">
                 <label className="border-border-default bg-surface text-fg-heading rounded-base shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex cursor-pointer items-center gap-2.5 border px-5 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out">
                   <UploadIcon />
@@ -265,10 +270,11 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
     setStatus({ kind: 'idle', message: '' });
     try {
       const shell = getHostShell();
-      const res = await shell.net().fetchJson<{ username?: string }>(
-        'https://api.discogs.com/oauth/identity',
-        { headers: { Authorization: `Discogs token=${token}` } },
-      );
+      const res = await shell
+        .net()
+        .fetchJson<{ username?: string }>('https://api.discogs.com/oauth/identity', {
+          headers: { Authorization: `Discogs token=${token}` },
+        });
       const who = res.username ? ` (@${res.username})` : '';
       setTestResult({ kind: 'ok', message: `Подключение установлено${who}.` });
     } catch (err) {
@@ -294,12 +300,12 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
 
   return (
     <Card>
-      <CardHeader className="pt-8 pb-6">
+      <CardHeader className="pb-6 pt-8">
         <div className="flex items-start gap-5">
           <div className="rounded-base bg-brand-softer border-border-brand-subtle flex h-12 w-12 shrink-0 items-center justify-center border">
             <VinylIcon />
           </div>
-          <div className="flex-1 min-w-0 pt-1">
+          <div className="min-w-0 flex-1 pt-1">
             <h3 className="text-fg-heading text-lg font-semibold leading-tight">Discogs</h3>
             <p className="text-fg-body-subtle mt-2 text-sm leading-snug">
               Поиск релизов, обложки и треклисты
@@ -310,14 +316,14 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
           </Badge>
         </div>
       </CardHeader>
-      <CardBody className="space-y-8 py-6 px-12">
+      <CardBody className="space-y-8 px-12 py-6">
         <p className="text-fg-body text-[15px] leading-relaxed">
           Чтобы искать релизы и подгружать метаданные, нужен{' '}
           <a
             href="https://www.discogs.com/settings/developers"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-fg-brand-strong hover:text-fg-heading font-medium underline decoration-border-brand decoration-1 underline-offset-4 transition-colors"
+            className="text-fg-brand-strong hover:text-fg-heading decoration-border-brand font-medium underline decoration-1 underline-offset-4 transition-colors"
           >
             Personal Access Token
           </a>{' '}
@@ -357,9 +363,9 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
                 <button
                   type="button"
                   onClick={toggleReveal}
-                    aria-label={revealed ? 'Скрыть токен' : 'Показать токен'}
-                    className="text-fg-body hover:text-fg-heading pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
-                  >
+                  aria-label={revealed ? 'Скрыть токен' : 'Показать токен'}
+                  className="text-fg-body hover:text-fg-heading pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
+                >
                   {revealed ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               ) : null
@@ -374,7 +380,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
           />
 
           {hasToken && confirmingDelete ? (
-            <div className="rounded-base border-border-danger-subtle bg-danger-soft flex flex-wrap items-center gap-5 px-6 py-5 animate-rise">
+            <div className="rounded-base border-border-danger-subtle bg-danger-soft animate-rise flex flex-wrap items-center gap-5 px-6 py-5">
               <AlertIcon className="text-fg-danger-strong h-5 w-5 shrink-0" />
               <span className="text-fg-body text-[15px] leading-relaxed">
                 Удалить сохранённый токен? Поиск и подгрузка перестанут работать.
@@ -413,7 +419,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
           ) : null}
         </form>
       </CardBody>
-      <CardFooter className="pt-5 pb-8">
+      <CardFooter className="pb-8 pt-5">
         <div className="ml-auto flex flex-wrap items-center gap-3">
           {hasToken && !confirmingDelete ? (
             <Button
@@ -442,11 +448,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
             leftIcon={busy === 'save' ? undefined : <CheckIcon />}
             disabled={!dirty || busy !== null}
           >
-            {busy === 'save'
-              ? 'Сохраняю…'
-              : hasToken
-                ? 'Сохранить изменения'
-                : 'Сохранить токен'}
+            {busy === 'save' ? 'Сохраняю…' : hasToken ? 'Сохранить изменения' : 'Сохранить токен'}
           </Button>
         </div>
       </CardFooter>
@@ -456,13 +458,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
 
 type AlertTone = 'success' | 'danger' | 'warning' | 'brand';
 
-function Alert({
-  tone,
-  children,
-}: {
-  tone: AlertTone;
-  children: React.ReactNode;
-}) {
+function Alert({ tone, children }: { tone: AlertTone; children: React.ReactNode }) {
   const toneClasses: Record<AlertTone, string> = {
     success: 'bg-success-soft text-fg-success-strong border-border-success-subtle',
     danger: 'bg-danger-soft text-fg-danger-strong border-border-danger-subtle',
@@ -478,7 +474,7 @@ function Alert({
   return (
     <div
       role="status"
-      className={`flex items-start gap-4 rounded-base border px-6 py-5 text-[15px] leading-relaxed animate-rise ${toneClasses[tone]}`}
+      className={`rounded-base animate-rise flex items-start gap-4 border px-6 py-5 text-[15px] leading-relaxed ${toneClasses[tone]}`}
     >
       <span className={`mt-0.5 shrink-0 ${iconClasses[tone]}`}>
         {tone === 'success' ? (
@@ -580,7 +576,11 @@ function EyeOffIcon() {
       className="h-4 w-4"
       aria-hidden
     >
-      <path d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6.5 0 10 6 10 6a17.6 17.6 0 0 1-3.2 4M6.6 6.6A17.7 17.7 0 0 0 2 12s3.5 6 10 6c1.4 0 2.7-.2 3.9-.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6.5 0 10 6 10 6a17.6 17.6 0 0 1-3.2 4M6.6 6.6A17.7 17.7 0 0 0 2 12s3.5 6 10 6c1.4 0 2.7-.2 3.9-.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <path d="M14.1 14.1A3 3 0 0 1 9.9 9.9" />
     </svg>
   );

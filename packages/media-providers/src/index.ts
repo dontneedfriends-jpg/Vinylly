@@ -31,9 +31,7 @@ export class ProvidersRegistry {
   }
 
   lyricsProviders(): MediaProvider[] {
-    return [this.lrclib, this.genius].filter(
-      (p) => p?.isEnabled(),
-    ) as MediaProvider[];
+    return [this.lrclib, this.genius].filter((p) => p?.isEnabled()) as MediaProvider[];
   }
 
   async searchAll(query: SearchQuery): Promise<SearchResult[]> {

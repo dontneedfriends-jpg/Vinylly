@@ -99,8 +99,10 @@ export function AddPage() {
       setAddTracklist((detail ?? res.release).tracklist, false);
 
       const release = detail ?? res.release;
-      const raw = (release as unknown as Record<string, unknown>).raw as Record<string, unknown> | undefined;
-      const catno = (raw?.labels as Array<Record<string, unknown>> | undefined)?.[0]?.catno as string | undefined;
+      const raw = (release as unknown as Record<string, unknown>).raw as
+        Record<string, unknown> | undefined;
+      const catno = (raw?.labels as Array<Record<string, unknown>> | undefined)?.[0]?.catno as
+        string | undefined;
       if (catno) setCatalogNumber(catno);
       if (release.barcode?.[0]) setBarcode(release.barcode[0]);
       setAddReleaseMeta({
@@ -251,11 +253,11 @@ export function AddPage() {
                       />
                     </div>
                     <div className="pt-5">
-                      <div className="flex items-center gap-2 text-fg-body-subtle text-xs">
+                      <div className="text-fg-body-subtle flex items-center gap-2 text-xs">
                         <VinylIcon />
                         <span>
                           {r.release.mediaType
-                            ? typeLabels[r.release.mediaType as MediaType] ?? r.release.mediaType
+                            ? (typeLabels[r.release.mediaType as MediaType] ?? r.release.mediaType)
                             : r.provider}
                         </span>
                         {r.release.year ? <span>· {r.release.year}</span> : null}
@@ -263,7 +265,7 @@ export function AddPage() {
                       <h3 className="text-fg-heading mt-3 pl-3 text-base font-semibold leading-tight">
                         {r.release.title}
                       </h3>
-                      <p className="text-fg-body-subtle mt-2 pl-3 text-sm leading-relaxed line-clamp-2">
+                      <p className="text-fg-body-subtle mt-2 line-clamp-2 pl-3 text-sm leading-relaxed">
                         {r.release.artist}
                       </p>
                     </div>
@@ -308,11 +310,7 @@ export function AddPage() {
       />
 
       {/* ─── Album preview card (like collection tile) ─── */}
-      <Card
-        variant="interactive"
-        as="div"
-        className="w-full overflow-hidden text-left"
-      >
+      <Card variant="interactive" as="div" className="w-full overflow-hidden text-left">
         <div className="flex flex-col gap-6 p-8 md:flex-row">
           <div className="w-full shrink-0 md:w-[180px]">
             <div className="rounded-base shadow-neu-inset aspect-square overflow-hidden">
@@ -338,9 +336,7 @@ export function AddPage() {
               <Badge tone="brand" pill>
                 {typeLabels[type]}
               </Badge>
-              {selected.year ? (
-                <Badge tone="neutral">{selected.year}</Badge>
-              ) : null}
+              {selected.year ? <Badge tone="neutral">{selected.year}</Badge> : null}
               {selected.genres.slice(0, 3).map((g) => (
                 <Badge key={g} tone="secondary">
                   {g}
@@ -422,5 +418,3 @@ function VinylIcon() {
     </svg>
   );
 }
-
-

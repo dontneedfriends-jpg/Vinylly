@@ -42,9 +42,7 @@ export class LrclibProvider implements MediaProvider {
     const url = `${BASE}/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
     return withCache(`lrclib:lyrics:${q}`, TTL, async () => {
       try {
-        const data = await getHostShell()
-          .net()
-          .fetchJson<LrclibResponse>(url);
+        const data = await getHostShell().net().fetchJson<LrclibResponse>(url);
         const text = data.plainLyrics ?? data.syncedLyrics;
         if (!text) return null;
         return {

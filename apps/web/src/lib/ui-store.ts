@@ -57,7 +57,14 @@ export const useUi = create<UiState>((set) => ({
   filterType: 'all',
   sort: 'addedDesc',
   openCollection: () => set({ page: 'collection', detailItemId: null, releaseVideos: [] }),
-  openAdd: (query) => set({ page: 'add', search: query ?? '', addTracklist: [], addTracklistLoading: false, addReleaseMeta: null }),
+  openAdd: (query) =>
+    set({
+      page: 'add',
+      search: query ?? '',
+      addTracklist: [],
+      addTracklistLoading: false,
+      addReleaseMeta: null,
+    }),
   openDetail: (itemId) => set({ page: 'detail', detailItemId: itemId, releaseVideos: [] }),
   openSettings: () => set({ page: 'settings' }),
   setSearch: (q) => set({ search: q }),

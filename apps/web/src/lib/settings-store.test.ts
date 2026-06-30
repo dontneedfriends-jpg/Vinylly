@@ -24,7 +24,7 @@ function createMockShell(files: Record<string, string> = {}): HostShell {
     join: (...parts) => parts.filter(Boolean).join('/').replace(/\/+/g, '/'),
   };
   const net: HostNet = {
-    fetchJson: async <T>(): Promise<T> => ({} as T),
+    fetchJson: async <T>(): Promise<T> => ({}) as T,
     fetchBinary: async () => new Uint8Array(),
   };
   return {

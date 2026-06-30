@@ -76,11 +76,7 @@ export function DetailRail() {
   };
 
   if (!itemId || tracks.length === 0) {
-    return (
-      <p className="text-fg-body-subtle text-sm">
-        {!itemId ? '' : 'Треклист не загружен.'}
-      </p>
-    );
+    return <p className="text-fg-body-subtle text-sm">{!itemId ? '' : 'Треклист не загружен.'}</p>;
   }
 
   return (
@@ -97,7 +93,7 @@ export function DetailRail() {
                 onClick={() => onTrackClick(t.id)}
                 aria-pressed={active}
                 className={
-                  'group flex w-full items-center justify-between gap-2 rounded-base px-4 py-3 text-left text-sm transition-all duration-200 ' +
+                  'rounded-base group flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm transition-all duration-200 ' +
                   (active
                     ? 'text-fg-brand-strong bg-surface shadow-neu-inset'
                     : 'text-fg-body hover:text-fg-heading bg-surface hover:shadow-neu-2xs')
@@ -105,11 +101,7 @@ export function DetailRail() {
               >
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="flex w-6 shrink-0 items-center gap-1">
-                    {active ? (
-                      <PlayIcon />
-                    ) : (
-                      <MusicNoteIcon />
-                    )}
+                    {active ? <PlayIcon /> : <MusicNoteIcon />}
                     <span className="text-fg-body-subtle text-xs font-medium">{t.position}</span>
                   </span>
                   <span className="truncate font-medium">{t.title}</span>
@@ -133,7 +125,7 @@ export function DetailRail() {
                 </div>
               </button>
               {isExpanded && lyricsText ? (
-                <div className="border-t border-border-default bg-surface/50 px-4 py-4">
+                <div className="border-border-default bg-surface/50 border-t px-4 py-4">
                   <pre className="text-fg-body whitespace-pre-wrap font-sans text-xs leading-relaxed">
                     {lyricsText}
                   </pre>
@@ -290,34 +282,36 @@ function AddRail() {
       {addReleaseMeta ? (
         <div>
           <h3 className="text-fg-heading mb-3 text-lg font-semibold">Об альбоме</h3>
-        <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-y divide-border-default">
-          {addReleaseMeta.country ? (
-            <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
-              <span className="text-fg-body-subtle">Страна</span>
-              <span className="text-fg-heading font-medium">{addReleaseMeta.country}</span>
-            </div>
-          ) : null}
-          {addReleaseMeta.released ? (
-            <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
-              <span className="text-fg-body-subtle">Релиз</span>
-              <span className="text-fg-heading font-medium">{addReleaseMeta.released}</span>
-            </div>
-          ) : null}
-          {addReleaseMeta.format ? (
-            <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
-              <span className="text-fg-body-subtle">Формат</span>
-              <span className="text-fg-heading text-right font-medium">{addReleaseMeta.format}</span>
-            </div>
-          ) : null}
-          {addReleaseMeta.labels?.length ? (
-            <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
-              <span className="text-fg-body-subtle">Лейбл</span>
-              <span className="text-fg-heading text-right font-medium">
-                {addReleaseMeta.labels.join(', ')}
-              </span>
-            </div>
-          ) : null}
-        </div>
+          <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
+            {addReleaseMeta.country ? (
+              <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+                <span className="text-fg-body-subtle">Страна</span>
+                <span className="text-fg-heading font-medium">{addReleaseMeta.country}</span>
+              </div>
+            ) : null}
+            {addReleaseMeta.released ? (
+              <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+                <span className="text-fg-body-subtle">Релиз</span>
+                <span className="text-fg-heading font-medium">{addReleaseMeta.released}</span>
+              </div>
+            ) : null}
+            {addReleaseMeta.format ? (
+              <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+                <span className="text-fg-body-subtle">Формат</span>
+                <span className="text-fg-heading text-right font-medium">
+                  {addReleaseMeta.format}
+                </span>
+              </div>
+            ) : null}
+            {addReleaseMeta.labels?.length ? (
+              <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+                <span className="text-fg-body-subtle">Лейбл</span>
+                <span className="text-fg-heading text-right font-medium">
+                  {addReleaseMeta.labels.join(', ')}
+                </span>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -331,7 +325,7 @@ function AddRail() {
             {addTracklist.map((t, i) => (
               <div
                 key={`${t.position}-${i}`}
-                className="flex w-full items-center justify-between gap-2 rounded-base px-4 py-3 text-sm text-fg-body"
+                className="rounded-base text-fg-body flex w-full items-center justify-between gap-2 px-4 py-3 text-sm"
               >
                 <div className="flex min-w-0 items-center gap-2.5">
                   <MusicNoteIcon />
@@ -404,7 +398,7 @@ function SettingsRail() {
         <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
           О приложении
         </h4>
-        <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-y divide-border-default">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
           <div className="flex items-center justify-between px-6 py-4 text-sm">
             <span className="text-fg-body-subtle">Версия</span>
             <span className="text-fg-heading font-medium">0.1.0</span>
@@ -424,7 +418,10 @@ function SettingsRail() {
           {[
             { name: 'MusicBrainz', url: 'https://musicbrainz.org' },
             { name: 'Cover Art Archive', url: 'https://coverartarchive.org' },
-            { name: 'Discogs для разработчиков', url: 'https://www.discogs.com/settings/developers' },
+            {
+              name: 'Discogs для разработчиков',
+              url: 'https://www.discogs.com/settings/developers',
+            },
             { name: 'Genius', url: 'https://genius.com' },
           ].map((src) => (
             <li key={src.name}>
@@ -470,11 +467,9 @@ export function RightRail() {
   return (
     <aside
       aria-label="Боковая панель"
-      className="rounded-base border-border-default bg-surface shadow-neu-sm scrollbar-neu flex h-[calc(100vh-3rem)] w-0 shrink-0 flex-col overflow-hidden border opacity-0 transition-all duration-200 ease-in-out lg:w-72 lg:opacity-100 sm:h-[calc(100vh-3.5rem)]"
+      className="rounded-base border-border-default bg-surface shadow-neu-sm scrollbar-neu flex h-[calc(100vh-3rem)] w-0 shrink-0 flex-col overflow-hidden border opacity-0 transition-all duration-200 ease-in-out sm:h-[calc(100vh-3.5rem)] lg:w-72 lg:opacity-100"
     >
-      <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto px-6 py-6">
-        {rendered}
-      </div>
+      <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto px-6 py-6">{rendered}</div>
     </aside>
   );
 }
@@ -559,7 +554,11 @@ function ExternalLinkIcon() {
       className="h-3 w-3 shrink-0"
       aria-hidden
     >
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

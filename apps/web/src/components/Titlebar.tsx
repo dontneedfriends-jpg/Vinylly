@@ -54,7 +54,7 @@ export function Titlebar() {
 
   return (
     <header
-      className="bg-surface text-fg-body border-b border-border-default flex h-10 shrink-0 items-center justify-between select-none"
+      className="bg-surface text-fg-body border-border-default flex h-10 shrink-0 select-none items-center justify-between border-b"
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
       {/* Brand (left) — also draggable */}
