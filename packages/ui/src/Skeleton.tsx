@@ -40,7 +40,7 @@ export function SkeletonCover({ className = '' }: { className?: string }) {
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`rounded-base border-border-default bg-surface shadow-neu-sm border p-3 ${className}`}
+      className={`rounded-base border-border-default bg-surface shadow-neu-sm border p-5 ${className}`}
     >
       <Skeleton height="100%" className="mb-3 aspect-square" rounded="md" />
       <Skeleton width="80%" className="mb-2" />

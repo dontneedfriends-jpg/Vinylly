@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge, Card, CardBody, CardHeader, Button, Input, PageHeader } from '@vinylly/ui';
+import { Badge, Card, CardBody, CardHeader, CardFooter, Button, Input, PageHeader } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { itemRepo, trackRepo } from '../lib/db';
 import { useDefaultCollection, useItems } from '../lib/queries';
@@ -105,7 +105,7 @@ export function SettingsPage() {
         }
       />
 
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
         <DiscogsCard
           token={discogsToken}
           onSave={setDiscogsToken}
@@ -114,7 +114,7 @@ export function SettingsPage() {
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
-            <CardHeader>
+            <CardHeader className="pt-8 pb-6">
               <div className="flex items-start gap-5">
                 <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
                   <ExportIcon />
@@ -127,25 +127,27 @@ export function SettingsPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardBody>
-              <p className="text-fg-body-subtle mb-8 text-[15px] leading-relaxed">
+            <CardBody className="py-6 px-12">
+              <p className="text-fg-body-subtle text-[15px] leading-relaxed">
                 В коллекции сейчас:{' '}
                 <span className="text-fg-heading font-medium">{items.length}</span> релиз(ов).
                 Экспорт включает метаданные и треклист (без обложек).
               </p>
-              <div className="flex flex-wrap gap-4">
-                <Button onClick={onExportJson} disabled={items.length === 0}>
-                  Скачать JSON
-                </Button>
+            </CardBody>
+            <CardFooter className="pt-5 pb-8">
+              <div className="ml-auto flex flex-wrap items-center gap-3">
                 <Button variant="neutral" onClick={onExportCsv} disabled={items.length === 0}>
                   Скачать CSV
                 </Button>
+                <Button onClick={onExportJson} disabled={items.length === 0}>
+                  Скачать JSON
+                </Button>
               </div>
-            </CardBody>
+            </CardFooter>
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="pt-8 pb-6">
               <div className="flex items-start gap-5">
                 <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
                   <ImportIcon />
@@ -158,27 +160,31 @@ export function SettingsPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardBody>
-              <p className="text-fg-body-subtle mb-8 text-[15px] leading-relaxed">
+            <CardBody className="py-6 px-12">
+              <p className="text-fg-body-subtle text-[15px] leading-relaxed">
                 Импортируйте ранее экспортированный JSON. Релизы добавляются к коллекции; дубликаты
                 по source+sourceId не создаются.
               </p>
-              <label className="border-border-default bg-surface rounded-base shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex cursor-pointer items-center gap-2.5 border px-4 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out">
-                <UploadIcon />
-                <span>Выбрать файл…</span>
-                <input
-                  type="file"
-                  accept="application/json,.json"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void onImport(f);
-                    e.target.value = '';
-                  }}
-                  className="hidden"
-                />
-              </label>
               {busy ? <p className="text-fg-body-subtle mt-3 text-sm">Импортирую…</p> : null}
             </CardBody>
+            <CardFooter className="pt-5 pb-8">
+              <div className="ml-auto">
+                <label className="border-border-default bg-surface text-fg-heading rounded-base shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex cursor-pointer items-center gap-2.5 border px-5 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out">
+                  <UploadIcon />
+                  <span>Выбрать файл…</span>
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void onImport(f);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </CardFooter>
           </Card>
         </div>
       </div>
@@ -212,8 +218,8 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
   const displayValue = revealed && !dirty && hasToken ? token : draft;
   const inputType = !hasToken ? 'password' : revealed && !dirty ? 'text' : 'password';
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     const next = draft.trim();
     if (!next) {
       setStatus({ kind: 'error', message: 'Введите токен, прежде чем сохранить.' });
@@ -288,12 +294,12 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pt-8 pb-6">
         <div className="flex items-start gap-5">
           <div className="rounded-base bg-brand-softer border-border-brand-subtle flex h-12 w-12 shrink-0 items-center justify-center border">
             <VinylIcon />
           </div>
-          <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex-1 min-w-0 pt-1">
             <h3 className="text-fg-heading text-lg font-semibold leading-tight">Discogs</h3>
             <p className="text-fg-body-subtle mt-2 text-sm leading-snug">
               Поиск релизов, обложки и треклисты
@@ -304,7 +310,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
           </Badge>
         </div>
       </CardHeader>
-      <CardBody className="space-y-8">
+      <CardBody className="space-y-8 py-6 px-12">
         <p className="text-fg-body text-[15px] leading-relaxed">
           Чтобы искать релизы и подгружать метаданные, нужен{' '}
           <a
@@ -327,84 +333,45 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
           </a>
         </p>
 
-        <form onSubmit={onSubmit} className="space-y-7">
-          <div>
-            <Input
-              label="Personal Access Token"
-              type={inputType}
-              value={displayValue}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                if (revealed && !hasToken) setRevealed(false);
-              }}
-              placeholder={
-                hasToken
-                  ? revealed
-                    ? 'Токен отображается'
-                    : '••••••••••••••••••••••••••'
-                  : 'Вставьте токен сюда'
-              }
-              autoComplete="off"
-              spellCheck={false}
-              leftIcon={<KeyIcon />}
-              rightIcon={
-                hasToken ? (
-                  <button
-                    type="button"
-                    onClick={toggleReveal}
+        <form onSubmit={onSubmit} className="space-y-6">
+          <Input
+            label="Personal Access Token"
+            type={inputType}
+            value={displayValue}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (revealed && !hasToken) setRevealed(false);
+            }}
+            placeholder={
+              hasToken
+                ? revealed
+                  ? 'Токен отображается'
+                  : '••••••••••••••••••••••••••'
+                : 'Вставьте токен сюда'
+            }
+            autoComplete="off"
+            spellCheck={false}
+            leftIcon={<KeyIcon />}
+            rightIcon={
+              hasToken ? (
+                <button
+                  type="button"
+                  onClick={toggleReveal}
                     aria-label={revealed ? 'Скрыть токен' : 'Показать токен'}
-                    className="text-fg-body hover:text-fg-heading inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
+                    className="text-fg-body hover:text-fg-heading pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
                   >
-                    {revealed ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                ) : null
-              }
-              helperText={
-                hasToken
-                  ? revealed
-                    ? 'Сейчас отображается сохранённый токен. Чтобы заменить, начните вводить новое значение.'
-                    : 'Введите новое значение, чтобы заменить текущий токен.'
-                  : 'Токен сохранится локально и будет использоваться только для запросов к api.discogs.com.'
-              }
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <Button
-              type="submit"
-              leftIcon={busy === 'save' ? undefined : <CheckIcon />}
-              disabled={!dirty || busy !== null}
-            >
-              {busy === 'save'
-                ? 'Сохраняю…'
-                : hasToken
-                  ? 'Сохранить изменения'
-                  : 'Сохранить токен'}
-            </Button>
-
-            {hasToken ? (
-              <Button
-                type="button"
-                variant="neutral"
-                onClick={onTest}
-                disabled={busy !== null}
-                leftIcon={busy === 'test' ? undefined : <BoltIcon />}
-              >
-                {busy === 'test' ? 'Проверяю…' : 'Проверить подключение'}
-              </Button>
-            ) : null}
-
-            {hasToken && !confirmingDelete ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setConfirmingDelete(true)}
-                disabled={busy !== null}
-              >
-                Удалить
-              </Button>
-            ) : null}
-          </div>
+                  {revealed ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              ) : null
+            }
+            helperText={
+              hasToken
+                ? revealed
+                  ? 'Сейчас отображается сохранённый токен. Чтобы заменить, начните вводить новое значение.'
+                  : 'Введите новое значение, чтобы заменить текущий токен.'
+                : 'Токен сохранится локально и будет использоваться только для запросов к api.discogs.com.'
+            }
+          />
 
           {hasToken && confirmingDelete ? (
             <div className="rounded-base border-border-danger-subtle bg-danger-soft flex flex-wrap items-center gap-5 px-6 py-5 animate-rise">
@@ -434,18 +401,55 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
               </div>
             </div>
           ) : null}
+
+          {status.kind !== 'idle' ? (
+            <Alert tone={status.kind === 'error' ? 'danger' : 'success'}>{status.message}</Alert>
+          ) : null}
+
+          {testResult ? (
+            <Alert tone={testResult.kind === 'error' ? 'danger' : 'success'}>
+              {testResult.message}
+            </Alert>
+          ) : null}
         </form>
-
-        {status.kind !== 'idle' ? (
-          <Alert tone={status.kind === 'error' ? 'danger' : 'success'}>{status.message}</Alert>
-        ) : null}
-
-        {testResult ? (
-          <Alert tone={testResult.kind === 'error' ? 'danger' : 'success'}>
-            {testResult.message}
-          </Alert>
-        ) : null}
       </CardBody>
+      <CardFooter className="pt-5 pb-8">
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          {hasToken && !confirmingDelete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setConfirmingDelete(true)}
+              disabled={busy !== null}
+            >
+              Удалить
+            </Button>
+          ) : null}
+          {hasToken ? (
+            <Button
+              type="button"
+              variant="neutral"
+              onClick={onTest}
+              disabled={busy !== null}
+              leftIcon={busy === 'test' ? undefined : <BoltIcon />}
+            >
+              {busy === 'test' ? 'Проверяю…' : 'Проверить подключение'}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            onClick={onSubmit}
+            leftIcon={busy === 'save' ? undefined : <CheckIcon />}
+            disabled={!dirty || busy !== null}
+          >
+            {busy === 'save'
+              ? 'Сохраняю…'
+              : hasToken
+                ? 'Сохранить изменения'
+                : 'Сохранить токен'}
+          </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
@@ -474,7 +478,7 @@ function Alert({
   return (
     <div
       role="status"
-      className={`flex items-start gap-4 rounded-base border px-5 py-4 text-[15px] leading-relaxed animate-rise ${toneClasses[tone]}`}
+      className={`flex items-start gap-4 rounded-base border px-6 py-5 text-[15px] leading-relaxed animate-rise ${toneClasses[tone]}`}
     >
       <span className={`mt-0.5 shrink-0 ${iconClasses[tone]}`}>
         {tone === 'success' ? (

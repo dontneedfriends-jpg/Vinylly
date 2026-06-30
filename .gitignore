@@ -1,19 +1,52 @@
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# Lock files from other package managers
+package-lock.json
+yarn.lock
+
+# Build output
 dist/
 build/
+out/
+.output/
+*.tsbuildinfo
+
+# Coverage / cache
+coverage/
 .turbo/
 .cache/
-coverage/
+
+# Logs / OS
 *.log
 .DS_Store
+Thumbs.db
+
+# Documentation (keep only README.md)
+*.md
+!README.md
+
+# Secrets
 .env
 .env.local
 .env.*.local
+
+# Runtime data
 data/
-*.tsbuildinfo
-.pnpm-store/
+
+# Tauri generated + build artifacts
 apps/desktop/target/
 apps/desktop/src-tauri/target/
 apps/desktop/gen/
+apps/desktop/src-tauri/gen/
+
+# OS binaries (portable builds)
+*.exe
+*.msi
+*.dmg
+*.AppImage
+
+# Editors
 .vscode/
 .idea/

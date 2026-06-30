@@ -15,7 +15,7 @@ const typeLabels: Record<MediaType, string> = {
 
 /* ─────────── DETAIL RAIL — Tracklist ─────────── */
 
-function DetailRail() {
+export function DetailRail() {
   const itemId = useUi((s) => s.detailItemId);
   const setTrack = useUi((s) => s.setTrack);
   const selectedTrackId = useUi((s) => s.detailTrackId);
@@ -202,7 +202,7 @@ function CollectionRail() {
       {/* Stats */}
       <div>
         <h3 className="text-fg-heading mb-3 text-lg font-semibold">Статистика</h3>
-        <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-5 py-4">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-6 py-5">
           <div className="text-fg-heading text-2xl font-semibold">{stats.total}</div>
           <div className="text-fg-body-subtle text-xs">всего релизов</div>
           <div className="mt-3 flex flex-col gap-1">
@@ -259,19 +259,19 @@ function AddRail() {
         <div>
           <h3 className="text-fg-heading mb-3 text-lg font-semibold">Советы</h3>
           <ul className="flex flex-col gap-3">
-            <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-4 py-3 text-sm">
+            <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-5 py-4 text-sm">
               <span className="text-fg-heading block text-xs font-semibold">Штрих-код</span>
               <span className="text-fg-body-subtle text-xs">
                 Введите или отсканируйте штрих-код для быстрого поиска.
               </span>
             </li>
-            <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-4 py-3 text-sm">
+            <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-5 py-4 text-sm">
               <span className="text-fg-heading block text-xs font-semibold">Каталожный номер</span>
               <span className="text-fg-body-subtle text-xs">
                 Номер на обложке / корешке пластинки или CD.
               </span>
             </li>
-            <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-4 py-3 text-sm">
+            <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-5 py-4 text-sm">
               <span className="text-fg-heading block text-xs font-semibold">Вручную</span>
               <span className="text-fg-body-subtle text-xs">
                 Если релиз не нашёлся в источниках, добавьте его вручную.
@@ -290,34 +290,34 @@ function AddRail() {
       {addReleaseMeta ? (
         <div>
           <h3 className="text-fg-heading mb-3 text-lg font-semibold">Об альбоме</h3>
-          <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-y divide-border-default">
-            {addReleaseMeta.country ? (
-              <div className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
-                <span className="text-fg-body-subtle">Страна</span>
-                <span className="text-fg-heading font-medium">{addReleaseMeta.country}</span>
-              </div>
-            ) : null}
-            {addReleaseMeta.released ? (
-              <div className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
-                <span className="text-fg-body-subtle">Релиз</span>
-                <span className="text-fg-heading font-medium">{addReleaseMeta.released}</span>
-              </div>
-            ) : null}
-            {addReleaseMeta.format ? (
-              <div className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
-                <span className="text-fg-body-subtle">Формат</span>
-                <span className="text-fg-heading text-right font-medium">{addReleaseMeta.format}</span>
-              </div>
-            ) : null}
-            {addReleaseMeta.labels?.length ? (
-              <div className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
-                <span className="text-fg-body-subtle">Лейбл</span>
-                <span className="text-fg-heading text-right font-medium">
-                  {addReleaseMeta.labels.join(', ')}
-                </span>
-              </div>
-            ) : null}
-          </div>
+        <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-y divide-border-default">
+          {addReleaseMeta.country ? (
+            <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+              <span className="text-fg-body-subtle">Страна</span>
+              <span className="text-fg-heading font-medium">{addReleaseMeta.country}</span>
+            </div>
+          ) : null}
+          {addReleaseMeta.released ? (
+            <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+              <span className="text-fg-body-subtle">Релиз</span>
+              <span className="text-fg-heading font-medium">{addReleaseMeta.released}</span>
+            </div>
+          ) : null}
+          {addReleaseMeta.format ? (
+            <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+              <span className="text-fg-body-subtle">Формат</span>
+              <span className="text-fg-heading text-right font-medium">{addReleaseMeta.format}</span>
+            </div>
+          ) : null}
+          {addReleaseMeta.labels?.length ? (
+            <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+              <span className="text-fg-body-subtle">Лейбл</span>
+              <span className="text-fg-heading text-right font-medium">
+                {addReleaseMeta.labels.join(', ')}
+              </span>
+            </div>
+          ) : null}
+        </div>
         </div>
       ) : null}
 
@@ -369,8 +369,8 @@ function SettingsRail() {
         <div
           className={
             hasToken
-              ? 'rounded-base border-border-default bg-surface shadow-neu-2xs border px-5 py-5'
-              : 'rounded-base border-border-warning bg-warning-soft border px-5 py-5'
+              ? 'rounded-base border-border-default bg-surface shadow-neu-2xs border px-6 py-5'
+              : 'rounded-base border-border-warning bg-warning-soft border px-6 py-5'
           }
         >
           <div className="flex items-start gap-3.5">
@@ -405,11 +405,11 @@ function SettingsRail() {
           О приложении
         </h4>
         <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-y divide-border-default">
-          <div className="flex items-center justify-between px-5 py-4 text-sm">
+          <div className="flex items-center justify-between px-6 py-4 text-sm">
             <span className="text-fg-body-subtle">Версия</span>
             <span className="text-fg-heading font-medium">0.1.0</span>
           </div>
-          <div className="flex items-center justify-between px-5 py-4 text-sm">
+          <div className="flex items-center justify-between px-6 py-4 text-sm">
             <span className="text-fg-body-subtle">Сборка</span>
             <span className="text-fg-heading font-medium">development</span>
           </div>
@@ -432,7 +432,7 @@ function SettingsRail() {
                 href={src.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-4 py-2.5 text-xs transition-all duration-200"
+                className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-4 py-3 text-xs transition-all duration-200"
               >
                 <ExternalLinkIcon />
                 {src.name}
@@ -470,9 +470,11 @@ export function RightRail() {
   return (
     <aside
       aria-label="Боковая панель"
-      className="rounded-base border-border-default bg-surface shadow-neu-sm hidden h-[calc(100vh-3rem)] w-72 shrink-0 flex-col gap-4 overflow-y-auto border px-5 py-6 sm:h-[calc(100vh-3.5rem)] xl:flex"
+      className="rounded-base border-border-default bg-surface shadow-neu-sm scrollbar-neu flex h-[calc(100vh-3rem)] w-0 shrink-0 flex-col overflow-hidden border opacity-0 transition-all duration-200 ease-in-out lg:w-72 lg:opacity-100 sm:h-[calc(100vh-3.5rem)]"
     >
-      {rendered}
+      <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto px-6 py-6">
+        {rendered}
+      </div>
     </aside>
   );
 }

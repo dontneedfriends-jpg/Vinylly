@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useUi } from '../lib/ui-store';
+import { Card } from '@vinylly/ui';
 import { ThemeToggle } from './ThemeToggle';
 import { RightRail } from './RightRail';
 import { Titlebar } from './Titlebar';
@@ -62,14 +63,15 @@ export function Layout({ children }: LayoutProps) {
       <Titlebar />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="mx-auto flex w-full max-w-[1400px] gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6">
+        <div className="mx-auto flex w-full max-w-[1400px] gap-0 px-4 py-4 sm:px-6 sm:py-6">
           {/* ─── Sidebar ─── */}
-          <aside
+          <Card
+            as="aside"
             role="navigation"
             aria-label="Главная навигация"
-            className="rounded-base border-border-default bg-surface shadow-neu-sm flex h-[calc(100vh-3rem)] w-64 shrink-0 flex-col overflow-hidden border sm:h-[calc(100vh-3.5rem)]"
+            className="mr-4 flex h-[calc(100vh-3rem)] w-16 shrink-0 flex-col overflow-hidden transition-all duration-200 ease-in-out sm:mr-6 xl:w-64 sm:h-[calc(100vh-3.5rem)]"
           >
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pt-5">
+            <nav className="scrollbar-neu flex flex-1 flex-col gap-1 overflow-y-auto px-2 pt-5 xl:px-3">
               {navItems.map((it) => {
                 const isActive = active === it.id;
                 return (
@@ -78,8 +80,9 @@ export function Layout({ children }: LayoutProps) {
                     type="button"
                     onClick={() => onClick(it.id)}
                     aria-current={isActive ? 'page' : undefined}
+                    title={it.label}
                     className={
-                      'rounded-base flex items-center gap-3 border px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out ' +
+                      'rounded-base flex items-center justify-center gap-3 border px-2 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out xl:justify-start xl:px-3 ' +
                       (isActive
                         ? 'bg-surface text-fg-brand-strong shadow-neu-inset border-transparent'
                         : 'bg-surface text-fg-body hover:text-fg-heading hover:shadow-neu-sm border-transparent')
@@ -90,26 +93,28 @@ export function Layout({ children }: LayoutProps) {
                     >
                       {it.icon}
                     </span>
-                    <span>{it.label}</span>
+                    <span className="hidden xl:inline">{it.label}</span>
                   </button>
                 );
               })}
             </nav>
 
-            <div className="flex shrink-0 flex-col gap-3 border-t border-border-default px-3 py-4">
+            <div className="flex shrink-0 flex-col gap-3 px-2 py-4 xl:px-3">
               <ThemeToggle />
             </div>
-          </aside>
+          </Card>
 
           {/* ─── Main frame ─── */}
           <main className="rounded-base border-border-default bg-surface shadow-neu-md flex h-[calc(100vh-3rem)] min-w-0 flex-1 flex-col overflow-hidden border sm:h-[calc(100vh-3.5rem)]">
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8 sm:px-8 sm:py-10 md:px-10">
+            <div className="scrollbar-neu min-h-0 flex-1 overflow-y-auto px-6 py-8 sm:px-8 sm:py-10 md:px-10">
               {children}
             </div>
           </main>
 
           {/* ─── Right rail (contextual) ─── */}
-          <RightRail />
+          <div className="ml-0 shrink-0 transition-all duration-200 ease-in-out lg:ml-6">
+            <RightRail />
+          </div>
         </div>
       </div>
     </div>

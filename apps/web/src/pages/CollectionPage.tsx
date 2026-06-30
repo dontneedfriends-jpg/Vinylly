@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   Card,
-  Badge,
   Input,
   SkeletonCard,
   EmptyState,
@@ -193,12 +192,12 @@ function ItemTile({ item, onOpen }: { item: ItemRecord; onOpen: () => void }) {
       <button
         type="button"
         onClick={onDelete}
-        className="absolute right-2 top-2 z-10 rounded-full p-1.5 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-danger-soft text-fg-danger"
+        className="absolute right-3 top-3 z-10 rounded-full p-2 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-danger-soft text-fg-danger"
         aria-label="Удалить"
       >
         <TrashIcon />
       </button>
-      <div className="p-4">
+      <div className="p-5">
         <div className="rounded-base shadow-neu-inset aspect-square overflow-hidden">
           <CoverImage
             releaseId={item.release.id}
@@ -208,19 +207,18 @@ function ItemTile({ item, onOpen }: { item: ItemRecord; onOpen: () => void }) {
             size="thumb"
           />
         </div>
-        <div className="px-2 pt-3">
-          <div className="text-fg-heading line-clamp-2 text-sm font-semibold">
+        <div className="pt-5">
+          <div className="flex items-center gap-2 text-fg-body-subtle text-xs">
+            <VinylIcon />
+            <span>{typeLabels[item.type]}</span>
+            {item.release.year ? <span>· {item.release.year}</span> : null}
+          </div>
+          <h3 className="text-fg-heading mt-3 pl-3 text-base font-semibold leading-tight">
             {item.release.title}
-          </div>
-          <div className="text-fg-body-subtle line-clamp-1 text-xs">{item.release.artist}</div>
-          <div className="mt-2 flex items-center justify-between">
-            <Badge tone="brand" pill>
-              {typeLabels[item.type]}
-            </Badge>
-            {item.release.year ? (
-              <span className="text-fg-body-subtle text-xs">{item.release.year}</span>
-            ) : null}
-          </div>
+          </h3>
+          <p className="text-fg-body-subtle mt-2 pl-3 text-sm leading-relaxed">
+            {item.release.artist}
+          </p>
         </div>
       </div>
     </Card>
@@ -269,6 +267,24 @@ function TrashIcon() {
       aria-hidden
     >
       <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function VinylIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className="h-3.5 w-3.5 shrink-0"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5.5" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" />
     </svg>
   );
 }

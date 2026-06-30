@@ -311,4 +311,47 @@
     border-radius: 8px;
     box-shadow: var(--shadow-inset);
   }
+
+  /* ─── Auto-hide neumorphic scrollbar ─── */
+  .scrollbar-neu {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .scrollbar-neu:hover {
+    scrollbar-color: var(--color-border-default-strong) transparent;
+  }
+
+  .scrollbar-neu::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .scrollbar-neu::-webkit-scrollbar-track {
+    background: var(--color-surface);
+    border-radius: 9999px;
+    box-shadow: var(--shadow-inset);
+    margin: 4px;
+  }
+
+  .scrollbar-neu::-webkit-scrollbar-thumb {
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+
+  .scrollbar-neu:hover::-webkit-scrollbar-thumb {
+    background: var(--color-surface);
+    border-color: var(--color-border-default);
+    box-shadow: var(--shadow-md);
+  }
+
+  .scrollbar-neu::-webkit-scrollbar-thumb:active {
+    box-shadow: var(--shadow-inset);
+  }
+
+  .scrollbar-neu::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }

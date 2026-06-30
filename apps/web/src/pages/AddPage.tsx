@@ -240,7 +240,7 @@ export function AddPage() {
                   onClick={() => void onPickResult(r)}
                   className="group relative h-full w-full overflow-hidden text-left"
                 >
-                  <div className="p-4">
+                  <div className="p-5">
                     <div className="rounded-base shadow-neu-inset aspect-square overflow-hidden">
                       <CoverImage
                         releaseId={`${r.provider}-${r.release.sourceId}`}
@@ -250,23 +250,22 @@ export function AddPage() {
                         size="thumb"
                       />
                     </div>
-                    <div className="px-2 pt-3">
-                      <div className="text-fg-heading line-clamp-2 text-sm font-semibold">
-                        {r.release.title}
-                      </div>
-                      <div className="text-fg-body-subtle line-clamp-1 text-xs">
-                        {r.release.artist}
-                      </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <Badge tone="brand" pill>
+                    <div className="pt-5">
+                      <div className="flex items-center gap-2 text-fg-body-subtle text-xs">
+                        <VinylIcon />
+                        <span>
                           {r.release.mediaType
                             ? typeLabels[r.release.mediaType as MediaType] ?? r.release.mediaType
                             : r.provider}
-                        </Badge>
-                        {r.release.year ? (
-                          <span className="text-fg-body-subtle text-xs">{r.release.year}</span>
-                        ) : null}
+                        </span>
+                        {r.release.year ? <span>· {r.release.year}</span> : null}
                       </div>
+                      <h3 className="text-fg-heading mt-3 pl-3 text-base font-semibold leading-tight">
+                        {r.release.title}
+                      </h3>
+                      <p className="text-fg-body-subtle mt-2 pl-3 text-sm leading-relaxed line-clamp-2">
+                        {r.release.artist}
+                      </p>
                     </div>
                   </div>
                 </Card>
@@ -314,7 +313,7 @@ export function AddPage() {
         as="div"
         className="w-full overflow-hidden text-left"
       >
-        <div className="flex flex-col gap-6 p-6 md:flex-row">
+        <div className="flex flex-col gap-6 p-8 md:flex-row">
           <div className="w-full shrink-0 md:w-[180px]">
             <div className="rounded-base shadow-neu-inset aspect-square overflow-hidden">
               <CoverImage
@@ -354,7 +353,7 @@ export function AddPage() {
 
       {/* ─── Form ─── */}
       <div className="mt-8">
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md border px-8 py-8">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
           <h3 className="text-fg-heading mb-5 text-lg font-semibold">Детали копии</h3>
           <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
             <Input label="Штрих-код" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
@@ -378,6 +377,11 @@ export function AddPage() {
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
+          <div className="mt-6 flex justify-end">
+            <Button onClick={() => void onSave()} disabled={saving}>
+              {saving ? 'Сохраняю…' : 'В коллекцию'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -397,6 +401,24 @@ function BackIcon() {
       aria-hidden
     >
       <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function VinylIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className="h-3.5 w-3.5 shrink-0"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5.5" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" />
     </svg>
   );
 }

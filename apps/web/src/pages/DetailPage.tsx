@@ -3,6 +3,7 @@ import { Button, Textarea, Badge, Input, PageHeader } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useUpdateItem, useRemoveItem } from '../lib/queries';
 import { CoverImage } from '../components/CoverImage';
+import { DetailRail } from '../components/RightRail';
 import { getProvidersRegistry } from '../lib/providers';
 import type { MediaType } from '@vinylly/db';
 
@@ -115,7 +116,7 @@ export function DetailPage() {
     return (
       <section>
         <PageHeader title="Релиз не выбран" />
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md border px-8 py-8">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
           <Button onClick={openCollection}>К коллекции</Button>
         </div>
       </section>
@@ -231,11 +232,11 @@ export function DetailPage() {
           <section>
             <h2 className="text-fg-heading mb-5 text-2xl font-semibold">Об альбоме</h2>
             {aboutLoading ? (
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-8 py-8">
+              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border p-10">
                 <p className="text-fg-body-subtle text-sm">Загружаю информацию…</p>
               </div>
             ) : (
-              <div className="rounded-base border-border-default bg-surface shadow-neu-md border px-8 py-8">
+              <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
                 <div className="flex flex-col gap-6">
                   {extendedMeta ? (
                     <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
@@ -330,7 +331,7 @@ export function DetailPage() {
         {/* Мои заметки */}
         <section>
           <h2 className="text-fg-heading mb-5 text-2xl font-semibold">Мои заметки</h2>
-          <div className="rounded-base border-border-default bg-surface shadow-neu-md border px-8 py-8">
+          <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
             <div className="grid gap-x-6 gap-y-5 md:grid-cols-3">
               <Input
                 label="Где хранится"
@@ -363,6 +364,14 @@ export function DetailPage() {
                 {updateItem.isPending ? 'Сохраняю…' : 'Сохранить'}
               </Button>
             </div>
+          </div>
+        </section>
+
+        {/* Треклист и видео — показываем под заметками, когда правый рейл свёрнут */}
+        <section className="mt-8 block lg:hidden">
+          <h2 className="text-fg-heading mb-5 text-2xl font-semibold">Треклист</h2>
+          <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+            <DetailRail />
           </div>
         </section>
       </div>

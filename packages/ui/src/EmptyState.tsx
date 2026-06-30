@@ -10,7 +10,7 @@ export interface EmptyStateProps {
 
 export function EmptyState({ title, description, action, icon }: EmptyStateProps) {
   return (
-    <Card className="py-16">
+    <Card className="px-12 py-16">
       <div className="flex flex-col items-center gap-5 text-center">
         {icon ? (
           <div

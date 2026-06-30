@@ -1,10 +1,10 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import { createElement, type HTMLAttributes, type ReactNode } from 'react';
 
 export type CardVariant = 'static' | 'interactive';
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends HTMLAttributes<HTMLElement> {
   variant?: CardVariant;
-  as?: 'div' | 'article' | 'section' | 'button';
+  as?: 'div' | 'article' | 'section' | 'aside' | 'button';
   children?: ReactNode;
 }
 
@@ -25,17 +25,16 @@ export function Card({
       ? 'shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset cursor-pointer'
       : 'shadow-neu-md';
 
-  const Component = as as 'div';
-  return (
-    <Component className={`${base} ${shadow} ${className}`} {...rest}>
-      {children}
-    </Component>
+  return createElement(
+    as,
+    { className: `${base} ${shadow} ${className}`, ...rest },
+    children,
   );
 }
 
 export function CardBody({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`p-10 ${className}`} {...rest}>
+    <div className={`p-12 ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -43,7 +42,7 @@ export function CardBody({ className = '', children, ...rest }: HTMLAttributes<H
 
 export function CardHeader({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`px-10 pb-8 pt-10 ${className}`} {...rest}>
+    <div className={`px-12 pb-10 pt-12 ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -51,7 +50,7 @@ export function CardHeader({ className = '', children, ...rest }: HTMLAttributes
 
 export function CardFooter({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`px-10 pb-10 pt-6 ${className}`} {...rest}>
+    <div className={`px-12 pb-12 pt-8 ${className}`} {...rest}>
       {children}
     </div>
   );

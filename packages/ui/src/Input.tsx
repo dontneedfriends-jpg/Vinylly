@@ -34,14 +34,23 @@ export function Input({
   const helperId = helperText ? `${inputId}-helper` : undefined;
 
   const wrapper =
-    'flex items-center gap-2 bg-surface border rounded-base shadow-neu-inset ' +
+    'relative bg-surface border rounded-base shadow-neu-inset ' +
     'transition-all duration-200 ease-in-out ' +
     `${stateBorder[state]} ` +
     'focus-within:ring-1 focus-within:ring-fg-brand/30 ' +
     'disabled:opacity-50 disabled:cursor-not-allowed';
 
   const inputBase =
-    'w-full bg-transparent border-0 outline-none text-sm text-fg-heading placeholder:text-fg-body-subtle px-3 py-2.5';
+    'w-full bg-transparent border-0 outline-none text-sm text-fg-heading placeholder:text-fg-body-subtle py-2.5 ' +
+    (leftIcon && rightIcon
+      ? 'pl-9 pr-9'
+      : leftIcon
+        ? 'pl-9 pr-3'
+        : rightIcon
+          ? 'pl-3 pr-9'
+          : 'px-3');
+
+  const iconBase = 'text-fg-body pointer-events-none absolute top-1/2 -translate-y-1/2 inline-flex';
 
   return (
     <div className="w-full">
@@ -50,9 +59,9 @@ export function Input({
           {label}
         </label>
       ) : null}
-      <div className={`${wrapper} ${leftIcon ? 'pl-3' : ''} ${rightIcon ? 'pr-3' : ''}`}>
+      <div className={wrapper}>
         {leftIcon ? (
-          <span className="text-fg-body inline-flex shrink-0" aria-hidden>
+          <span className={`${iconBase} left-3`} aria-hidden>
             {leftIcon}
           </span>
         ) : null}
@@ -64,7 +73,7 @@ export function Input({
           {...rest}
         />
         {rightIcon ? (
-          <span className="text-fg-body inline-flex shrink-0" aria-hidden>
+          <span className={`${iconBase} right-3`} aria-hidden>
             {rightIcon}
           </span>
         ) : null}
