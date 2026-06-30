@@ -29,7 +29,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [],
     "category": "Music",
     "shortDescription": "Каталог аудио-коллекции",
     "longDescription": "Vinylly — каталогизатор винила, CD, кассет и других аудио-носителей.",

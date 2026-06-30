@@ -100,16 +100,6 @@ fn app_info() -> AppInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Fix EGL_BAD_PARAMETER on systems with mismatched Mesa (e.g. AppImage built
-    // on Ubuntu, run on Arch/CachyOS). WebKit tries to init dmabuf/EGL with
-    // bundled Mesa libraries; disabling dmabuf renderer forces it to use
-    // a compatible rendering path via the system's OpenGL stack instead.
-    #[cfg(target_os = "linux")]
-    {
-        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-        std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
-    }
-
     tauri::Builder::default()
         .setup(|app| {
             let dir = resolve_data_dir(app.handle());
