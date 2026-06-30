@@ -114,7 +114,9 @@ jobs:
           pnpm --filter @vinylly/desktop build
           BUILD_EXIT=$?
           kill $XVFB_PID 2>/dev/null || true
-          exit $BUILD_EXIT
+          if [ $BUILD_EXIT -ne 0 ]; then exit $BUILD_EXIT; fi
+          # Patch: strip conflicting Mesa/EGL libs from the AppImage
+          bash apps/desktop/src-tauri/scripts/patch-appimage-egl.sh
 
       - name: Build desktop (Windows portable)
         if: matrix.platform == 'windows-latest'
