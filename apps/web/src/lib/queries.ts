@@ -76,21 +76,3 @@ export function useRemoveItem() {
     },
   });
 }
-
-export function useSetTrackLyrics() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      trackId,
-      lyrics,
-      src,
-    }: {
-      trackId: string;
-      lyrics: string | null;
-      src: string | null;
-    }) => trackRepo.setLyrics(trackId, lyrics, src),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['tracks'] });
-    },
-  });
-}

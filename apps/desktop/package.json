@@ -4,9 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
-    "build": "tauri build",
-    "build:debug": "tauri build --debug",
+    "dev": "NO_STRIP=1 tauri dev",
+    "build": "NO_STRIP=1 tauri build",
     "lint": "cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri"

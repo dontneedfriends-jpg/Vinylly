@@ -21,14 +21,6 @@ export async function minimizeWindow(): Promise<void> {
   await invoke('plugin:window|minimize');
 }
 
-export async function maximizeWindow(): Promise<void> {
-  await invoke('plugin:window|maximize');
-}
-
-export async function unmaximizeWindow(): Promise<void> {
-  await invoke('plugin:window|unmaximize');
-}
-
 export async function toggleMaximize(): Promise<void> {
   await invoke('plugin:window|toggle_maximize');
 }
