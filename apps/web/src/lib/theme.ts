@@ -87,7 +87,7 @@ export const useTheme = create<ThemeState>((set, get) => {
   };
 });
 
-export function initTheme(): void {
+function initTheme(): void {
   if (initialized) return;
   initialized = true;
   const mode = readStoredMode();

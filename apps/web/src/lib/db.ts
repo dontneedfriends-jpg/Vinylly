@@ -22,7 +22,6 @@ declare global {
 }
 
 const DB_SNAPSHOT_KEY = '__prisma';
-const TauriKv = 'tauri';
 
 function isTauri(): boolean {
   return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
@@ -280,4 +279,3 @@ export function useVinylDbInit() {
 
 export type { ItemRecord, TrackRecord, CreateItemInput, ItemListFilter, MediaType };
 export { itemRepo, trackRepo };
-export { TauriKv };
