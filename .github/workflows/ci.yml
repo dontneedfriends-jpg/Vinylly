@@ -90,7 +90,8 @@ jobs:
             libegl1 \
             libgl1 \
             libglu1-mesa \
-            libxkbcommon0
+            libxkbcommon0 \
+            libgl1-mesa-dri
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -107,9 +108,9 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: 1
           APPIMAGE_SKIP_GSTREAMER: 1
         run: |
-          Xvfb :99 -screen 0 1280x800x24 &
+          Xvfb :99 -screen 0 1280x800x24 -ac &
           XVFB_PID=$!
-          sleep 2
+          sleep 3
           pnpm --filter @vinylly/desktop build
           BUILD_EXIT=$?
           kill $XVFB_PID 2>/dev/null || true
