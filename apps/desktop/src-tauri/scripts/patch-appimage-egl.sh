@@ -1,85 +1,102 @@
 #!/usr/bin/env bash
-# Post-build AppImage patcher: strip conflicting Mesa/EGL libraries
-# so the AppImage uses the system's Mesa at runtime.
+# Post-build AppImage patcher: strip all Mesa/EGL/GL/drm/gbm libraries.
 #
-# Why: AppImage bundles Mesa libraries from the CI build environment
-# (Ubuntu). When run on Arch/CachyOS, these libraries cause
-# "Could not create default EGL display: EGL_BAD_PARAMETER" because
-# the bundled Mesa is incompatible with the system's kernel/DRM/KMS.
-#
-# Removing them lets the dynamic linker fall through to /usr/lib
-# where the correct Mesa for the target system lives.
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Locate the AppImage
 APPIMAGE_DIR="$REPO_ROOT/target/release/bundle/appimage"
 APPIMAGE=$(ls "$APPIMAGE_DIR"/*.AppImage 2>/dev/null | head -1)
 
 if [ -z "$APPIMAGE" ]; then
-  echo "ERROR: No AppImage found in $APPIMAGE_DIR"
-  echo "Make sure 'tauri build' ran successfully first."
+  echo "::error::No AppImage found in $APPIMAGE_DIR"
   exit 1
 fi
 
 echo "Patching: $(basename "$APPIMAGE")"
 
-# Create temp working directory
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "$WORKDIR"' EXIT
 
-# Extract the AppImage
 cd "$WORKDIR"
 "$APPIMAGE" --appimage-extract > /dev/null 2>&1
 
-EXTRACT_DIR="$WORKDIR/squashfs-root"
-LIBDIR="$EXTRACT_DIR/usr/lib"
-
-if [ ! -d "$LIBDIR" ]; then
-  echo "ERROR: Expected extracted files at $LIBDIR"
+if [ ! -d squashfs-root ]; then
+  ls -la
+  echo "::error::AppImage extraction failed"
   exit 1
 fi
 
-# Count before
-BEFORE=$(find "$LIBDIR" \( -name 'libEGL*' -o -name 'libGL*' -o -name 'libdrm*' -o -name 'libgbm*' -o -name 'libglapi*' \) | wc -l)
+echo "Files in extracted AppImage:"
+find squashfs-root -type f | wc -l
 
-# Remove conflicting Mesa/EGL/DRM libraries
-find "$LIBDIR" \( \
+# Search for Mesa/EGL/GL/drm/gbm anywhere in the tree
+echo "Searching for Mesa/EGL libraries..."
+find squashfs-root -type f,l \( \
   -name 'libEGL*' -o \
-  -name 'libGL*.so*' -o \
-  -name 'libdrm*.so*' -o \
-  -name 'libgbm*.so*' -o \
+  -name 'libGL*' -o \
+  -name 'libdrm*' -o \
+  -name 'libgbm*' -o \
   -name 'libglapi*' \
-\) -delete -print 2>/dev/null || true
+\) -print 2>/dev/null | tee /dev/stderr | wc -l | xargs -I{} echo "Mesa/EGL files found: {}"
 
-AFTER=$(find "$LIBDIR" \( -name 'libEGL*' -o -name 'libGL*' -o -name 'libdrm*' -o -name 'libgbm*' -o -name 'libglapi*' \) | wc -l)
-REMOVED=$((BEFORE - AFTER))
-echo "Removed $REMOVED conflicting Mesa/EGL library files"
+# Delete them
+find squashfs-root -type f,l \( \
+  -name 'libEGL*' -o \
+  -name 'libGL*' -o \
+  -name 'libdrm*' -o \
+  -name 'libgbm*' -o \
+  -name 'libglapi*' \
+\) -delete 2>/dev/null || true
+
+# Verify deletion
+REMAINING=$(find squashfs-root -type f,l \( \
+  -name 'libEGL*' -o \
+  -name 'libGL*' -o \
+  -name 'libdrm*' -o \
+  -name 'libgbm*' -o \
+  -name 'libglapi*' \
+\) 2>/dev/null | wc -l)
+
+if [ "$REMAINING" -eq 0 ]; then
+  echo "All Mesa/EGL library files removed successfully."
+else
+  echo "::warning::$REMAINING Mesa/EGL library files could NOT be deleted"
+  find squashfs-root -type f,l \( \
+    -name 'libEGL*' -o \
+    -name 'libGL*' -o \
+    -name 'libdrm*' -o \
+    -name 'libgbm*' -o \
+    -name 'libglapi*' \) -print
+fi
+
+# Also inject env vars into AppRun (belt+suspenders)
+# This ensures WebKit sees the vars even if EGL init happens before the binary starts
+APPRUN="squashfs-root/AppRun"
+if [ -f "$APPRUN" ] && ! grep -q 'PATCHED_BY_EGL_FIX' "$APPRUN"; then
+  sed -i '1a\
+# PATCHED_BY_EGL_FIX\
+export WEBKIT_DISABLE_DMABUF_RENDERER=1\
+export WEBKIT_DISABLE_COMPOSITING_MODE=1
+' "$APPRUN"
+  echo "AppRun patched with WebKit compat env vars"
+fi
 
 # Repackage with appimagetool
-# Repackage with appimagetool
-APPIMAGETOOL=$(ls "$REPO_ROOT"/target/release/bundle/appimage/appimagetool* 2>/dev/null | head -1 || true)
-
+APPIMAGETOOL=$(ls "$APPIMAGE_DIR"/appimagetool* 2>/dev/null | head -1 || true)
 if [ -z "$APPIMAGETOOL" ]; then
   APPIMAGETOOL=$(find ~/.cache/tauri -name 'appimagetool*' -type f 2>/dev/null | head -1 || true)
 fi
-
 if [ -z "$APPIMAGETOOL" ] || [ ! -f "$APPIMAGETOOL" ]; then
-  echo "appimagetool not found in cache, downloading..."
+  echo "Downloading appimagetool..."
   APPIMAGETOOL="$WORKDIR/appimagetool"
   curl -sL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o "$APPIMAGETOOL"
   chmod +x "$APPIMAGETOOL"
 fi
 
-# Run appimagetool without FUSE (extract-and-run) and skip appstream check
-APPIMAGETOOL_CMD="$APPIMAGETOOL"
-if [ -x "$APPIMAGETOOL" ] && file "$APPIMAGETOOL" | grep -qi 'AppImage'; then
-  APPIMAGETOOL_CMD="$APPIMAGETOOL --appimage-extract-and-run"
-fi
+CMD="$APPIMAGETOOL"
+file "$CMD" 2>/dev/null | grep -qi 'AppImage' && CMD="$CMD --appimage-extract-and-run"
 
-ARCH=x86_64 $APPIMAGETOOL_CMD --no-appstream "$EXTRACT_DIR" "$APPIMAGE" 2>&1 | tail -1
-echo "Patched AppImage: $APPIMAGE"
-echo "Done."
+ARCH=x86_64 $CMD --no-appstream squashfs-root "$APPIMAGE" 2>&1
+echo "Done: $(ls -lh "$APPIMAGE")"
