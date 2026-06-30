@@ -45,6 +45,10 @@ jobs:
         run: pnpm test
 
       - name: Build web
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+          GIT_REPOSITORY: ${{ github.repository }}
+          BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
         run: pnpm --filter @vinylly/web build
 
   desktop:
@@ -76,17 +80,47 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xvfb \
+            libegl1 \
+            libgl1 \
+            libglu1-mesa \
+            libxkbcommon0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build desktop (Linux AppImage)
         if: matrix.platform == 'ubuntu-latest'
-        run: pnpm --filter @vinylly/desktop build
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+          GIT_REPOSITORY: ${{ github.repository }}
+          BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
+          DISPLAY: :99
+          WEBKIT_DISABLE_DMABUF_RENDERER: 1
+          WEBKIT_DISABLE_COMPOSITING_MODE: 1
+          LIBGL_ALWAYS_SOFTWARE: 1
+          APPIMAGE_SKIP_GSTREAMER: 1
+        run: |
+          Xvfb :99 -screen 0 1280x800x24 &
+          XVFB_PID=$!
+          sleep 2
+          pnpm --filter @vinylly/desktop build
+          BUILD_EXIT=$?
+          kill $XVFB_PID 2>/dev/null || true
+          exit $BUILD_EXIT
 
       - name: Build desktop (Windows portable)
         if: matrix.platform == 'windows-latest'
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+          GIT_REPOSITORY: ${{ github.repository }}
+          BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
         run: pnpm --filter @vinylly/desktop build --no-bundle
 
       - name: Upload Linux AppImage

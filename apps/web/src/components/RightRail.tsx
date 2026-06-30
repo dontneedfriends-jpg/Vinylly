@@ -4,6 +4,7 @@ import { useUi } from '../lib/ui-store';
 import { useItem, useItems, useTracks } from '../lib/queries';
 import { getProvidersRegistry } from '../lib/providers';
 import { useSettings } from '../lib/settings-store';
+import { getAppInfo, type AppInfo } from '../lib/app-info';
 import type { MediaType } from '@vinylly/db';
 
 const typeLabels: Record<MediaType, string> = {
@@ -353,6 +354,13 @@ function AddRail() {
 function SettingsRail() {
   const discogsToken = useSettings((s) => s.discogsToken);
   const hasToken = Boolean(discogsToken);
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
+
+  useEffect(() => {
+    void getAppInfo().then(setAppInfo);
+  }, []);
+
+  const commitLink = appInfo?.commit ? `${appInfo.repo}/commit/${appInfo.commit}` : appInfo?.repo;
 
   return (
     <div className="flex flex-col gap-6">
@@ -401,13 +409,51 @@ function SettingsRail() {
         <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
           <div className="flex items-center justify-between px-6 py-4 text-sm">
             <span className="text-fg-body-subtle">Версия</span>
-            <span className="text-fg-heading font-medium">0.1.0</span>
+            <a
+              href={appInfo?.repo ? `${appInfo.repo}/releases` : '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-fg-heading hover:text-fg-brand font-medium transition-colors"
+            >
+              {appInfo?.version ?? '—'}
+            </a>
           </div>
           <div className="flex items-center justify-between px-6 py-4 text-sm">
             <span className="text-fg-body-subtle">Сборка</span>
-            <span className="text-fg-heading font-medium">development</span>
+            <a
+              href={commitLink ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-fg-heading hover:text-fg-brand font-mono text-xs transition-colors"
+              title="SHA коммита"
+            >
+              {appInfo?.commit ? appInfo.commit : '—'}
+            </a>
+          </div>
+          <div className="flex items-center justify-between px-6 py-4 text-sm">
+            <span className="text-fg-body-subtle">Платформа</span>
+            <span className="text-fg-heading font-medium">{appInfo?.target ?? '—'}</span>
+          </div>
+          <div className="flex items-center justify-between px-6 py-4 text-sm">
+            <span className="text-fg-body-subtle">Собрано</span>
+            <span className="text-fg-heading font-mono text-xs">
+              {appInfo?.builtAt
+                ? new Date(appInfo.builtAt).toISOString().slice(0, 16).replace('T', ' ')
+                : '—'}
+            </span>
           </div>
         </div>
+        {appInfo?.repo ? (
+          <a
+            href={appInfo.repo}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading mt-2 flex items-center gap-2.5 px-4 py-3 text-xs transition-all duration-200"
+          >
+            <ExternalLinkIcon />
+            Открыть на GitHub
+          </a>
+        ) : null}
       </div>
 
       <div>

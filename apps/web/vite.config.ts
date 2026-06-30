@@ -34,5 +34,15 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env['VITE_APP_VERSION'] ?? '0.1.0'),
+    'import.meta.env.VITE_GIT_COMMIT': JSON.stringify(process.env['GIT_COMMIT'] ?? 'dev'),
+    'import.meta.env.VITE_BUILD_TIMESTAMP': JSON.stringify(
+      process.env['BUILD_TIMESTAMP'] ?? new Date().toISOString(),
+    ),
+    'import.meta.env.VITE_GIT_REPOSITORY': JSON.stringify(
+      process.env['GIT_REPOSITORY'] ?? 'https://github.com/vinylly/vinylly',
+    ),
+  },
   clearScreen: false,
 });

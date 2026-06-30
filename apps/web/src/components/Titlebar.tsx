@@ -8,15 +8,21 @@ import {
   startDragging,
   toggleMaximize,
 } from '../lib/window-controls';
+import { buildInfoText, getAppInfo } from '../lib/app-info';
 
 export function Titlebar() {
   const page = useUi((s) => s.page);
   const openCollection = useUi((s) => s.openCollection);
   const [tauri, setTauri] = useState(false);
   const [maximized, setMaximized] = useState(false);
+  const [buildLabel, setBuildLabel] = useState<string | null>(null);
 
   useEffect(() => {
     setTauri(isTauriEnvironment());
+  }, []);
+
+  useEffect(() => {
+    void getAppInfo().then((info) => setBuildLabel(buildInfoText(info)));
   }, []);
 
   useEffect(() => {
@@ -98,6 +104,14 @@ export function Titlebar() {
         <span className="text-fg-body-subtle mr-2 hidden text-xs font-medium uppercase tracking-wide md:inline">
           {pageLabel(page)}
         </span>
+        {buildLabel ? (
+          <span
+            className="text-fg-body-subtle mr-1 hidden font-mono text-[10px] md:inline"
+            title="Версия · сборка"
+          >
+            {buildLabel}
+          </span>
+        ) : null}
 
         {tauri ? <WindowControls maximized={maximized} /> : null}
       </div>

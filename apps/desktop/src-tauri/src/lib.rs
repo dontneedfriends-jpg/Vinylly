@@ -67,6 +67,37 @@ fn host_platform() -> &'static str {
     }
 }
 
+#[derive(serde::Serialize)]
+struct AppInfo {
+    name: &'static str,
+    version: &'static str,
+    commit: String,
+    built_at: &'static str,
+    target: &'static str,
+    repo: String,
+}
+
+#[tauri::command]
+fn app_info() -> AppInfo {
+    let commit = option_env!("GIT_COMMIT").unwrap_or("").to_string();
+    let short = if commit.len() >= 7 {
+        &commit[..7]
+    } else {
+        &commit
+    };
+    let repo = option_env!("GIT_REPOSITORY")
+        .unwrap_or("https://github.com/vinylly/vinylly")
+        .to_string();
+    AppInfo {
+        name: env!("CARGO_PKG_NAME"),
+        version: env!("CARGO_PKG_VERSION"),
+        commit: short.to_string(),
+        built_at: env!("BUILD_TIMESTAMP"),
+        target: host_platform(),
+        repo,
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -85,6 +116,7 @@ pub fn run() {
             host_exe_dir,
             host_is_portable,
             host_platform,
+            app_info,
             host_fs::fs_join,
             host_fs::fs_read_text,
             host_fs::fs_write_text,
