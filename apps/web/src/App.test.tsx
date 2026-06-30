@@ -21,4 +21,21 @@ describe('App', () => {
       expect(screen.getByRole('heading', { level: 2, name: /Коллекция/i })).toBeInTheDocument();
     });
   });
+
+  it('renders sidebar with all nav items', async () => {
+    renderApp();
+    const nav = screen.getByRole('navigation', { name: /Главная навигация/i });
+    expect(nav).toBeInTheDocument();
+    expect(
+      nav.querySelectorAll('button[aria-label], button:not([aria-label])').length,
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it('marks the current page in the sidebar', async () => {
+    renderApp();
+    await waitFor(() => {
+      const active = screen.getByRole('button', { current: 'page' });
+      expect(active).toBeInTheDocument();
+    });
+  });
 });

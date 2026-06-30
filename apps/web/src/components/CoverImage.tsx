@@ -11,9 +11,7 @@ export interface CoverImageProps {
 }
 
 function bytesToBlobUrl(bytes: Uint8Array): string {
-  const arr = new Uint8Array(bytes);
-  const ext = 'image/jpeg';
-  const blob = new Blob([arr], { type: ext });
+  const blob = new Blob([bytes as BlobPart], { type: 'image/jpeg' });
   return URL.createObjectURL(blob);
 }
 
@@ -26,15 +24,16 @@ export function CoverImage({
   className = '',
 }: CoverImageProps) {
   const [src, setSrc] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'ok' | 'missing'>('loading');
 
   useEffect(() => {
     let revoke: string | null = null;
     let cancelled = false;
-    setLoading(true);
+    setStatus('loading');
     setSrc(null);
 
     async function load() {
+      // 1. Try local cached cover via HostFs
       if (coverPath) {
         try {
           const shell = getHostShell();
@@ -43,21 +42,23 @@ export function CoverImage({
           const url = bytesToBlobUrl(bytes);
           revoke = url;
           setSrc(url);
+          setStatus('ok');
           return;
         } catch {
           // fall through to remote
         }
       }
+      // 2. Fall back to remote URL — `<img>` loads it; onError marks missing.
       if (coverRemote) {
-        if (!cancelled) setSrc(coverRemote);
+        if (!cancelled) {
+          setSrc(coverRemote);
+          // status stays loading until <img> onLoad/onError fires
+        }
         return;
       }
-      // placeholder by source-less chip
-      if (!cancelled) setSrc(null);
+      if (!cancelled) setStatus('missing');
     }
-    void load().finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+    void load();
 
     return () => {
       cancelled = true;
@@ -67,19 +68,23 @@ export function CoverImage({
 
   return (
     <div
-      className={
-        'relative flex h-full w-full items-center justify-center overflow-hidden ' +
-        'bg-surface border-border-default rounded-base border' +
-        (size === 'thumb' ? 'shadow-neu-inset' : 'shadow-neu-md') +
-        ' ' +
-        className
-      }
+      className={`rounded-base border-border-default bg-surface relative flex h-full w-full items-center justify-center overflow-hidden border ${
+        size === 'thumb' ? 'shadow-neu-inset' : 'shadow-neu-md'
+      } ${className}`}
       role="img"
       aria-label={alt}
     >
       {src ? (
-        <img src={src} alt={alt} loading="lazy" className="h-full w-full object-cover" />
-      ) : loading ? (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className="h-full w-full object-cover"
+          onLoad={() => setStatus('ok')}
+          onError={() => setStatus('missing')}
+        />
+      ) : status === 'loading' ? (
         <span className="text-fg-body-subtle text-xs">…</span>
       ) : (
         <span className="text-fg-body-subtle px-3 text-center text-xs">Нет обложки</span>

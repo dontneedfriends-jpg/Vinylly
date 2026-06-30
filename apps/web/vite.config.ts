@@ -11,6 +11,23 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      '/discogs-api': {
+        target: 'https://api.discogs.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/discogs-api/, ''),
+      },
+      '/discogs-img': {
+        target: 'https://i.discogs.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/discogs-img/, ''),
+      },
+      '/coverartarchive': {
+        target: 'https://coverartarchive.org',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/coverartarchive/, ''),
+      },
+    },
   },
   build: {
     target: 'es2022',

@@ -12,3 +12,5 @@ coverage/
 data/
 *.tsbuildinfo
 .pnpm-store/
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/target/

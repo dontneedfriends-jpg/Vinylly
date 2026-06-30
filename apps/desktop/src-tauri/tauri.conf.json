@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "app.vinylly.desktop",
   "build": {
-    "frontendDist": "../web/dist",
+    "frontendDist": "../../web/dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm --filter @vinylly/web dev",
     "beforeBuildCommand": "pnpm --filter @vinylly/web build"
@@ -18,7 +18,9 @@
         "minWidth": 900,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": false
       }
     ],
     "security": {

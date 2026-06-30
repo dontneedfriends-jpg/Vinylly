@@ -2,18 +2,37 @@ import { useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { CollectionPage } from './pages/CollectionPage';
 import { AddPage } from './pages/AddPage';
-import { SearchPage } from './pages/SearchPage';
 import { DetailPage } from './pages/DetailPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { useUi } from './lib/ui-store';
 import { useVinylDbInit } from './lib/db';
-import { createWebHostShell, setHostShell } from '@vinylly/host';
+import { initSettings } from './lib/settings-store';
+import {
+  createTauriHostShell,
+  createWebHostShell,
+  isTauriEnvironment,
+  setHostShell,
+  tryGetHostShell,
+} from '@vinylly/host';
 
 export function App() {
   const page = useUi((s) => s.page);
   const ready = useVinylDbInit();
 
   useEffect(() => {
-    setHostShell(createWebHostShell());
+    if (tryGetHostShell()) {
+      void initSettings();
+      return;
+    }
+    if (isTauriEnvironment()) {
+      void createTauriHostShell().then((shell) => {
+        setHostShell(shell);
+        void initSettings();
+      });
+    } else {
+      setHostShell(createWebHostShell());
+      void initSettings();
+    }
   }, []);
 
   if (!ready) {
@@ -28,8 +47,8 @@ export function App() {
     <Layout>
       {page === 'collection' ? <CollectionPage /> : null}
       {page === 'add' ? <AddPage /> : null}
-      {page === 'search' ? <SearchPage /> : null}
       {page === 'detail' ? <DetailPage /> : null}
+      {page === 'settings' ? <SettingsPage /> : null}
     </Layout>
   );
 }

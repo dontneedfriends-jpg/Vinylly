@@ -12,15 +12,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const stateBorder: Record<FieldState, string> = {
-  default: 'border-border-default-medium hover:border-border-default-strong',
-  success: 'border-fg-brand',
-  error: 'border-[#d04545]',
-};
-
-const stateRing: Record<FieldState, string> = {
-  default: 'focus-visible:ring-fg-brand/50',
-  success: 'focus-visible:ring-fg-brand/60',
-  error: 'focus-visible:ring-[#d04545]/60',
+  default:
+    'border-border-default-medium hover:border-border-default-strong focus-within:border-border-brand',
+  success: 'border-border-brand',
+  error: 'border-border-danger-subtle',
 };
 
 export function Input({
@@ -39,16 +34,14 @@ export function Input({
   const helperId = helperText ? `${inputId}-helper` : undefined;
 
   const wrapper =
-    'flex items-center gap-2 bg-surface border rounded-base ' +
-    'shadow-neu-inset transition-all duration-200 ease-in-out ' +
-    `${stateBorder[state]} ${stateRing[state]} ` +
-    'focus-within:ring-2 focus-within:ring-offset-0 ' +
-    'disabled:opacity-60 disabled:cursor-not-allowed';
+    'flex items-center gap-2 bg-surface border rounded-base shadow-neu-inset ' +
+    'transition-all duration-200 ease-in-out ' +
+    `${stateBorder[state]} ` +
+    'focus-within:ring-1 focus-within:ring-fg-brand/30 ' +
+    'disabled:opacity-50 disabled:cursor-not-allowed';
 
   const inputBase =
-    'w-full bg-transparent border-0 outline-none ' +
-    'text-fg-heading placeholder:text-fg-body-subtle ' +
-    'px-3 py-2.5 text-sm';
+    'w-full bg-transparent border-0 outline-none text-sm text-fg-heading placeholder:text-fg-body-subtle px-3 py-2.5';
 
   return (
     <div className="w-full">
@@ -79,7 +72,7 @@ export function Input({
       {helperText ? (
         <p
           id={helperId}
-          className={`mt-2 text-xs ${state === 'error' ? 'text-[#d04545]' : 'text-fg-body-subtle'}`}
+          className={`mt-2 text-xs ${state === 'error' ? 'text-fg-danger' : 'text-fg-body-subtle'}`}
         >
           {helperText}
         </p>
@@ -110,9 +103,9 @@ export function Textarea({
   const wrapper =
     'bg-surface border rounded-base shadow-neu-inset ' +
     'transition-all duration-200 ease-in-out ' +
-    `${stateBorder[state]} ${stateRing[state]} ` +
-    'focus-within:ring-2 focus-within:ring-offset-0 ' +
-    'disabled:opacity-60 disabled:cursor-not-allowed';
+    `${stateBorder[state]} ` +
+    'focus-within:ring-1 focus-within:ring-fg-brand/30 ' +
+    'disabled:opacity-50 disabled:cursor-not-allowed';
 
   return (
     <div className="w-full">
@@ -124,7 +117,7 @@ export function Textarea({
       <div className={wrapper}>
         <textarea
           id={inputId}
-          className={`rounded-base text-fg-heading placeholder:text-fg-body-subtle min-h-[88px] w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm outline-none ${className}`}
+          className={`rounded-base text-fg-heading placeholder:text-fg-body-subtle min-h-[88px] w-full resize-y bg-transparent px-3 py-2.5 text-sm outline-none ${className}`}
           disabled={disabled}
           aria-describedby={helperId}
           {...rest}
@@ -133,7 +126,7 @@ export function Textarea({
       {helperText ? (
         <p
           id={helperId}
-          className={`mt-2 text-xs ${state === 'error' ? 'text-[#d04545]' : 'text-fg-body-subtle'}`}
+          className={`mt-2 text-xs ${state === 'error' ? 'text-fg-danger' : 'text-fg-body-subtle'}`}
         >
           {helperText}
         </p>

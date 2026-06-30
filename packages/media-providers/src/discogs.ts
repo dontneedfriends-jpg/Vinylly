@@ -15,7 +15,9 @@ const TTL_RELEASE = 1000 * 60 * 60 * 24 * 7; // 7d
 
 export interface DiscogsConfig {
   token: string;
-  userAgent: string;
+  /** Optional CORS proxy prefix prepended to every Discogs API URL (browser-only). */
+  proxyUrl?: string;
+  userAgent?: string;
 }
 
 interface DiscogsSearchResponse {
@@ -29,18 +31,42 @@ interface DiscogsSearchResponse {
     cover_image?: string;
     thumb?: string;
     resource_url?: string;
+    format?: string[];
+    country?: string;
+    label?: string[];
+    catno?: string;
+    barcode?: string[];
+    community?: { want?: number; have?: number };
+    master_url?: string;
+    uri?: string;
   }>;
 }
 
 interface DiscogsReleaseResponse {
   id: number;
   title: string;
-  artists?: Array<{ name: string }>;
+  artists?: Array<{ name: string; anv?: string; role?: string }>;
   year?: number;
   genres?: string[];
   styles?: string[];
-  images?: Array<{ uri: string; type: string; uri150?: string }>;
+  notes?: string;
+  images?: Array<{ uri: string; type: string; uri150?: string; width?: number; height?: number }>;
   tracklist?: Array<{ position: string; title: string; duration?: string }>;
+  country?: string;
+  released?: string;
+  released_formatted?: string;
+  labels?: Array<{ name: string; catno?: string }>;
+  formats?: Array<{ name: string; qty?: string; descriptions?: string[] }>;
+  videos?: Array<{ uri: string; title: string; description?: string; duration?: number }>;
+  community?: { have?: number; want?: number; rating?: { count?: number; average?: number } };
+  identifiers?: Array<{ type: string; value: string; description?: string }>;
+  uri?: string;
+  master_url?: string | null;
+  master_id?: number | null;
+  num_for_sale?: number;
+  lowest_price?: number | null;
+  estimated_weight?: number;
+  extraartists?: Array<{ name: string; role?: string; anv?: string }>;
 }
 
 export class DiscogsProvider implements MediaProvider {
@@ -50,6 +76,23 @@ export class DiscogsProvider implements MediaProvider {
 
   isEnabled(): boolean {
     return Boolean(this.config.token);
+  }
+
+  private proxy(): string {
+    return this.config.proxyUrl ?? '';
+  }
+
+  private wrap(url: string): string {
+    const proxy = this.proxy();
+    if (!proxy) return url;
+    // Path-based proxy (e.g., "/discogs-api/") — extract path from the absolute URL
+    if (proxy.startsWith('/') || proxy.startsWith('.')) {
+      const u = new URL(url);
+      const prefix = proxy.replace(/\/+$/, '');
+      return `${prefix}${u.pathname}${u.search}`;
+    }
+    // Full URL proxy (e.g., "https://cors-proxy.example.com/") — prepend the full URL
+    return `${proxy.replace(/\/+$/, '')}/${url}`;
   }
 
   async search(query: SearchQuery): Promise<SearchResult[]> {
@@ -69,11 +112,12 @@ export class DiscogsProvider implements MediaProvider {
       params.set('release_title', query.title);
     }
     if (query.year) params.set('year', String(query.year));
+    if (query.mediaType) params.set('format', query.mediaType);
     params.set('type', 'release');
 
     const url = `${BASE}/database/search?${params.toString()}`;
-    return withCache(`discogs:search:${params.toString()}`, TTL_SEARCH, async () => {
-      const data = await getHostShell().net().fetchJson<DiscogsSearchResponse>(url, {
+    return withCache(`discogs:search:${this.proxy()}${params.toString()}`, TTL_SEARCH, async () => {
+      const data = await getHostShell().net().fetchJson<DiscogsSearchResponse>(this.wrap(url), {
         headers: this.headers(),
       });
       return data.results.slice(0, 25).map((r, i) => ({
@@ -90,6 +134,15 @@ export class DiscogsProvider implements MediaProvider {
           coverUrl: r.cover_image ?? null,
           thumbUrl: r.thumb ?? null,
           tracklist: [],
+          mediaType: detectMediaType(r.format),
+          country: r.country,
+          labels: r.label?.length ? r.label : undefined,
+          barcode: r.barcode?.length ? r.barcode : undefined,
+          community: r.community?.have != null
+            ? { have: r.community.have, want: r.community.want ?? 0 }
+            : undefined,
+          discogsUrl: r.uri ? `https://www.discogs.com${r.uri}` : undefined,
+          masterUrl: r.master_url ?? null,
         },
       }));
     });
@@ -98,9 +151,9 @@ export class DiscogsProvider implements MediaProvider {
   async getRelease(sourceId: string): Promise<NormalizedRelease | null> {
     if (!this.isEnabled()) return null;
     const url = `${BASE}/releases/${sourceId}`;
-    return withCache(`discogs:release:${sourceId}`, TTL_RELEASE, async () => {
+    return withCache(`discogs:release:${this.proxy()}${sourceId}`, TTL_RELEASE, async () => {
       try {
-        const r = await getHostShell().net().fetchJson<DiscogsReleaseResponse>(url, {
+        const r = await getHostShell().net().fetchJson<DiscogsReleaseResponse>(this.wrap(url), {
           headers: this.headers(),
         });
         return normalizeDiscogsRelease(r, this.name);
@@ -120,10 +173,13 @@ export class DiscogsProvider implements MediaProvider {
   }
 
   private headers(): Record<string, string> {
-    return {
+    const h: Record<string, string> = {
       Authorization: `Discogs token=${this.config.token}`,
-      'User-Agent': this.config.userAgent,
     };
+    // Browser fetch() forbids setting User-Agent — Tauri's net_fetch (Rust) allows it.
+    // Only attach the header when the host shell will actually forward it.
+    if (this.config.userAgent) h['User-Agent'] = this.config.userAgent;
+    return h;
   }
 }
 
@@ -147,6 +203,12 @@ export function normalizeDiscogsRelease(
   source: 'discogs',
 ): NormalizedRelease {
   const primary = r.images?.find((i) => i.type === 'primary') ?? r.images?.[0];
+  const barcodeArr = r.identifiers
+    ?.filter((i) => i.type === 'Barcode')
+    .map((i) => i.value);
+
+  const fmt = r.formats?.[0];
+
   return {
     source,
     sourceId: String(r.id),
@@ -164,5 +226,30 @@ export function normalizeDiscogsRelease(
         durationMs: parseDuration(t.duration),
       })) ?? [],
     raw: r,
+    country: r.country,
+    released: r.released_formatted ?? r.released,
+    labels: r.labels?.map((l) => l.name),
+    format: fmt
+      ? [fmt.name, ...(fmt.descriptions ?? [])].filter(Boolean).join(', ')
+      : undefined,
+    community: r.community?.have != null
+      ? { have: r.community.have, want: r.community.want ?? 0 }
+      : undefined,
+    discogsUrl: r.uri ?? undefined,
+    masterUrl: r.master_url ?? null,
+    barcode: barcodeArr?.length ? barcodeArr : undefined,
+    videos: r.videos?.map((v) => ({ uri: v.uri, title: v.title })),
+    extraArtists: r.extraartists?.map((a) => ({ name: a.name, role: a.role ?? '' })),
   };
+}
+
+function detectMediaType(format: string[] | undefined): string | undefined {
+  if (!format?.length) return undefined;
+  for (const f of format) {
+    const lower = f.toLowerCase();
+    if (lower.includes('vinyl') || lower.includes('lp') || lower.includes('ep')) return 'vinyl';
+    if (lower.includes('cd') || lower.includes('dvd')) return 'cd';
+    if (lower.includes('cassette') || lower.includes('tape')) return 'cassette';
+  }
+  return 'other';
 }

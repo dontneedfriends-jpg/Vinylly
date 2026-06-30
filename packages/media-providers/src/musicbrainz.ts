@@ -44,8 +44,17 @@ interface MBReleaseResponse {
 export class MusicBrainzProvider implements MediaProvider {
   readonly name = 'musicbrainz' as const;
 
+  constructor(private readonly caaProxyUrl?: string) {}
+
   isEnabled(): boolean {
     return true;
+  }
+
+  private caa(url: string): string {
+    const proxy = this.caaProxyUrl;
+    if (!proxy) return url;
+    const u = new URL(url);
+    return `${proxy.replace(/\/+$/, '')}${u.pathname}${u.search}`;
   }
 
   async search(query: SearchQuery): Promise<SearchResult[]> {
@@ -80,8 +89,8 @@ export class MusicBrainzProvider implements MediaProvider {
           year: r.date ? Number(r.date.slice(0, 4)) : null,
           genres: [],
           styles: [],
-          coverUrl: null,
-          thumbUrl: null,
+          coverUrl: this.caa(`${CAA_BASE}/release/${r.id}/front-500`),
+          thumbUrl: this.caa(`${CAA_BASE}/release/${r.id}/front-250`),
           tracklist: [],
         },
       }));
@@ -97,7 +106,6 @@ export class MusicBrainzProvider implements MediaProvider {
           .fetchJson<MBReleaseResponse>(url, {
             headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
           });
-        const cover = await this.fetchCover(sourceId);
         return {
           source: this.name,
           sourceId: r.id,
@@ -106,8 +114,8 @@ export class MusicBrainzProvider implements MediaProvider {
           year: r.date ? Number(r.date.slice(0, 4)) : null,
           genres: r.genres?.map((g) => g.name) ?? [],
           styles: [],
-          coverUrl: cover?.url ?? null,
-          thumbUrl: cover?.url ?? null,
+          coverUrl: this.caa(`${CAA_BASE}/release/${r.id}/front-500`),
+          thumbUrl: this.caa(`${CAA_BASE}/release/${r.id}/front-250`),
           tracklist:
             r.media?.flatMap((m) =>
               (m.tracks ?? []).map((t) => ({
@@ -137,7 +145,7 @@ export class MusicBrainzProvider implements MediaProvider {
       const data = await getHostShell()
         .net()
         .fetchJson<{ images?: Array<{ image: string; thumbnails?: { small?: string } }> }>(
-          `${CAA_BASE}/release/${releaseId}`,
+          this.caa(`${CAA_BASE}/release/${releaseId}`),
           { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } },
         );
       const img = data.images?.[0];

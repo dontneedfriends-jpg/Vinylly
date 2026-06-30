@@ -51,5 +51,12 @@ Since all buttons share the same background (`neutral-primary-soft`) and shadow 
 ## Icons in Buttons
 
 - Icon size: 16x16px
-- Spacing: 8px gap between icon and label
+- Spacing:
+  - **sm**: 8px gap between icon and label
+  - **md**: 10px gap between icon and label
+  - **lg**: 12px gap between icon and label
 - Icon color matches text color
+- Horizontal padding (отступ от текста/иконки до края кнопки):
+  - **sm**: 14px
+  - **md**: 20px
+  - **lg**: 28px

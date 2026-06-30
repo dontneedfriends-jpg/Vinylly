@@ -3,59 +3,148 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    color-scheme: light dark;
+  :root,
+  [data-theme='light'] {
+    color-scheme: light;
 
-    /* surface tokens */
-    --color-surface: #ecf0f3;
+    /* IBM Carbon Gray 10 — main background */
+    --color-surface: #f4f4f4;
 
-    /* foreground tokens */
-    --color-fg-heading: #31344b;
-    --color-fg-body: #44476a;
-    --color-fg-body-subtle: #66799e;
-    --color-fg-brand: #128759;
-    --color-fg-secondary: #389dc6;
-    --color-fg-disabled: #93a5be;
+    /* Carbon Gray hierarchy for text */
+    --color-fg-heading: #161616;
+    --color-fg-body: #393939;
+    --color-fg-body-subtle: #6f6f6f;
+    /* Carbon Blue 60/70 — brand */
+    --color-fg-brand: #0f62fe;
+    --color-fg-brand-strong: #0043ce;
+    --color-fg-secondary: #0072c3;
+    --color-fg-disabled: #a8a8a8;
+    --color-fg-danger: #da1e28;
+    --color-fg-danger-strong: #ba1b22;
+    --color-fg-success: #198038;
+    --color-fg-success-strong: #0e6027;
+    --color-fg-warning: #b28600;
 
-    /* border tokens */
-    --color-border-default: rgba(184, 185, 190, 0.25);
-    --color-border-default-medium: rgba(184, 185, 190, 0.45);
-    --color-border-default-strong: rgba(184, 185, 190, 0.7);
+    /* semantic backgrounds — soft tinted surfaces for badges/alerts */
+    --color-brand-softer: rgba(15, 98, 254, 0.06);
+    --color-brand-soft: rgba(15, 98, 254, 0.1);
+    --color-danger-soft: rgba(218, 30, 40, 0.06);
+    --color-success-soft: rgba(25, 128, 56, 0.06);
+    --color-warning-soft: rgba(178, 134, 0, 0.06);
+    --color-secondary-soft: rgba(0, 114, 195, 0.06);
 
-    /* shadow tokens — dual-directional neumorphic */
-    --shadow-2xs: 1px 1px 2px #b8b9be, -1px -1px 2px #ffffff;
-    --shadow-xs: 2px 2px 4px #b8b9be, -2px -2px 4px #ffffff;
-    --shadow-sm: 3px 3px 6px #b8b9be, -3px -3px 6px #ffffff;
-    --shadow-md: 6px 6px 12px #b8b9be, -6px -6px 12px #ffffff;
-    --shadow-lg: 8px 8px 16px #b8b9be, -8px -8px 16px #ffffff;
-    --shadow-xl: 10px 10px 20px #b8b9be, -10px -10px 20px #ffffff;
-    --shadow-2xl: 12px 12px 24px #b8b9be, -12px -12px 24px #ffffff;
-    --shadow-inset: inset 2px 2px 5px #b8b9be, inset -3px -3px 7px #ffffff;
+    /* semantic borders — subtle */
+    --color-border-brand-subtle: rgba(15, 98, 254, 0.2);
+    --color-border-danger-subtle: rgba(218, 30, 40, 0.2);
+    --color-border-success-subtle: rgba(25, 128, 56, 0.2);
+
+    /* neutral borders — Carbon-style translucent black on light */
+    --color-border-default: rgba(0, 0, 0, 0.08);
+    --color-border-default-medium: rgba(0, 0, 0, 0.16);
+    --color-border-default-strong: rgba(0, 0, 0, 0.32);
+    --color-border-brand: rgba(15, 98, 254, 0.5);
+
+    /* Neumorphic shadows on #f4f4f4 — dark goes to Carbon Gray 30, light goes to White 0 */
+    --shadow-2xs: 1px 1px 2px #c6c6c6, -1px -1px 2px #ffffff;
+    --shadow-xs: 2px 2px 4px #c6c6c6, -2px -2px 4px #ffffff;
+    --shadow-sm: 3px 3px 6px #c6c6c6, -3px -3px 6px #ffffff;
+    --shadow-md: 6px 6px 12px #c6c6c6, -6px -6px 12px #ffffff;
+    --shadow-lg: 8px 8px 16px #c6c6c6, -8px -8px 16px #ffffff;
+    --shadow-xl: 10px 10px 20px #c6c6c6, -10px -10px 20px #ffffff;
+    --shadow-2xl: 12px 12px 24px #c6c6c6, -12px -12px 24px #ffffff;
+    --shadow-inset: inset 2px 2px 5px #c6c6c6, inset -3px -3px 7px #ffffff;
+  }
+
+  [data-theme='dark'] {
+    color-scheme: dark;
+
+    /* IBM Carbon Gray 100 — main background */
+    --color-surface: #161616;
+
+    /* Carbon Gray 10/30/50/60 for text hierarchy */
+    --color-fg-heading: #f4f4f4;
+    --color-fg-body: #c6c6c6;
+    --color-fg-body-subtle: #8d8d8d;
+    /* Carbon Blue 50/40 — brighter blue for dark backgrounds */
+    --color-fg-brand: #4589ff;
+    --color-fg-brand-strong: #a6c8ff;
+    --color-fg-secondary: #78a9ff;
+    --color-fg-disabled: #6f6f6f;
+    --color-fg-danger: #ff8389;
+    --color-fg-danger-strong: #fa4d56;
+    --color-fg-success: #42be65;
+    --color-fg-success-strong: #6fdc8c;
+    --color-fg-warning: #f1c21b;
+
+    --color-brand-softer: rgba(69, 137, 255, 0.1);
+    --color-brand-soft: rgba(69, 137, 255, 0.18);
+    --color-danger-soft: rgba(255, 131, 137, 0.1);
+    --color-success-soft: rgba(66, 190, 101, 0.1);
+    --color-warning-soft: rgba(241, 194, 27, 0.1);
+    --color-secondary-soft: rgba(120, 169, 255, 0.1);
+
+    --color-border-brand-subtle: rgba(69, 137, 255, 0.3);
+    --color-border-danger-subtle: rgba(255, 131, 137, 0.3);
+    --color-border-success-subtle: rgba(66, 190, 101, 0.3);
+
+    --color-border-default: rgba(255, 255, 255, 0.08);
+    --color-border-default-medium: rgba(255, 255, 255, 0.16);
+    --color-border-default-strong: rgba(255, 255, 255, 0.32);
+    --color-border-brand: rgba(69, 137, 255, 0.5);
+
+    /* Neumorphic shadows on #161616 — dark goes to black, light goes to Carbon Gray 90 */
+    --shadow-2xs: 1px 1px 2px #000000, -1px -1px 2px #262626;
+    --shadow-xs: 2px 2px 4px #000000, -2px -2px 4px #262626;
+    --shadow-sm: 3px 3px 6px #000000, -3px -3px 6px #262626;
+    --shadow-md: 6px 6px 12px #000000, -6px -6px 12px #262626;
+    --shadow-lg: 8px 8px 16px #000000, -8px -8px 16px #262626;
+    --shadow-xl: 10px 10px 20px #000000, -10px -10px 20px #262626;
+    --shadow-2xl: 12px 12px 24px #000000, -12px -12px 24px #262626;
+    --shadow-inset: inset 2px 2px 5px #000000, inset -3px -3px 7px #262626;
   }
 
   @media (prefers-color-scheme: dark) {
-    :root {
-      --color-surface: #262833;
+    :root:not([data-theme]) {
+      color-scheme: dark;
 
-      --color-fg-heading: #ecf0f3;
-      --color-fg-body: #93a5be;
-      --color-fg-body-subtle: #93a5be;
-      --color-fg-brand: #20b27a;
-      --color-fg-secondary: #389dc6;
-      --color-fg-disabled: #66799e;
+      --color-surface: #161616;
+      --color-fg-heading: #f4f4f4;
+      --color-fg-body: #c6c6c6;
+      --color-fg-body-subtle: #8d8d8d;
+      --color-fg-brand: #4589ff;
+      --color-fg-brand-strong: #a6c8ff;
+      --color-fg-secondary: #78a9ff;
+      --color-fg-disabled: #6f6f6f;
+      --color-fg-danger: #ff8389;
+      --color-fg-danger-strong: #fa4d56;
+      --color-fg-success: #42be65;
+      --color-fg-success-strong: #6fdc8c;
+      --color-fg-warning: #f1c21b;
 
-      --color-border-default: rgba(0, 0, 0, 0.3);
-      --color-border-default-medium: rgba(0, 0, 0, 0.45);
-      --color-border-default-strong: rgba(0, 0, 0, 0.65);
+      --color-brand-softer: rgba(69, 137, 255, 0.1);
+      --color-brand-soft: rgba(69, 137, 255, 0.18);
+      --color-danger-soft: rgba(255, 131, 137, 0.1);
+      --color-success-soft: rgba(66, 190, 101, 0.1);
+      --color-warning-soft: rgba(241, 194, 27, 0.1);
+      --color-secondary-soft: rgba(120, 169, 255, 0.1);
 
-      --shadow-2xs: 1px 1px 2px #181924, -1px -1px 2px #2c2f3e;
-      --shadow-xs: 2px 2px 4px #181924, -2px -2px 4px #2c2f3e;
-      --shadow-sm: 3px 3px 6px #181924, -3px -3px 6px #2c2f3e;
-      --shadow-md: 6px 6px 12px #181924, -6px -6px 12px #2c2f3e;
-      --shadow-lg: 8px 8px 16px #181924, -8px -8px 16px #2c2f3e;
-      --shadow-xl: 10px 10px 20px #181924, -10px -10px 20px #2c2f3e;
-      --shadow-2xl: 12px 12px 24px #181924, -12px -12px 24px #2c2f3e;
-      --shadow-inset: inset 2px 2px 5px #181924, inset -3px -3px 7px #2c2f3e;
+      --color-border-brand-subtle: rgba(69, 137, 255, 0.3);
+      --color-border-danger-subtle: rgba(255, 131, 137, 0.3);
+      --color-border-success-subtle: rgba(66, 190, 101, 0.3);
+
+      --color-border-default: rgba(255, 255, 255, 0.08);
+      --color-border-default-medium: rgba(255, 255, 255, 0.16);
+      --color-border-default-strong: rgba(255, 255, 255, 0.32);
+      --color-border-brand: rgba(69, 137, 255, 0.5);
+
+      --shadow-2xs: 1px 1px 2px #000000, -1px -1px 2px #262626;
+      --shadow-xs: 2px 2px 4px #000000, -2px -2px 4px #262626;
+      --shadow-sm: 3px 3px 6px #000000, -3px -3px 6px #262626;
+      --shadow-md: 6px 6px 12px #000000, -6px -6px 12px #262626;
+      --shadow-lg: 8px 8px 16px #000000, -8px -8px 16px #262626;
+      --shadow-xl: 10px 10px 20px #000000, -10px -10px 20px #262626;
+      --shadow-2xl: 12px 12px 24px #000000, -12px -12px 24px #262626;
+      --shadow-inset: inset 2px 2px 5px #000000, inset -3px -3px 7px #262626;
     }
   }
 
@@ -69,7 +158,7 @@
     background-color: var(--color-surface);
     color: var(--color-fg-body);
     font-family:
-      'Nunito Sans',
+      'IBM Plex Sans',
       ui-sans-serif,
       system-ui,
       -apple-system,
@@ -177,5 +266,49 @@
     outline: 2px solid var(--color-fg-brand);
     outline-offset: 2px;
     border-radius: 2px;
+  }
+
+  /* utility: line clamp */
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* staggered page-load entrance */
+  @keyframes neu-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-rise {
+    animation: neu-rise 0.4s ease-out backwards;
+  }
+}
+
+@layer components {
+  .neu-surface {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+  }
+  .neu-inset-surface {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-default-medium);
+    border-radius: 8px;
+    box-shadow: var(--shadow-inset);
   }
 }

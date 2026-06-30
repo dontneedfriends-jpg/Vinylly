@@ -6,6 +6,10 @@ export function setHostShell(shell: HostShell): void {
   currentShell = shell;
 }
 
+export function resetHostShell(): void {
+  currentShell = null;
+}
+
 export function getHostShell(): HostShell {
   if (!currentShell) {
     throw new Error('HostShell not initialized. Call setHostShell() at app boot.');

@@ -17,7 +17,19 @@ export interface NormalizedRelease {
   coverUrl: string | null;
   thumbUrl: string | null;
   tracklist: NormalizedTrack[];
+  mediaType?: string;
   raw?: unknown;
+  // Extended metadata from provider API
+  country?: string;
+  released?: string;
+  labels?: string[];
+  format?: string;
+  community?: { have: number; want: number };
+  discogsUrl?: string;
+  masterUrl?: string | null;
+  barcode?: string[];
+  videos?: Array<{ uri: string; title: string }>;
+  extraArtists?: Array<{ name: string; role: string }>;
 }
 
 export interface SearchQuery {
@@ -27,6 +39,7 @@ export interface SearchQuery {
   artist?: string;
   title?: string;
   year?: number;
+  mediaType?: string;
 }
 
 export interface SearchResult {

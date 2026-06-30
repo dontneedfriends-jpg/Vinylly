@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
-    "lint": "echo 'cargo fmt --check && cargo clippy -- -D warnings'",
-    "typecheck": "tsc --noEmit"
+    "build:debug": "tauri build --debug",
+    "lint": "cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings",
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

@@ -4,35 +4,101 @@ import {
   itemRepo,
   trackRepo,
   setPrismaClient,
-  type ItemRecord,
-  type TrackRecord,
   type CreateItemInput,
   type ItemListFilter,
+  type ItemRecord,
   type MediaType,
+  type TrackRecord,
 } from '@vinylly/db';
+
+interface TauriInternals {
+  invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
+}
+
+declare global {
+  interface Window {
+    __TAURI_INTERNALS__?: TauriInternals;
+  }
+}
+
+const DB_SNAPSHOT_KEY = '__prisma';
+const TauriKv = 'tauri';
+
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
+}
+
+async function tauriLoadSnapshot(): Promise<unknown | null> {
+  if (!isTauri()) return null;
+  return window.__TAURI_INTERNALS__!.invoke('db_load', {});
+}
+
+async function tauriSaveSnapshot(snap: unknown): Promise<void> {
+  if (!isTauri()) return;
+  await window.__TAURI_INTERNALS__!.invoke('db_replace', { snapshot: snap });
+}
 
 class LocalStoragePrisma {
   private kv = new Map<string, unknown>();
   private listeners = new Set<() => void>();
-  constructor() {
+  constructor(initial?: unknown) {
     try {
-      const raw = localStorage.getItem('vinylly:__prisma');
-      if (raw) this.kv = new Map(JSON.parse(raw) as Array<[string, unknown]>);
+      if (initial && typeof initial === 'object') {
+        const obj = initial as Record<string, unknown>;
+        const items = Array.isArray(obj['items']) ? (obj['items'] as Array<[string, unknown]>) : [];
+        const releases = Array.isArray(obj['releases'])
+          ? (obj['releases'] as Array<[string, unknown]>)
+          : [];
+        const tracks = Array.isArray(obj['tracks'])
+          ? (obj['tracks'] as Array<[string, unknown]>)
+          : [];
+        const collection = obj['collection'] as unknown | undefined;
+        for (const [k, v] of items) this.kv.set(`item:${k}`, v);
+        for (const [k, v] of releases) this.kv.set(`release:${k}`, v);
+        for (const [k, v] of tracks) this.kv.set(`track:${k}`, v);
+        if (collection) this.kv.set('__collection', collection);
+      } else {
+        const raw = localStorage.getItem(`vinylly:${DB_SNAPSHOT_KEY}`);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Array<[string, unknown]>;
+          for (const [k, v] of parsed) this.kv.set(k, v);
+        }
+      }
     } catch {
       // ignore
     }
   }
   private persist() {
+    const snap = {
+      collection: this.kv.get('__collection') ?? null,
+      items: Array.from(this.kv.entries())
+        .filter(([k]) => k.startsWith('item:'))
+        .map(([k, v]) => [k.slice('item:'.length), v]),
+      releases: Array.from(this.kv.entries())
+        .filter(([k]) => k.startsWith('release:'))
+        .map(([k, v]) => [k.slice('release:'.length), v]),
+      tracks: Array.from(this.kv.entries())
+        .filter(([k]) => k.startsWith('track:'))
+        .map(([k, v]) => [k.slice('track:'.length), v]),
+    };
     try {
-      localStorage.setItem('vinylly:__prisma', JSON.stringify(Array.from(this.kv.entries())));
+      localStorage.setItem(
+        `vinylly:${DB_SNAPSHOT_KEY}`,
+        JSON.stringify(Array.from(this.kv.entries())),
+      );
     } catch {
-      // localStorage quota — ignore for now
+      // localStorage quota — ignore
+    }
+    if (isTauri()) {
+      void tauriSaveSnapshot(snap);
     }
     for (const l of this.listeners) l();
   }
   subscribe(cb: () => void) {
     this.listeners.add(cb);
-    return () => this.listeners.delete(cb);
+    return () => {
+      this.listeners.delete(cb);
+    };
   }
   collection = {
     findFirst: async (_args?: unknown) => {
@@ -46,7 +112,10 @@ class LocalStoragePrisma {
     },
   };
   item = {
-    findMany: async (args?: { where?: { collectionId?: string; type?: string } }) => {
+    findMany: async (args?: {
+      where?: { collectionId?: string; type?: string };
+      include?: { release?: boolean };
+    }) => {
       const all = Array.from(this.kv.entries())
         .filter(([k]) => k.startsWith('item:'))
         .map(([, v]) => v as Record<string, unknown>);
@@ -58,7 +127,8 @@ class LocalStoragePrisma {
         rows = rows.filter((r) => r.type === args.where!.type);
       }
       rows.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-      return rows;
+      // join release for the repos that ask for it (and we always need cover fields)
+      return rows.map((r) => this.hydrateSync(r));
     },
     findUnique: async (args: { where: { id: string } }) => {
       const v = this.kv.get(`item:${args.where.id}`);
@@ -176,10 +246,14 @@ class LocalStoragePrisma {
   async $disconnect() {
     return undefined;
   }
-  private async hydrate(row: Record<string, unknown>): Promise<Record<string, unknown>> {
+  private hydrateSync(row: Record<string, unknown>): Record<string, unknown> {
+    if (row.release) return row;
     const releaseId = String(row.releaseId);
     const release = (this.kv.get(`release:${releaseId}`) as Record<string, unknown>) ?? null;
     return release ? { ...row, release } : row;
+  }
+  private async hydrate(row: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.hydrateSync(row);
   }
 }
 
@@ -192,7 +266,8 @@ export function useVinylDbInit() {
     if (initialized) return;
     if (!initPromise) {
       initPromise = (async () => {
-        setPrismaClient(new LocalStoragePrisma() as never);
+        const initial = isTauri() ? await tauriLoadSnapshot() : undefined;
+        setPrismaClient(new LocalStoragePrisma(initial) as never);
         const collection = await collectionRepo.ensureDefault();
         initialized = true;
         return collection;
@@ -205,3 +280,4 @@ export function useVinylDbInit() {
 
 export type { ItemRecord, TrackRecord, CreateItemInput, ItemListFilter, MediaType };
 export { itemRepo, trackRepo };
+export { TauriKv };

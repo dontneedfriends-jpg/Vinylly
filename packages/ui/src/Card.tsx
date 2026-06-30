@@ -16,15 +16,18 @@ export function Card({
   ...rest
 }: CardProps) {
   const base =
-    'bg-surface border border-border-default rounded-base ' +
-    'shadow-neu-md transition-all duration-200 ease-in-out';
+    'bg-surface border border-border-default rounded-base transition-all duration-200 ease-in-out';
 
-  const interactive =
-    variant === 'interactive' ? 'cursor-pointer hover:shadow-neu-lg active:shadow-neu-inset' : '';
+  // static: shadow-md (raised surface)
+  // interactive: shadow-sm → hover shadow-md → active shadow-inset
+  const shadow =
+    variant === 'interactive'
+      ? 'shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset cursor-pointer'
+      : 'shadow-neu-md';
 
   const Component = as as 'div';
   return (
-    <Component className={`${base} ${interactive} ${className}`} {...rest}>
+    <Component className={`${base} ${shadow} ${className}`} {...rest}>
       {children}
     </Component>
   );
@@ -32,7 +35,7 @@ export function Card({
 
 export function CardBody({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`p-6 ${className}`} {...rest}>
+    <div className={`p-10 ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -40,7 +43,7 @@ export function CardBody({ className = '', children, ...rest }: HTMLAttributes<H
 
 export function CardHeader({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`px-6 pb-3 pt-6 ${className}`} {...rest}>
+    <div className={`px-10 pb-8 pt-10 ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -48,7 +51,7 @@ export function CardHeader({ className = '', children, ...rest }: HTMLAttributes
 
 export function CardFooter({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`px-6 pb-6 pt-3 ${className}`} {...rest}>
+    <div className={`px-10 pb-10 pt-6 ${className}`} {...rest}>
       {children}
     </div>
   );

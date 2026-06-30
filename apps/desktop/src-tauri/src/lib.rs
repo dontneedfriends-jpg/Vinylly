@@ -1,69 +1,107 @@
+mod db_json;
+mod host_fs;
+mod host_net;
+mod host_paths;
+
 use std::path::PathBuf;
 
-use serde::Serialize;
 use tauri::Manager;
 
-#[derive(Serialize)]
-struct DataPaths {
-    data_dir: String,
-    covers_dir: String,
-    cache_dir: String,
-    db_file: String,
-    portable: bool,
+use db_json::DbState;
+use host_paths::{data_paths_for, ensure_subdirs, resolve_data_dir, DataPaths};
+
+#[tauri::command]
+fn host_paths(app: tauri::AppHandle) -> DataPaths {
+    data_paths_for(&app)
 }
 
-fn is_portable_mode() -> bool {
-    std::env::args().any(|a| a == "--portable")
-        || std::env::var("VINYL_PORTABLE").is_ok()
+#[tauri::command]
+fn host_ensure_dirs(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = resolve_data_dir(&app);
+    ensure_subdirs(&dir)
 }
 
-fn resolve_data_dir(app: &tauri::AppHandle) -> PathBuf {
-    if is_portable_mode() {
-        let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-        let dir = exe.parent().unwrap_or(&PathBuf::from(".")).to_path_buf();
-        return dir.join("data");
-    }
-    app.path()
-        .app_data_dir()
+#[tauri::command]
+fn host_init_app(app: tauri::AppHandle) -> Result<DataPaths, String> {
+    let dir = resolve_data_dir(&app);
+    ensure_subdirs(&dir)?;
+    Ok(data_paths_for(&app))
+}
+
+#[tauri::command]
+fn host_cwd() -> String {
+    std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
+        .to_string_lossy()
+        .to_string()
 }
 
 #[tauri::command]
-fn data_paths(app: tauri::AppHandle) -> DataPaths {
-    let data_dir = resolve_data_dir(&app);
-    let covers_dir = data_dir.join("covers");
-    let cache_dir = data_dir.join("cache");
-    let db_file = data_dir.join("vinylly.sqlite");
-    DataPaths {
-        data_dir: data_dir.to_string_lossy().to_string(),
-        covers_dir: covers_dir.to_string_lossy().to_string(),
-        cache_dir: cache_dir.to_string_lossy().to_string(),
-        db_file: db_file.to_string_lossy().to_string(),
-        portable: is_portable_mode(),
-    }
+fn host_exe_dir() -> Result<String, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    Ok(exe
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| ".".to_string()))
 }
 
 #[tauri::command]
-fn ensure_dirs(app: tauri::AppHandle) -> Result<(), String> {
-    let data_dir = resolve_data_dir(&app);
-    for sub in ["covers", "cache"] {
-        let p = data_dir.join(sub);
-        std::fs::create_dir_all(&p).map_err(|e| e.to_string())?;
+fn host_is_portable() -> bool {
+    host_paths::is_portable_mode()
+}
+
+#[tauri::command]
+fn host_platform() -> &'static str {
+    if cfg!(target_os = "linux") {
+        "linux"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "android") {
+        "android"
+    } else if cfg!(target_os = "ios") {
+        "ios"
+    } else {
+        "unknown"
     }
-    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            let data_dir = resolve_data_dir(&app.handle());
-            for sub in ["covers", "cache"] {
-                let _ = std::fs::create_dir_all(data_dir.join(sub));
-            }
+            let dir = resolve_data_dir(app.handle());
+            let _ = ensure_subdirs(&dir);
+            let state = DbState::load_or_init(&dir).expect("failed to init db state");
+            app.manage(state);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![data_paths, ensure_dirs])
+        .invoke_handler(tauri::generate_handler![
+            host_init_app,
+            host_paths,
+            host_ensure_dirs,
+            host_cwd,
+            host_exe_dir,
+            host_is_portable,
+            host_platform,
+            host_fs::fs_join,
+            host_fs::fs_read_text,
+            host_fs::fs_write_text,
+            host_fs::fs_read_binary,
+            host_fs::fs_write_binary,
+            host_fs::fs_exists,
+            host_fs::fs_ensure_dir,
+            host_fs::fs_remove,
+            host_fs::fs_list,
+            host_net::net_fetch,
+            host_net::net_fetch_binary,
+            host_net::cover_download,
+            host_net::build_auth_header,
+            db_json::db_load,
+            db_json::db_replace,
+            db_json::db_reset,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
