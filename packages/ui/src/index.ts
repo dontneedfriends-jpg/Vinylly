@@ -22,5 +22,8 @@ export type { EmptyStateProps } from './EmptyState';
 export { SegmentedControl } from './SegmentedControl';
 export type { SegmentedOption, SegmentedControlProps } from './SegmentedControl';
 
+export { ConditionPicker } from './ConditionPicker';
+export type { ConditionPickerProps, ConditionOption } from './ConditionPicker';
+
 export { PageHeader } from './PageHeader';
 export type { PageHeaderProps } from './PageHeader';

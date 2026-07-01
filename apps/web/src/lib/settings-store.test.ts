@@ -36,6 +36,7 @@ function createMockShell(files: Record<string, string> = {}): HostShell {
     }),
     fs: () => fs,
     net: () => net,
+    openUrl: async () => {},
     isPortable: () => false,
     platform: () => 'linux',
   };

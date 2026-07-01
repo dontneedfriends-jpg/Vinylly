@@ -2,11 +2,9 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
-  Input,
   SkeletonCard,
   EmptyState,
   Button,
-  SegmentedControl,
   PageHeader,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
@@ -19,9 +17,6 @@ export function CollectionPage() {
   const search = useUi((s) => s.search);
   const filterType = useUi((s) => s.filterType);
   const sort = useUi((s) => s.sort);
-  const setSearch = useUi((s) => s.setSearch);
-  const setFilterType = useUi((s) => s.setFilterType);
-  const setSort = useUi((s) => s.setSort);
   const openDetail = useUi((s) => s.openDetail);
   const openAdd = useUi((s) => s.openAdd);
 
@@ -31,27 +26,6 @@ export function CollectionPage() {
     cassette: t('common:media.cassette'),
     other: t('common:media.other'),
   };
-
-  const typeFilterOptions: Array<{ value: 'all' | MediaType; label: string }> = [
-    { value: 'all', label: t('collection:filter.all') },
-    { value: 'vinyl', label: t('collection:filter.vinyl') },
-    { value: 'cd', label: t('collection:filter.cd') },
-    { value: 'cassette', label: t('collection:filter.cassette') },
-    { value: 'other', label: t('collection:filter.other') },
-  ];
-
-  const sortOptions: Array<{
-    value: 'addedDesc' | 'addedAsc' | 'titleAsc' | 'artistAsc' | 'yearDesc';
-    label: string;
-  }> = [
-    { value: 'addedDesc', label: t('collection:sort.added_desc') },
-    { value: 'addedAsc', label: t('collection:sort.added_asc') },
-    { value: 'titleAsc', label: t('collection:sort.title_asc') },
-    { value: 'artistAsc', label: t('collection:sort.artist_asc') },
-    { value: 'yearDesc', label: t('collection:sort.year_desc') },
-  ];
-
-  const [localSearch, setLocalSearch] = useState(search);
 
   const filter = useMemo(
     () => ({
@@ -79,51 +53,6 @@ export function CollectionPage() {
           </Button>
         }
       />
-
-      {/* ─── Filter bar ─── */}
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="max-w-md flex-1">
-          <Input
-            label={t('collection:search.label')}
-            placeholder={t('collection:search.placeholder')}
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') setSearch(localSearch);
-            }}
-            leftIcon={<SearchIcon />}
-          />
-        </div>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end">
-          <div>
-            <span className="text-fg-heading mb-2 block text-sm font-medium">{t('collection:filter.media_type')}</span>
-            <SegmentedControl
-              options={typeFilterOptions}
-              value={filterType}
-              onChange={(v) => setFilterType(v as typeof filterType)}
-              ariaLabel={t('collection:filter.aria')}
-              size="sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="sort" className="text-fg-heading mb-2 block text-sm font-medium">
-              {t('collection:sort.label')}
-            </label>
-            <select
-              id="sort"
-              value={sort}
-              onChange={(e) => setSort(e.target.value as typeof sort)}
-              className="rounded-base border-border-default-medium bg-surface text-fg-heading shadow-neu-inset focus:border-border-brand border px-3 py-2 text-sm focus:outline-none"
-            >
-              {sortOptions.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
 
       {/* ─── Grid ─── */}
       {isLoading ? (
@@ -237,22 +166,6 @@ function PlusIcon() {
       aria-hidden
     >
       <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-4 w-4"
-      aria-hidden
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" strokeLinecap="round" />
     </svg>
   );
 }

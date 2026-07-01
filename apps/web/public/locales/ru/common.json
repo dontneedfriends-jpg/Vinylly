@@ -8,6 +8,8 @@
   "cover.no_cover": "Нет обложки",
   "duration.format": "{{minutes}}:{{seconds}}",
   "filter.all": "Все",
+  "image_type.primary": "Обложка",
+  "image_type.secondary": "Оборот / вкладыш",
   "loading.db": "Готовлю базу…",
   "loading.generic": "Загружаю…",
   "media.cassette": "Кассета",

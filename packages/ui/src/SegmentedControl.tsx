@@ -38,7 +38,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             onClick={() => onChange(opt.value)}
             aria-pressed={active}
-            className={`rounded-base inline-flex flex-1 items-center justify-center gap-1.5 border ${padding} font-medium transition-all duration-200 ease-in-out ${
+            className={`rounded-base inline-flex items-center justify-center gap-1.5 border ${padding} font-medium transition-all duration-200 ease-in-out ${
               active
                 ? 'border-border-default bg-surface text-fg-brand-strong shadow-neu-sm'
                 : 'text-fg-body-subtle hover:text-fg-body border-transparent bg-transparent'

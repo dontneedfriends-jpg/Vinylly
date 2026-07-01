@@ -8,6 +8,8 @@
   "cover.no_cover": "No cover",
   "duration.format": "{{minutes}}:{{seconds}}",
   "filter.all": "All",
+  "image_type.primary": "Front cover",
+  "image_type.secondary": "Back / insert",
   "loading.db": "Preparing database…",
   "loading.generic": "Loading…",
   "media.cassette": "Cassette",

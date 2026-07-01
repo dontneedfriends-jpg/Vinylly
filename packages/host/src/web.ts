@@ -69,6 +69,9 @@ export function createWebHostShell(): HostShell {
     paths: () => paths,
     fs: () => fs,
     net: () => net,
+    openUrl: async (url: string) => {
+      window.open(url, '_blank', 'noopener');
+    },
     isPortable: () => true,
     platform: () => 'web',
   };

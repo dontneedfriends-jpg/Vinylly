@@ -35,18 +35,30 @@ export class ProvidersRegistry {
   }
 
   async searchAll(query: SearchQuery): Promise<SearchResult[]> {
-    const out: SearchResult[] = [];
-    await Promise.all(
-      this.all().map(async (p) => {
-        try {
-          const r = await p.search(query);
-          out.push(...r);
-        } catch {
-          // provider failures must not break the whole search
-        }
-      }),
-    );
-    return out.sort((a, b) => b.score - a.score);
+    // Fire Discogs + MusicBrainz in parallel
+    const [discogsResults, mbResults] = await Promise.all([
+      this.discogs?.isEnabled()
+        ? this.discogs.search(query).catch(() => [] as SearchResult[])
+        : Promise.resolve([] as SearchResult[]),
+      this.musicbrainz.search(query).catch(() => [] as SearchResult[]),
+    ]);
+
+    // Discogs is primary: if it returned anything, use only Discogs
+    if (discogsResults.length > 0) return discogsResults;
+
+    // Fallback to MusicBrainz
+    if (mbResults.length > 0) return mbResults;
+
+    // Last resort: Last.fm
+    if (this.lastfm?.isEnabled()) {
+      try {
+        return await this.lastfm.search(query);
+      } catch {
+        // no more fallbacks
+      }
+    }
+
+    return [];
   }
 }
 
@@ -57,5 +69,6 @@ export {
   cacheCover,
   ensureReleaseAssets,
   type CachedCover,
+  type CachedImage,
   type CacheCoverOptions,
 } from './assets';

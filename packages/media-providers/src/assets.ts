@@ -7,6 +7,13 @@ export interface CachedCover {
   thumbPath: string;
 }
 
+export interface CachedImage {
+  type: string;
+  uri: string;
+  uri150?: string | null;
+  localPath: string | null;
+}
+
 export interface CacheCoverOptions {
   releaseId: string;
   coverUrl: string;
@@ -57,33 +64,68 @@ export async function ensureReleaseAssets(
   thumbPath: string | null;
   coverRemote: string;
   thumbRemote: string | null;
+  images: CachedImage[];
 }> {
-  if (!release.coverUrl) {
-    return {
-      coverPath: null,
-      thumbPath: null,
-      coverRemote: '',
-      thumbRemote: release.thumbUrl ?? null,
-    };
+  const shell = getHostShell();
+  const fs = shell.fs();
+  const coversDir = shell.paths().coversDir;
+  await fs.ensureDir(coversDir);
+
+  let coverPath: string | null = null;
+  let thumbPath: string | null = null;
+  let coverRemote = release.coverUrl ?? '';
+  let thumbRemote = release.thumbUrl ?? null;
+
+  const tasks: Promise<void>[] = [];
+
+  if (release.coverUrl) {
+    tasks.push(
+      (async () => {
+        try {
+          const coverExt = guessExt(release.coverUrl!);
+          const cp = fs.join(coversDir, `${releaseId}${coverExt}`);
+          const tp = fs.join(coversDir, `${releaseId}_thumb.jpg`);
+
+          const [coverBytes, thumbBytes] = await Promise.all([
+            fetchBytes(release.coverUrl!),
+            release.thumbUrl && release.thumbUrl !== release.coverUrl
+              ? fetchBytes(release.thumbUrl).catch(() => null)
+              : Promise.resolve(null),
+          ]);
+          await fs.writeBinary(cp, coverBytes);
+          await fs.writeBinary(tp, thumbBytes ?? coverBytes);
+          coverPath = cp;
+          thumbPath = tp;
+        } catch {
+          // keep remote
+        }
+      })(),
+    );
   }
-  try {
-    const cached = await cacheCover({
-      releaseId,
-      coverUrl: release.coverUrl,
-      thumbUrl: release.thumbUrl,
-    });
-    return {
-      coverPath: cached.coverPath,
-      thumbPath: cached.thumbPath,
-      coverRemote: release.coverUrl,
-      thumbRemote: release.thumbUrl ?? null,
-    };
-  } catch {
-    return {
-      coverPath: null,
-      thumbPath: null,
-      coverRemote: release.coverUrl,
-      thumbRemote: release.thumbUrl ?? null,
-    };
+
+  const images: CachedImage[] = [];
+  if (release.images?.length) {
+    for (let i = 0; i < release.images.length; i++) {
+      const img = release.images[i]!;
+      const idx = i;
+      images[idx] = { type: img.type, uri: img.uri, uri150: img.uri150 ?? null, localPath: null };
+      tasks.push(
+        (async () => {
+          try {
+            const ext = guessExt(img.uri);
+            const path = fs.join(coversDir, `${releaseId}_${idx}${ext}`);
+            const bytes = await fetchBytes(img.uri);
+            await fs.writeBinary(path, bytes);
+            images[idx] = { type: img.type, uri: img.uri, uri150: img.uri150 ?? null, localPath: path };
+          } catch {
+            // keep remote — localPath stays null
+          }
+        })(),
+      );
+    }
   }
+
+  await Promise.all(tasks);
+
+  return { coverPath, thumbPath, coverRemote, thumbRemote, images };
 }

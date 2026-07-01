@@ -26,6 +26,7 @@ import { useSettings } from '../lib/settings-store';
 import { useLocale } from '../lib/locale-store';
 import { resetProvidersRegistry } from '../lib/providers';
 import { getHostShell } from '@vinylly/host';
+import { ExternalLink } from '../components/ExternalLink';
 import type { CreateItemInput, TrackRecord } from '@vinylly/db';
 
 type Status = { kind: 'idle' | 'ok' | 'error'; message: string };
@@ -119,11 +120,9 @@ export function SettingsPage() {
       />
 
       <div className="flex flex-col gap-6">
-        <SupportCard />
+        <LanguageCard />
 
         <DiscogsCard token={discogsToken} onSave={setDiscogsToken} onClear={clearDiscogsToken} />
-
-        <LanguageCard />
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
@@ -260,24 +259,20 @@ function SupportCard() {
       </CardHeader>
       <CardBody className="px-12 py-6">
         <div className="flex flex-wrap gap-3">
-          <a
+          <ExternalLink
             href="https://boosty.to/annenskei/donate"
-            target="_blank"
-            rel="noopener noreferrer"
             className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex items-center gap-2 border px-4 py-2 text-sm font-medium transition-all duration-200"
           >
             <HeartSmallIcon />
             {t('settings:support.boosty')}
-          </a>
-          <a
+          </ExternalLink>
+          <ExternalLink
             href="https://dalink.to/annenskei"
-            target="_blank"
-            rel="noopener noreferrer"
             className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex items-center gap-2 border px-4 py-2 text-sm font-medium transition-all duration-200"
           >
             <HeartSmallIcon />
             {t('settings:support.donationalerts')}
-          </a>
+          </ExternalLink>
         </div>
         <div className="mt-6 space-y-3">
           <p className="text-fg-body-subtle text-xs font-medium uppercase tracking-wide">Crypto</p>
@@ -424,24 +419,20 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
       <CardBody className="space-y-8 px-12 py-6">
         <p className="text-fg-body text-[15px] leading-relaxed">
           {t('settings:discogs.intro')}{' '}
-          <a
+          <ExternalLink
             href="https://www.discogs.com/settings/developers"
-            target="_blank"
-            rel="noopener noreferrer"
             className="text-fg-brand-strong hover:text-fg-heading decoration-border-brand font-medium underline decoration-1 underline-offset-4 transition-colors"
           >
             Personal Access Token
-          </a>
+          </ExternalLink>
           .{' '}
-          <a
+          <ExternalLink
             href="https://www.discogs.com/settings/developers"
-            target="_blank"
-            rel="noopener noreferrer"
             className="text-fg-body-subtle hover:text-fg-heading inline-flex items-center gap-1 transition-colors"
           >
             {t('settings:discogs.instruction_link')}
             <ArrowUpRightIcon />
-          </a>
+          </ExternalLink>
         </p>
 
         <form onSubmit={onSubmit} className="space-y-6">

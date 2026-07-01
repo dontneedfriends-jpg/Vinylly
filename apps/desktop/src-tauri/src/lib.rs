@@ -67,6 +67,11 @@ fn host_platform() -> &'static str {
     }
 }
 
+#[tauri::command]
+fn host_shell_open(url: String) -> Result<(), String> {
+    open::that(&url).map_err(|e| format!("Failed to open URL: {e}"))
+}
+
 #[derive(serde::Serialize)]
 struct AppInfo {
     name: &'static str,
@@ -116,6 +121,7 @@ pub fn run() {
             host_exe_dir,
             host_is_portable,
             host_platform,
+            host_shell_open,
             app_info,
             host_fs::fs_join,
             host_fs::fs_read_text,

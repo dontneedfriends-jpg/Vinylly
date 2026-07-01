@@ -3,6 +3,7 @@
   "form.catalog_number": "Catalog number",
   "form.location": "Location",
   "form.location_placeholder": "Shelf, box, cabinet…",
+  "form.media_type": "Media type",
   "form.manual_title": "Copy details",
   "form.notes": "Notes",
   "form.notes_placeholder": "Condition, features, purchase story…",

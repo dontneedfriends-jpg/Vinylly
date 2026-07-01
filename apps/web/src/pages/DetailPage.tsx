@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Textarea, Badge, Input, PageHeader } from '@vinylly/ui';
+import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useUpdateItem, useRemoveItem } from '../lib/queries';
+import { useQueryClient } from '@tanstack/react-query';
 import { CoverImage } from '../components/CoverImage';
+import { Gallery } from '../components/Gallery';
+import { ExternalLink } from '../components/ExternalLink';
 import { DetailRail } from '../components/RightRail';
 import { getProvidersRegistry } from '../lib/providers';
 import type { MediaType } from '@vinylly/db';
+import { itemRepo } from '../lib/db';
+import { getHostShell } from '@vinylly/host';
 
 export function DetailPage() {
   const { t } = useTranslation();
@@ -185,6 +190,16 @@ export function DetailPage() {
               size="full"
             />
           </div>
+          <Gallery
+            releaseId={item.release.id}
+            images={item.release.images}
+          />
+          <div className="mt-3">
+            <CoverUploadButton
+              releaseId={item.release.id}
+              currentLabel={t('detail:hero.update_cover')}
+            />
+          </div>
         </div>
 
         {/* Key Info */}
@@ -200,9 +215,9 @@ export function DetailPage() {
             <Badge tone="brand" pill>
               {typeLabels[item.type]}
             </Badge>
-            {item.release.year ? <Badge tone="neutral">{item.release.year}</Badge> : null}
+            {item.release.year ? <Badge tone="neu">{item.release.year}</Badge> : null}
             {item.release.genres.slice(0, 4).map((g) => (
-              <Badge key={g} tone="secondary">
+              <Badge key={g} tone="neu">
                 {g}
               </Badge>
             ))}
@@ -305,15 +320,13 @@ export function DetailPage() {
                       {extendedMeta.discogsUrl ? (
                         <div className="flex items-center gap-2">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.discogs')}</span>
-                          <a
+                          <ExternalLink
                             href={extendedMeta.discogsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="text-fg-brand hover:text-fg-brand-strong inline-flex items-center gap-1 text-sm underline underline-offset-2"
                           >
                             <span>{t('detail:about.open')}</span>
                             <ExternalLinkIcon />
-                          </a>
+                          </ExternalLink>
                         </div>
                       ) : null}
                     </div>
@@ -352,17 +365,15 @@ export function DetailPage() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
-              <Input
+              <ConditionPicker
                 label={t('detail:my_notes.sleeve')}
-                placeholder={t('detail:my_notes.sleeve_placeholder')}
                 value={sleeveCondition}
-                onChange={(e) => setSleeveCondition(e.target.value)}
+                onChange={setSleeveCondition}
               />
-              <Input
+              <ConditionPicker
                 label={t('detail:my_notes.media')}
-                placeholder={t('detail:my_notes.media_placeholder')}
                 value={mediaCondition}
-                onChange={(e) => setMediaCondition(e.target.value)}
+                onChange={setMediaCondition}
               />
             </div>
             <div className="mt-5">
@@ -390,6 +401,62 @@ export function DetailPage() {
         </section>
       </div>
     </section>
+  );
+}
+
+/* ─── Cover Upload ─── */
+
+function CoverUploadButton({ releaseId, currentLabel }: { releaseId: string; currentLabel: string }) {
+  const [uploading, setUploading] = useState(false);
+  const queryClient = useQueryClient();
+
+  const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      const ext = file.name.match(/\.(png|jpg|jpeg|webp)$/i)?.[1] ?? 'jpg';
+      const shell = getHostShell();
+      const coversDir = shell.paths().coversDir;
+      await shell.fs().ensureDir(coversDir);
+      const coverPath = shell.fs().join(coversDir, `${releaseId}-custom.${ext}`);
+      const thumbPath = shell.fs().join(coversDir, `${releaseId}_thumb.jpg`);
+      await shell.fs().writeBinary(coverPath, bytes);
+      await shell.fs().writeBinary(thumbPath, bytes);
+      await itemRepo.setReleaseCover(releaseId, {
+        coverPath,
+        thumbPath,
+        coverRemote: coverPath,
+        thumbRemote: thumbPath,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['item', releaseId] });
+    } catch {
+      // silent
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <label className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-2xs hover:shadow-neu-xs inline-flex cursor-pointer items-center gap-2 border px-3 py-1.5 text-xs font-medium transition-all duration-200">
+      <UploadIcon />
+      <span>{uploading ? '…' : currentLabel}</span>
+      <input type="file" accept="image/*" onChange={onChange} className="hidden" />
+    </label>
+  );
+}
+
+/* ─── Icons ─── */
+
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden>
+      <path d="M12 16V4M6 10l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 20h16" strokeLinecap="round" />
+    </svg>
   );
 }
 

@@ -54,6 +54,7 @@ model Release {
   thumbPath     String?
   coverRemote   String?
   thumbRemote   String?
+  images        String   @default("[]")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

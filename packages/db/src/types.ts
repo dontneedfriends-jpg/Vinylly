@@ -21,6 +21,14 @@ export interface ReleaseRecord {
   thumbPath: string | null;
   coverRemote: string | null;
   thumbRemote: string | null;
+  images: ReleaseImage[];
+}
+
+export interface ReleaseImage {
+  type: string;
+  uri: string;
+  uri150?: string | null;
+  localPath: string | null;
 }
 
 export interface TrackRecord {

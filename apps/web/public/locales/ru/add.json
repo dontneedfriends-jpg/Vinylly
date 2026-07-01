@@ -3,6 +3,7 @@
   "form.catalog_number": "Каталожный номер",
   "form.location": "Где хранится",
   "form.location_placeholder": "Полка, коробка, шкаф…",
+  "form.media_type": "Тип носителя",
   "form.manual_title": "Детали копии",
   "form.notes": "Заметки",
   "form.notes_placeholder": "Состояние, особенности, история покупки…",

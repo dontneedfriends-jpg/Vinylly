@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@vinylly/ui';
+import { Badge, Input, SegmentedControl } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useItems, useTracks } from '../lib/queries';
 import { getProvidersRegistry } from '../lib/providers';
 import { useSettings } from '../lib/settings-store';
 import { getAppInfo, type AppInfo } from '../lib/app-info';
 import type { MediaType } from '@vinylly/db';
+import { ExternalLink } from './ExternalLink';
 
 /* ─────────── DETAIL RAIL — Tracklist ─────────── */
 
@@ -151,16 +152,14 @@ function VideoRail() {
       </h4>
       <div className="flex flex-col gap-2">
         {videos.map((v, i) => (
-          <a
+          <ExternalLink
             key={i}
             href={v.uri}
-            target="_blank"
-            rel="noopener noreferrer"
             className="rounded-base hover:shadow-neu-2xs flex items-center gap-2.5 border border-transparent bg-transparent px-4 py-2.5 text-sm transition-all duration-200"
           >
             <VideoIcon />
             <span className="text-fg-body hover:text-fg-heading truncate">{v.title}</span>
-          </a>
+          </ExternalLink>
         ))}
       </div>
     </div>
@@ -172,9 +171,13 @@ function VideoRail() {
 function CollectionRail() {
   const { t } = useTranslation();
   const { data: items = [] } = useItems({});
-  const filterType = useUi((s) => s.filterType);
   const search = useUi((s) => s.search);
+  const filterType = useUi((s) => s.filterType);
+  const sort = useUi((s) => s.sort);
+  const setSearch = useUi((s) => s.setSearch);
   const setFilterType = useUi((s) => s.setFilterType);
+  const setSort = useUi((s) => s.setSort);
+  const [localSearch, setLocalSearch] = useState(search);
 
   const typeLabels: Record<string, string> = {
     vinyl: t('common:media.vinyl'),
@@ -182,6 +185,25 @@ function CollectionRail() {
     cassette: t('common:media.cassette'),
     other: t('common:media.other'),
   };
+
+  const typeFilterOptions: Array<{ value: 'all' | MediaType; label: string }> = [
+    { value: 'all', label: t('collection:filter.all') },
+    { value: 'vinyl', label: t('collection:filter.vinyl') },
+    { value: 'cd', label: t('collection:filter.cd') },
+    { value: 'cassette', label: t('collection:filter.cassette') },
+    { value: 'other', label: t('collection:filter.other') },
+  ];
+
+  const sortOptions: Array<{
+    value: 'addedDesc' | 'addedAsc' | 'titleAsc' | 'artistAsc' | 'yearDesc';
+    label: string;
+  }> = [
+    { value: 'addedDesc', label: t('collection:sort.added_desc') },
+    { value: 'addedAsc', label: t('collection:sort.added_asc') },
+    { value: 'titleAsc', label: t('collection:sort.title_asc') },
+    { value: 'artistAsc', label: t('collection:sort.artist_asc') },
+    { value: 'yearDesc', label: t('collection:sort.year_desc') },
+  ];
 
   const stats = useMemo(() => {
     const total = items.length;
@@ -196,22 +218,74 @@ function CollectionRail() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Stats */}
+      {/* Search */}
       <div>
         <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.collection.stats')}</h3>
-        <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-6 py-5">
-          <div className="text-fg-heading text-2xl font-semibold">{stats.total}</div>
-          <div className="text-fg-body-subtle text-xs">{t('layout:rail.collection.total_releases')}</div>
-          <div className="mt-3 flex flex-col gap-1">
-            {(Object.keys(stats.byType) as MediaType[]).map((k) => (
-              <div key={k} className="flex items-center justify-between text-sm">
-                <span className="text-fg-body">{typeLabels[k] ?? k}</span>
-                <span className="text-fg-heading font-medium">{stats.byType[k]}</span>
-              </div>
-            ))}
-          </div>
+        <Input
+          placeholder={t('collection:search.placeholder')}
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') setSearch(localSearch);
+          }}
+        />
+      </div>
+
+      {/* Stats */}
+      <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-5 py-4">
+        <div className="text-fg-heading text-2xl font-semibold">{stats.total}</div>
+        <div className="text-fg-body-subtle text-xs">{t('layout:rail.collection.total_releases')}</div>
+        <div className="mt-3 flex flex-col gap-1">
+          {(Object.keys(stats.byType) as MediaType[]).map((k) => (
+            <div key={k} className="flex items-center justify-between text-sm">
+              <span className="text-fg-body">{typeLabels[k] ?? k}</span>
+              <span className="text-fg-heading font-medium">{stats.byType[k]}</span>
+            </div>
+          ))}
         </div>
       </div>
+
+      {/* Media type filter */}
+      <VerticalGroup label={t('collection:filter.media_type')}>
+        {typeFilterOptions.map((opt) => {
+          const active = opt.value === filterType;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFilterType(opt.value)}
+              className={`rounded-base w-full px-3 py-2 text-left text-xs font-medium transition-all duration-200 ${
+                active
+                  ? 'bg-surface text-fg-brand-strong shadow-neu-sm border border-border-default'
+                  : 'text-fg-body-subtle hover:text-fg-body border border-transparent hover:shadow-neu-2xs'
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </VerticalGroup>
+
+      {/* Sort */}
+      <VerticalGroup label={t('collection:sort.label')}>
+        {sortOptions.map((opt) => {
+          const active = opt.value === sort;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setSort(opt.value)}
+              className={`rounded-base w-full px-3 py-2 text-left text-xs font-medium transition-all duration-200 ${
+                active
+                  ? 'bg-surface text-fg-brand-strong shadow-neu-sm border border-border-default'
+                  : 'text-fg-body-subtle hover:text-fg-body border border-transparent hover:shadow-neu-2xs'
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </VerticalGroup>
 
       {/* Active filters summary */}
       {hasFilters ? (
@@ -238,6 +312,19 @@ function CollectionRail() {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function VerticalGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
+        {label}
+      </h4>
+      <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-0.5 border p-1.5">
+        {children}
+      </div>
     </div>
   );
 }
@@ -408,6 +495,8 @@ function SettingsRail() {
         </div>
       </div>
 
+      <SupportRail />
+
       <div>
         <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
           {t('layout:rail.settings.about')}
@@ -415,25 +504,21 @@ function SettingsRail() {
         <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
           <div className="flex items-center justify-between px-6 py-4 text-sm">
             <span className="text-fg-body-subtle">{t('layout:rail.settings.version')}</span>
-            <a
+            <ExternalLink
               href={appInfo?.repo ? `${appInfo.repo}/releases` : '#'}
-              target="_blank"
-              rel="noopener noreferrer"
               className="text-fg-heading hover:text-fg-brand font-medium transition-colors"
             >
               {appInfo?.version ?? '—'}
-            </a>
+            </ExternalLink>
           </div>
           <div className="flex items-center justify-between px-6 py-4 text-sm">
             <span className="text-fg-body-subtle">{t('layout:rail.settings.build')}</span>
-            <a
+            <ExternalLink
               href={commitLink ?? '#'}
-              target="_blank"
-              rel="noopener noreferrer"
               className="text-fg-heading hover:text-fg-brand font-mono text-xs transition-colors"
             >
               {appInfo?.commit ? appInfo.commit : '—'}
-            </a>
+            </ExternalLink>
           </div>
           <div className="flex items-center justify-between px-6 py-4 text-sm">
             <span className="text-fg-body-subtle">{t('layout:rail.settings.platform')}</span>
@@ -449,15 +534,13 @@ function SettingsRail() {
           </div>
         </div>
         {appInfo?.repo ? (
-          <a
+          <ExternalLink
             href={appInfo.repo}
-            target="_blank"
-            rel="noopener noreferrer"
             className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading mt-2 flex items-center gap-2.5 px-4 py-3 text-xs transition-all duration-200"
           >
             <ExternalLinkIcon />
             {t('layout:rail.settings.open_github')}
-          </a>
+          </ExternalLink>
         ) : null}
       </div>
 
@@ -476,18 +559,89 @@ function SettingsRail() {
             { name: 'Genius', url: 'https://genius.com' },
           ].map((src) => (
             <li key={src.name}>
-              <a
+              <ExternalLink
                 href={src.url}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-4 py-3 text-xs transition-all duration-200"
               >
                 <ExternalLinkIcon />
                 {src.name}
-              </a>
+              </ExternalLink>
             </li>
           ))}
         </ul>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────── SUPPORT RAIL — Donations ─────────── */
+
+function HeartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0" aria-hidden>
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CryptoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v10M9 10l3-3 3 3M9 14l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SupportRail() {
+  const { t } = useTranslation();
+
+  return (
+    <div>
+      <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
+        {t('layout:rail.settings.support')}
+      </h4>
+      <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-6 py-5">
+        <ExternalLink
+          href="https://boosty.to/annenskei/donate"
+          className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200"
+        >
+          <HeartIcon />
+          {t('settings:support.boosty')}
+        </ExternalLink>
+        <ExternalLink
+          href="https://dalink.to/annenskei"
+          className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200"
+        >
+          <HeartIcon />
+          {t('settings:support.donationalerts')}
+        </ExternalLink>
+        <details className="group">
+          <summary className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex cursor-pointer items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200">
+            <CryptoIcon />
+            <span className="text-fg-heading font-medium">Crypto</span>
+          </summary>
+          <div className="mt-2 space-y-2 border-t border-border-default pt-2">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-fg-body-subtle shrink-0 w-14">Bitcoin</span>
+              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
+                bc1qvuhvewu3rjth80wnpdxkrl6vwtgjtspszkcqap
+              </code>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-fg-body-subtle shrink-0 w-14">Ethereum</span>
+              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
+                0xc126080ffD216827A37850a5511cf1273E303E73
+              </code>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-fg-body-subtle shrink-0 w-14">Solana</span>
+              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
+                516jeJxi1gwaRH7aEEiopAUAGNHKMrUxWv4cfGm32GhB
+              </code>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   );

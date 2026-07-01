@@ -25,5 +25,6 @@
   "page.loading": "Загружаю…",
   "page.no_release": "Релиз не выбран",
   "page.to_collection": "К коллекции",
+  "hero.update_cover": "Заменить обложку",
   "tracklist.title": "Треклист"
 }

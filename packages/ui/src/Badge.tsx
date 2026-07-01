@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from 'react';
 
-export type BadgeTone = 'neutral' | 'brand' | 'secondary' | 'danger' | 'success' | 'warning';
+export type BadgeTone = 'neutral' | 'brand' | 'secondary' | 'danger' | 'success' | 'warning' | 'neu';
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: BadgeTone;
@@ -14,6 +14,7 @@ const toneStyles: Record<BadgeTone, string> = {
   danger: 'bg-danger-soft text-fg-danger-strong border-border-danger-subtle',
   success: 'bg-success-soft text-fg-success-strong border-border-success-subtle',
   warning: 'bg-warning-soft text-fg-warning border-border-default',
+  neu: 'bg-surface text-fg-body border-border-default shadow-neu-inset',
 };
 
 export function Badge({

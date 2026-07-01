@@ -124,6 +124,9 @@ export async function createTauriHostShell(): Promise<HostShell> {
     paths: () => paths,
     fs: () => fs,
     net: () => net,
+    openUrl: async (url: string) => {
+      await window.__TAURI_INTERNALS__!.invoke('host_shell_open', { url });
+    },
     isPortable: () => init.portable,
     platform: () =>
       platform as 'linux' | 'windows' | 'macos' | 'android' | 'ios' | 'web' | 'unknown',

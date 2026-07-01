@@ -3,6 +3,7 @@ import {
   type ItemRecord,
   type MediaType,
   type ReleaseRecord,
+  type ReleaseImage,
   type TrackRecord,
 } from './index';
 
@@ -21,6 +22,7 @@ export interface CreateItemInput {
     thumbPath?: string | null;
     coverRemote?: string | null;
     thumbRemote?: string | null;
+    images?: ReleaseImage[];
   };
   tracklist?: Array<{ position: string; title: string; duration?: number | null }>;
   barcode?: string | null;
@@ -71,13 +73,9 @@ export interface ItemRepository {
   remove(id: string): Promise<void>;
   setReleaseCover(
     releaseId: string,
-    cover: {
-      coverPath: string | null;
-      thumbPath: string | null;
-      coverRemote: string | null;
-      thumbRemote: string | null;
-    },
+    cover: { coverPath: string | null; thumbPath: string | null; coverRemote: string; thumbRemote: string | null },
   ): Promise<void>;
+  setReleaseImages(releaseId: string, images: ReleaseImage[]): Promise<void>;
 }
 
 function parseJsonArray<T>(value: string | null | undefined, fallback: T[] = []): T[] {
@@ -161,6 +159,7 @@ export const itemRepo: ItemRepository = {
       thumbPath: input.release.thumbPath ?? null,
       coverRemote: input.release.coverRemote ?? null,
       thumbRemote: input.release.thumbRemote ?? null,
+      images: JSON.stringify(input.release.images ?? []),
       createdAt: new Date(nowIso()),
       updatedAt: new Date(nowIso()),
     };
@@ -175,6 +174,7 @@ export const itemRepo: ItemRepository = {
         thumbPath: releaseRow.thumbPath,
         coverRemote: releaseRow.coverRemote,
         thumbRemote: releaseRow.thumbRemote,
+        images: releaseRow.images,
       },
     });
     const existing = await prisma.release.findUnique({
@@ -253,6 +253,16 @@ export const itemRepo: ItemRepository = {
       },
     });
   },
+
+  async setReleaseImages(releaseId, images) {
+    const prisma = getPrismaClient() as unknown as {
+      release: { update: (a: unknown) => Promise<unknown> };
+    };
+    await prisma.release.update({
+      where: { id: releaseId },
+      data: { images: JSON.stringify(images) },
+    });
+  },
 };
 
 function sortItems(items: ItemRecord[], sort: NonNullable<ItemListFilter['sort']>): ItemRecord[] {
@@ -300,6 +310,7 @@ function itemFromRow(row: Record<string, unknown>): ItemRecord {
       thumbPath: (release.thumbPath as string | null) ?? null,
       coverRemote: (release.coverRemote as string | null) ?? null,
       thumbRemote: (release.thumbRemote as string | null) ?? null,
+      images: parseJsonArray<ReleaseImage>(release.images as string | undefined, []),
     },
   };
 }

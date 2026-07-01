@@ -9,6 +9,7 @@ import {
   Badge,
   PageHeader,
   SegmentedControl,
+  ConditionPicker,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useCreateItem, useDefaultCollection } from '../lib/queries';
@@ -21,6 +22,7 @@ import {
 import { getHostShell } from '@vinylly/host';
 import type { MediaType, CreateItemInput } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
+import { Gallery } from '../components/Gallery';
 import { getProvidersRegistry } from '../lib/providers';
 
 const discogsFormatMap: Record<string, string | undefined> = {
@@ -66,6 +68,8 @@ export function AddPage() {
   const [catalogNumber, setCatalogNumber] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sleeveCondition, setSleeveCondition] = useState('');
+  const [mediaCondition, setMediaCondition] = useState('');
 
   const onSearch = async () => {
     if (!query.trim()) return;
@@ -77,7 +81,7 @@ export function AddPage() {
         text: query.trim(),
         mediaType: discogsFormatMap[formatFilter],
       });
-      setResults(r.slice(0, 12));
+      setResults(r);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -163,17 +167,22 @@ export function AddPage() {
         location: location || null,
         barcode: barcode || null,
         catalogNumber: catalogNumber || null,
+        sleeveCondition: sleeveCondition || null,
+        mediaCondition: mediaCondition || null,
         tags: [],
       };
       const created = await createItem.mutateAsync(input);
-      const assets = await ensureReleaseAssets(selected, created.release.id);
+      const assets = await ensureReleaseAssets(releaseDetail ?? selected, created.release.id);
       if (assets.coverPath || assets.coverRemote) {
         await itemRepo.setReleaseCover(created.release.id, {
           coverPath: assets.coverPath,
           thumbPath: assets.thumbPath,
-          coverRemote: assets.coverRemote || null,
+          coverRemote: assets.coverRemote,
           thumbRemote: assets.thumbRemote,
         });
+      }
+      if (assets.images.length) {
+        await itemRepo.setReleaseImages(created.release.id, assets.images);
       }
       const shell = getHostShell();
       await shell.fs().ensureDir(shell.paths().coversDir);
@@ -322,6 +331,16 @@ export function AddPage() {
                 size="full"
               />
             </div>
+            {releaseDetail?.images?.length ? (
+              <Gallery
+                releaseId={`${selected.source}-${selected.sourceId}`}
+                images={releaseDetail.images.map((img) => ({
+                  type: img.type,
+                  uri: img.uri,
+                  localPath: null,
+                }))}
+              />
+            ) : null}
           </div>
           <div className="flex flex-1 flex-col justify-center gap-3">
             <div>
@@ -336,9 +355,9 @@ export function AddPage() {
               <Badge tone="brand" pill>
                 {typeLabels[type]}
               </Badge>
-              {selected.year ? <Badge tone="neutral">{selected.year}</Badge> : null}
+              {selected.year ? <Badge tone="neu">{selected.year}</Badge> : null}
               {selected.genres.slice(0, 3).map((g) => (
-                <Badge key={g} tone="secondary">
+                <Badge key={g} tone="neu">
                   {g}
                 </Badge>
               ))}
@@ -351,6 +370,20 @@ export function AddPage() {
       <div className="mt-8">
         <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
           <h3 className="text-fg-heading mb-5 text-lg font-semibold">{t('add:form.manual_title')}</h3>
+          <div className="mb-5">
+            <span className="text-fg-heading mb-2 block text-sm font-medium">{t('add:form.media_type')}</span>
+            <SegmentedControl
+              options={[
+                { value: 'vinyl', label: t('common:media.label_vinyl') },
+                { value: 'cd', label: t('common:media.label_cd') },
+                { value: 'cassette', label: t('common:media.label_cassette') },
+                { value: 'other', label: t('common:media.label_other') },
+              ]}
+              value={type}
+              onChange={(v) => setType(v as MediaType)}
+              size="sm"
+            />
+          </div>
           <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
             <Input label={t('add:form.barcode')} value={barcode} onChange={(e) => setBarcode(e.target.value)} />
             <Input
@@ -363,6 +396,18 @@ export function AddPage() {
               placeholder={t('add:form.location_placeholder')}
               value={location}
               onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+          <div className="mt-5 grid gap-x-6 gap-y-5 md:grid-cols-2">
+            <ConditionPicker
+              label={t('detail:my_notes.sleeve')}
+              value={sleeveCondition}
+              onChange={setSleeveCondition}
+            />
+            <ConditionPicker
+              label={t('detail:my_notes.media')}
+              value={mediaCondition}
+              onChange={setMediaCondition}
             />
           </div>
           <div className="mt-5">

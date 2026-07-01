@@ -26,6 +26,7 @@ export interface HostShell {
   paths(): HostPaths;
   fs(): HostFs;
   net(): HostNet;
+  openUrl(url: string): Promise<void>;
   isPortable(): boolean;
   platform(): 'linux' | 'windows' | 'macos' | 'android' | 'ios' | 'web' | 'unknown';
 }

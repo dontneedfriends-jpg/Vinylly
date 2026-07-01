@@ -26,6 +26,7 @@ const item: ItemRecord = {
     thumbPath: null,
     coverRemote: 'https://x/c.jpg',
     thumbRemote: null,
+    images: [],
   },
 };
 

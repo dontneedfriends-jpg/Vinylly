@@ -120,7 +120,7 @@ export class DiscogsProvider implements MediaProvider {
       const data = await getHostShell().net().fetchJson<DiscogsSearchResponse>(this.wrap(url), {
         headers: this.headers(),
       });
-      return data.results.slice(0, 25).map((r, i) => ({
+      return deduplicateResults(data.results.slice(0, 50)).slice(0, 25).map((r, i) => ({
         provider: this.name,
         score: 1 - i * 0.02,
         release: {
@@ -184,6 +184,31 @@ export class DiscogsProvider implements MediaProvider {
   }
 }
 
+function deduplicateResults(
+  results: DiscogsSearchResponse['results'],
+): DiscogsSearchResponse['results'] {
+  const groups = new Map<string, typeof results[number]>();
+
+  for (const r of results) {
+    const key = r.master_id ? `master:${r.master_id}` : `title:${r.title.toLowerCase().trim()}`;
+
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, r);
+      continue;
+    }
+
+    // Pick better result: prefer one with master_url, then cover_image
+    const existingScore = (existing.master_url ? 2 : 0) + (existing.cover_image ? 1 : 0);
+    const currentScore = (r.master_url ? 2 : 0) + (r.cover_image ? 1 : 0);
+    if (currentScore > existingScore) {
+      groups.set(key, r);
+    }
+  }
+
+  return Array.from(groups.values());
+}
+
 function extractArtist(title: string): string {
   const idx = title.indexOf(' - ');
   return idx === -1 ? title : title.slice(0, idx).trim();
@@ -218,6 +243,11 @@ export function normalizeDiscogsRelease(
     styles: r.styles ?? [],
     coverUrl: primary?.uri ?? null,
     thumbUrl: primary?.uri150 ?? null,
+    images: r.images?.map((i) => ({
+      type: i.type,
+      uri: i.uri,
+      uri150: i.uri150 ?? null,
+    })) ?? undefined,
     tracklist:
       r.tracklist?.map((t) => ({
         position: t.position,

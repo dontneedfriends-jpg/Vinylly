@@ -16,6 +16,7 @@ export interface NormalizedRelease {
   styles: string[];
   coverUrl: string | null;
   thumbUrl: string | null;
+  images?: Array<{ type: string; uri: string; uri150?: string | null }>;
   tracklist: NormalizedTrack[];
   mediaType?: string;
   raw?: unknown;
