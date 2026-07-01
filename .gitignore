@@ -25,6 +25,8 @@ Thumbs.db
 
 # Documentation (keep only README.md)
 *.md
+!LICENSE.md
+!README.en.md
 !README.md
 
 # Secrets
