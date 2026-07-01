@@ -84,7 +84,7 @@ export function Layout({ children }: LayoutProps) {
                     aria-current={isActive ? 'page' : undefined}
                     title={it.label}
                     className={
-                      'rounded-base flex items-center justify-center gap-3 border px-2 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out xl:justify-start xl:px-3 ' +
+                      'group relative rounded-base flex items-center justify-center gap-3 border px-2 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out xl:justify-start xl:px-3 ' +
                       (isActive
                         ? 'bg-surface text-fg-brand-strong shadow-neu-inset border-transparent'
                         : 'bg-surface text-fg-body hover:text-fg-heading hover:shadow-neu-sm border-transparent')
@@ -96,6 +96,9 @@ export function Layout({ children }: LayoutProps) {
                       {it.icon}
                     </span>
                     <span className="hidden xl:inline">{it.label}</span>
+                    <span className="xl:hidden rounded-base bg-surface text-fg-body shadow-neu-md pointer-events-none invisible absolute left-full ml-2 whitespace-nowrap px-2 py-1 text-xs font-medium opacity-0 transition-all group-hover:visible group-hover:opacity-100">
+                      {it.label}
+                    </span>
                   </button>
                 );
               })}

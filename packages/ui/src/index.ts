@@ -25,5 +25,8 @@ export type { SegmentedOption, SegmentedControlProps } from './SegmentedControl'
 export { ConditionPicker } from './ConditionPicker';
 export type { ConditionPickerProps, ConditionOption } from './ConditionPicker';
 
+export { TagInput } from './TagInput';
+export type { TagInputProps } from './TagInput';
+
 export { PageHeader } from './PageHeader';
 export type { PageHeaderProps } from './PageHeader';

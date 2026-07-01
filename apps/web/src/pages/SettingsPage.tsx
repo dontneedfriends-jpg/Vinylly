@@ -122,6 +122,8 @@ export function SettingsPage() {
       <div className="flex flex-col gap-6">
         <LanguageCard />
 
+        <BackupCard onStatus={setStatus} />
+
         <DiscogsCard token={discogsToken} onSave={setDiscogsToken} onClear={clearDiscogsToken} />
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -239,65 +241,60 @@ function LanguageCard() {
   );
 }
 
-function SupportCard() {
+function BackupCard({ onStatus }: { onStatus: (s: Status) => void }) {
   const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+
+  const onBackup = async () => {
+    setBusy(true);
+    try {
+      const shell = getHostShell();
+      const dbPath = shell.paths().dataDir + '/vinylly.sqlite';
+      const bytes = await shell.fs().readBinary(dbPath);
+      const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 19).replace(/[:]/g, '-');
+      const filename = `vinylly-backup-${date}.sqlite`;
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      onStatus({ kind: 'ok', message: t('settings:backup.done', { filename }) });
+    } catch (e) {
+      onStatus({ kind: 'error', message: t('settings:backup.error', { error: (e as Error).message }) });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Card>
       <CardHeader className="pb-6 pt-8">
         <div className="flex items-start gap-5">
           <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
-            <HeartIcon />
+            <ShieldIcon />
           </div>
           <div className="min-w-0 flex-1 pt-0.5">
-            <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:support.title')}</h3>
+            <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:backup.title')}</h3>
             <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
-              {t('settings:support.description')}
+              {t('settings:backup.description')}
             </p>
           </div>
         </div>
       </CardHeader>
       <CardBody className="px-12 py-6">
-        <div className="flex flex-wrap gap-3">
-          <ExternalLink
-            href="https://boosty.to/annenskei/donate"
-            className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex items-center gap-2 border px-4 py-2 text-sm font-medium transition-all duration-200"
-          >
-            <HeartSmallIcon />
-            {t('settings:support.boosty')}
-          </ExternalLink>
-          <ExternalLink
-            href="https://dalink.to/annenskei"
-            className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex items-center gap-2 border px-4 py-2 text-sm font-medium transition-all duration-200"
-          >
-            <HeartSmallIcon />
-            {t('settings:support.donationalerts')}
-          </ExternalLink>
-        </div>
-        <div className="mt-6 space-y-3">
-          <p className="text-fg-body-subtle text-xs font-medium uppercase tracking-wide">Crypto</p>
-          <div className="flex flex-col gap-2">
-            <span className="text-fg-body flex items-center gap-2 text-xs">
-              <span className="text-fg-body-subtle shrink-0 w-16">Bitcoin</span>
-              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-inset">
-                bc1qvuhvewu3rjth80wnpdxkrl6vwtgjtspszkcqap
-              </code>
-            </span>
-            <span className="text-fg-body flex items-center gap-2 text-xs">
-              <span className="text-fg-body-subtle shrink-0 w-16">Ethereum</span>
-              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-inset">
-                0xc126080ffD216827A37850a5511cf1273E303E73
-              </code>
-            </span>
-            <span className="text-fg-body flex items-center gap-2 text-xs">
-              <span className="text-fg-body-subtle shrink-0 w-16">Solana</span>
-              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-inset">
-                516jeJxi1gwaRH7aEEiopAUAGNHKMrUxWv4cfGm32GhB
-              </code>
-            </span>
-          </div>
-        </div>
+        <p className="text-fg-body-subtle text-[15px] leading-relaxed">{t('settings:export.collection_count', { count: 0 })}</p>
       </CardBody>
+      <CardFooter className="pb-8 pt-5">
+        <div className="ml-auto">
+          <Button onClick={onBackup} disabled={busy} leftIcon={busy ? undefined : <DownloadIcon />}>
+            {busy ? t('common:loading.generic') : t('settings:backup.button')}
+          </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
@@ -791,36 +788,6 @@ function GlobeIcon() {
   );
 }
 
-function HeartIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-5 w-5"
-      aria-hidden
-    >
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function HeartSmallIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-      aria-hidden
-    >
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function ExportIcon() {
   return (
     <svg
@@ -833,6 +800,24 @@ function ExportIcon() {
     >
       <path d="M12 4v12M8 8l4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-fg-body-subtle h-5 w-5" aria-hidden>
+      <path d="M12 2l7 4v5c0 4-3 7.7-7 9-4-1.3-7-5-7-9V6l7-4z" strokeLinejoin="round" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M12 16V4M6 10l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 20h16" strokeLinecap="round" />
     </svg>
   );
 }

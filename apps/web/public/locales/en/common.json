@@ -4,6 +4,7 @@
   "button.delete": "Delete",
   "button.retry": "Retry",
   "button.save": "Save",
+  "button.undo": "Undo",
   "button.saving": "Saving…",
   "cover.no_cover": "No cover",
   "duration.format": "{{minutes}}:{{seconds}}",

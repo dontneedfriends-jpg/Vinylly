@@ -26,32 +26,56 @@ async function loadImageLocal(img: ReleaseImage): Promise<string | null> {
   return img.uri || null;
 }
 
-export function Gallery({ releaseId, images }: GalleryProps) {
+export function Gallery({ releaseId, images: initialImages }: GalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [items, setItems] = useState(initialImages);
+  const dragIdx = useRef<number | null>(null);
 
-  if (images.length === 0) return null;
+  useEffect(() => { setItems(initialImages); }, [initialImages]);
+
+  if (items.length === 0) return null;
+
+  const onDragStart = (i: number) => { dragIdx.current = i; };
+  const onDragOver = (e: React.DragEvent, i: number) => {
+    e.preventDefault();
+    if (dragIdx.current === null || dragIdx.current === i) return;
+    const copy = [...items];
+    const [moved] = copy.splice(dragIdx.current, 1) as [ReleaseImage];
+    copy.splice(i, 0, moved);
+    setItems(copy);
+    dragIdx.current = i;
+  };
+  const onDragEnd = () => { dragIdx.current = null; };
 
   return (
     <>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {images.map((img, i) => (
-          <Thumbnail
-            key={i}
-            image={img}
-            releaseId={releaseId}
-            active={i === selectedIndex}
-            onClick={() => {
-              setSelectedIndex(i);
-              setLightboxOpen(true);
-            }}
-          />
+      <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-2">
+        {items.map((img, i) => (
+          <div
+            key={`${i}-${img.uri}`}
+            draggable
+            onDragStart={() => onDragStart(i)}
+            onDragOver={(e) => onDragOver(e, i)}
+            onDragEnd={onDragEnd}
+            className="cursor-grab active:cursor-grabbing"
+          >
+            <Thumbnail
+              image={img}
+              releaseId={releaseId}
+              active={i === selectedIndex}
+              onClick={() => {
+                setSelectedIndex(i);
+                setLightboxOpen(true);
+              }}
+            />
+          </div>
         ))}
       </div>
 
       {lightboxOpen ? (
         <Lightbox
-          images={images}
+          images={items}
           releaseId={releaseId}
           startIndex={selectedIndex}
           onClose={() => setLightboxOpen(false)}
@@ -81,6 +105,7 @@ function Thumbnail({
       if (!cancelled && url) setSrc(url);
     });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [image.localPath, image.uri]);
 
   return (
@@ -88,7 +113,7 @@ function Thumbnail({
       type="button"
       onClick={onClick}
       title={image.type}
-      className={`rounded-base h-14 w-14 shrink-0 overflow-hidden border transition-all duration-200 ${
+      className={`aspect-square overflow-hidden rounded-base border transition-all duration-200 ${
         active
           ? 'border-border-default shadow-neu-inset'
           : 'border-border-default-medium shadow-neu-2xs hover:shadow-neu-xs'
@@ -141,6 +166,7 @@ function Lightbox({
       if (!cancelled) setSrc(url);
     });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
 
   useEffect(() => {

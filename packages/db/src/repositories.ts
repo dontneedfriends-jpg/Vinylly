@@ -62,6 +62,7 @@ export interface ItemListFilter {
   collectionId?: string;
   type?: MediaType;
   search?: string;
+  tags?: string[];
   sort?: 'addedDesc' | 'addedAsc' | 'titleAsc' | 'artistAsc' | 'yearDesc';
 }
 
@@ -71,6 +72,7 @@ export interface ItemRepository {
   create(input: CreateItemInput): Promise<ItemRecord>;
   update(id: string, patch: Partial<CreateItemInput>): Promise<ItemRecord>;
   remove(id: string): Promise<void>;
+  findBySource(source: string, sourceId: string): Promise<ItemRecord | null>;
   setReleaseCover(
     releaseId: string,
     cover: { coverPath: string | null; thumbPath: string | null; coverRemote: string; thumbRemote: string | null },
@@ -123,6 +125,11 @@ export const itemRepo: ItemRepository = {
       mapped = mapped.filter(
         (it) =>
           it.release.title.toLowerCase().includes(q) || it.release.artist.toLowerCase().includes(q),
+      );
+    }
+    if (filter.tags?.length) {
+      mapped = mapped.filter((it) =>
+        filter.tags!.every((t) => (it.tags ?? []).includes(t)),
       );
     }
     return sortItems(mapped, filter.sort ?? 'addedDesc');
@@ -237,6 +244,17 @@ export const itemRepo: ItemRepository = {
   async remove(id) {
     const prisma = getPrismaClient();
     await prisma.item.delete({ where: { id } });
+  },
+
+  async findBySource(source, sourceId) {
+    const prisma = getPrismaClient() as unknown as {
+      item: { findFirst: (a: unknown) => Promise<Record<string, unknown> | null> };
+    };
+    const row = await prisma.item.findFirst({
+      where: { release: { source, sourceId } },
+      include: { release: true },
+    });
+    return row ? itemFromRow(row) : null;
   },
 
   async setReleaseCover(releaseId, cover) {

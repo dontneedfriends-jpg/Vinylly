@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker } from '@vinylly/ui';
+import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker, TagInput, EmptyState } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useUpdateItem, useRemoveItem } from '../lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,6 +32,7 @@ export function DetailPage() {
   const [location, setLocation] = useState(item?.location ?? '');
   const [sleeveCondition, setSleeveCondition] = useState(item?.sleeveCondition ?? '');
   const [mediaCondition, setMediaCondition] = useState(item?.mediaCondition ?? '');
+  const [tags, setTags] = useState<string[]>(item?.tags ?? []);
   const [albumNotes, setAlbumNotes] = useState<string | null>(null);
   const [wikipediaHtml, setWikipediaHtml] = useState<string | null>(null);
   const [aboutLoading, setAboutLoading] = useState(false);
@@ -55,6 +56,7 @@ export function DetailPage() {
       setLocation(current.location ?? '');
       setSleeveCondition(current.sleeveCondition ?? '');
       setMediaCondition(current.mediaCondition ?? '');
+      setTags(current.tags ?? []);
     }
   }, [item]);
 
@@ -147,9 +149,24 @@ export function DetailPage() {
         location: location || null,
         sleeveCondition: sleeveCondition || null,
         mediaCondition: mediaCondition || null,
+        tags,
       },
     });
   };
+
+  if (!item) {
+    return (
+      <section className="animate-rise">
+        <EmptyState
+          title={t('detail:page.no_release')}
+          description=""
+          action={
+            <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
+          }
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="animate-rise">
@@ -374,6 +391,14 @@ export function DetailPage() {
                 label={t('detail:my_notes.media')}
                 value={mediaCondition}
                 onChange={setMediaCondition}
+              />
+            </div>
+            <div className="mt-5">
+              <TagInput
+                label={t('detail:my_notes.tags')}
+                tags={tags}
+                onChange={setTags}
+                placeholder={t('detail:my_notes.tags_placeholder')}
               />
             </div>
             <div className="mt-5">

@@ -10,10 +10,13 @@ import {
   PageHeader,
   SegmentedControl,
   ConditionPicker,
+  TagInput,
+  EmptyState,
+  SkeletonCard,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useCreateItem, useDefaultCollection } from '../lib/queries';
-import { itemRepo } from '@vinylly/db';
+import { itemRepo } from '../lib/db';
 import {
   ensureReleaseAssets,
   type SearchResult,
@@ -70,6 +73,7 @@ export function AddPage() {
   const [error, setError] = useState<string | null>(null);
   const [sleeveCondition, setSleeveCondition] = useState('');
   const [mediaCondition, setMediaCondition] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
 
   const onSearch = async () => {
     if (!query.trim()) return;
@@ -150,6 +154,12 @@ export function AddPage() {
     setSaving(true);
     setError(null);
     try {
+      const existing = await itemRepo.findBySource(selected.source, selected.sourceId);
+      if (existing) {
+        setError(t('add:form.duplicate', { title: existing.release.title }));
+        setSaving(false);
+        return;
+      }
       const input: CreateItemInput = {
         collectionId: collection.id,
         type,
@@ -169,7 +179,7 @@ export function AddPage() {
         catalogNumber: catalogNumber || null,
         sleeveCondition: sleeveCondition || null,
         mediaCondition: mediaCondition || null,
-        tags: [],
+        tags,
       };
       const created = await createItem.mutateAsync(input);
       const assets = await ensureReleaseAssets(releaseDetail ?? selected, created.release.id);
@@ -214,6 +224,7 @@ export function AddPage() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void onSearch();
                   }}
+                  data-search-input
                 />
               </div>
               <div className="flex items-end gap-2">
@@ -239,7 +250,20 @@ export function AddPage() {
           </CardBody>
         </Card>
 
-        {results.length > 0 ? (
+        {searching && results.length === 0 ? (
+          <ul className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <li key={i}>
+                <SkeletonCard />
+              </li>
+            ))}
+          </ul>
+        ) : results.length === 0 && searching === false && error === null && query.trim() !== '' && !selected ? (
+          <EmptyState
+            title={t('add:search.no_results')}
+            description={t('add:search.try_different')}
+          />
+        ) : results.length > 0 ? (
           <ul className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
             {results.map((r, i) => (
               <li
@@ -253,7 +277,7 @@ export function AddPage() {
                   onClick={() => void onPickResult(r)}
                   className="group relative h-full w-full overflow-hidden text-left"
                 >
-                  <div className="p-5">
+                  <div className="flex h-full flex-col p-5">
                     <div className="rounded-base shadow-neu-inset aspect-square overflow-hidden">
                       <CoverImage
                         releaseId={`${r.provider}-${r.release.sourceId}`}
@@ -263,7 +287,7 @@ export function AddPage() {
                         size="thumb"
                       />
                     </div>
-                    <div className="pt-5">
+                    <div className="flex flex-1 flex-col justify-end pt-5">
                       <div className="text-fg-body-subtle flex items-center gap-2 text-xs">
                         <VinylIcon />
                         <span>
@@ -273,10 +297,10 @@ export function AddPage() {
                         </span>
                         {r.release.year ? <span>· {r.release.year}</span> : null}
                       </div>
-                      <h3 className="text-fg-heading mt-3 pl-3 text-base font-semibold leading-tight">
+                      <h3 className="text-fg-heading mt-3 line-clamp-1 pl-3 text-base font-semibold leading-tight">
                         {r.release.title}
                       </h3>
-                      <p className="text-fg-body-subtle mt-2 line-clamp-2 pl-3 text-sm leading-relaxed">
+                      <p className="text-fg-body-subtle mt-1 line-clamp-1 pl-3 text-sm leading-relaxed">
                         {r.release.artist}
                       </p>
                     </div>
@@ -416,6 +440,14 @@ export function AddPage() {
               placeholder={t('add:form.notes_placeholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          <div className="mt-5">
+            <TagInput
+              label={t('add:form.tags')}
+              tags={tags}
+              onChange={setTags}
+              placeholder={t('add:form.tags_placeholder')}
             />
           </div>
           <div className="mt-6 flex justify-end">

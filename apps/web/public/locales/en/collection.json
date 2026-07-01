@@ -9,6 +9,7 @@
   "filter.media_type": "Media",
   "filter.other": "Other",
   "filter.vinyl": "Vinyl",
+  "item.deleted_undo": "Deleted «{{title}}».",
   "item.cover_alt": "Cover — {{title}}",
   "item.delete_aria": "Delete",
   "page.add_button": "Add",

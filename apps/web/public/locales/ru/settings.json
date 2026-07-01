@@ -1,4 +1,9 @@
 {
+  "backup.button": "Скачать бэкап БД",
+  "backup.description": "Скачайте полную копию базы данных SQLite со всей коллекцией.",
+  "backup.done": "Бэкап скачан: {{filename}}.",
+  "backup.error": "Не удалось создать бэкап: {{error}}",
+  "backup.title": "Бэкап базы данных",
   "discogs.cleared_ok": "Токен удалён.",
   "discogs.configured": "Настроено",
   "discogs.delete_button": "Удалить",

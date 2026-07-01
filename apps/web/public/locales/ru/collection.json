@@ -9,6 +9,7 @@
   "filter.media_type": "Носитель",
   "filter.other": "Другое",
   "filter.vinyl": "Винил",
+  "item.deleted_undo": "Удалён «{{title}}».",
   "item.cover_alt": "Обложка — {{title}}",
   "item.delete_aria": "Удалить",
   "page.add_button": "Добавить",

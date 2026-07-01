@@ -30,6 +30,7 @@ function makeShell(impl: {
     net: () => impl,
     isPortable: () => true,
     platform: () => 'web',
+    openUrl: async () => {},
   };
 }
 

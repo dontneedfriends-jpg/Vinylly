@@ -4,6 +4,7 @@
   "button.delete": "Удалить",
   "button.retry": "Повторить",
   "button.save": "Сохранить",
+  "button.undo": "Отменить",
   "button.saving": "Сохраняю…",
   "cover.no_cover": "Нет обложки",
   "duration.format": "{{minutes}}:{{seconds}}",

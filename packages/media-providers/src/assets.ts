@@ -73,8 +73,8 @@ export async function ensureReleaseAssets(
 
   let coverPath: string | null = null;
   let thumbPath: string | null = null;
-  let coverRemote = release.coverUrl ?? '';
-  let thumbRemote = release.thumbUrl ?? null;
+  const coverRemote = release.coverUrl ?? '';
+  const thumbRemote = release.thumbUrl ?? null;
 
   const tasks: Promise<void>[] = [];
 
