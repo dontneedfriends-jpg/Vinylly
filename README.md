@@ -4,7 +4,7 @@
   <p><strong>Каталогизатор физической аудио-коллекции, который выглядит как приложение, а не как бухгалтерская ведомость.</strong></p>
 
   <p>
-    <a href="https://github.com/annenskei/Vinylly/actions"><img src="https://img.shields.io/github/actions/workflow/status/annenskei/Vinylly/ci.yml?branch=main&style=flat-square&logo=github&color=0F62FE" alt="CI"></a>
+    <a href="https://github.com/dontneedfriends-jpg/Vinylly/actions"><img src="https://img.shields.io/github/actions/workflow/status/annenskei/Vinylly/ci.yml?branch=main&style=flat-square&logo=github&color=0F62FE" alt="CI"></a>
     <a href="./LICENSE.md"><img src="https://img.shields.io/badge/License-Non--Commercial-F56C2D?style=flat-square" alt="License"></a>
     <a href="https://tauri.app"><img src="https://img.shields.io/badge/Tauri-2.x-24C8D8?style=flat-square&logo=tauri" alt="Tauri"></a>
     <a href="https://react.dev"><img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react" alt="React"></a>
