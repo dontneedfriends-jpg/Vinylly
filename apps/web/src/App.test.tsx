@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from '../src/App';
+
+beforeEach(() => {
+  localStorage.setItem('vinylly:discogs-token', 'test-token');
+  localStorage.setItem('vinylly:onboarding-done', 'true');
+});
 
 function renderApp() {
   const qc = new QueryClient({

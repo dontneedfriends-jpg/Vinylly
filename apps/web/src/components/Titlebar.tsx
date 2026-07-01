@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { isTauriEnvironment } from '@vinylly/host';
 import { useUi } from '../lib/ui-store';
 import {
@@ -11,6 +12,7 @@ import {
 import { buildInfoText, getAppInfo } from '../lib/app-info';
 
 export function Titlebar() {
+  const { t } = useTranslation();
   const page = useUi((s) => s.page);
   const openCollection = useUi((s) => s.openCollection);
   const [tauri, setTauri] = useState(false);
@@ -81,7 +83,7 @@ export function Titlebar() {
         <VinylMark />
         <div className="flex flex-col leading-none">
           <span className="text-fg-heading text-sm font-semibold tracking-tight">Vinylly</span>
-          <span className="text-fg-body-subtle text-[10px]">Каталог аудио-коллекции</span>
+          <span className="text-fg-body-subtle text-[10px]">{t('layout:titlebar.app_name')}</span>
         </div>
       </div>
 
@@ -102,12 +104,12 @@ export function Titlebar() {
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <span className="text-fg-body-subtle mr-2 hidden text-xs font-medium uppercase tracking-wide md:inline">
-          {pageLabel(page)}
+          {pageLabel(t, page)}
         </span>
         {buildLabel ? (
           <span
             className="text-fg-body-subtle mr-1 hidden font-mono text-[10px] md:inline"
-            title="Версия · сборка"
+            title={t('layout:titlebar.version_build')}
           >
             {buildLabel}
           </span>
@@ -119,34 +121,35 @@ export function Titlebar() {
   );
 }
 
-function pageLabel(page: string): string {
+function pageLabel(t: (key: string) => string, page: string): string {
   switch (page) {
     case 'collection':
-      return 'Коллекция';
+      return t('layout:titlebar.page_collection');
     case 'add':
-      return 'Добавить';
+      return t('layout:titlebar.page_add');
     case 'detail':
-      return 'Релиз';
+      return t('layout:titlebar.page_detail');
     case 'settings':
-      return 'Настройки';
+      return t('layout:titlebar.page_settings');
     default:
       return '';
   }
 }
 
 function WindowControls({ maximized }: { maximized: boolean }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-1">
-      <TitlebarButton onClick={() => void minimizeWindow()} ariaLabel="Свернуть">
+      <TitlebarButton onClick={() => void minimizeWindow()} ariaLabel={t('layout:titlebar.minimize')}>
         <MinimizeIcon />
       </TitlebarButton>
       <TitlebarButton
         onClick={() => void toggleMaximize()}
-        ariaLabel={maximized ? 'Восстановить' : 'Развернуть'}
+        ariaLabel={maximized ? t('layout:titlebar.restore') : t('layout:titlebar.maximize')}
       >
         {maximized ? <RestoreIcon /> : <MaximizeIcon />}
       </TitlebarButton>
-      <TitlebarButton onClick={() => void closeWindow()} ariaLabel="Закрыть" variant="danger">
+      <TitlebarButton onClick={() => void closeWindow()} ariaLabel={t('layout:titlebar.close')} variant="danger">
         <CloseIcon />
       </TitlebarButton>
     </div>

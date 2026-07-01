@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Card,
   Input,
@@ -13,33 +14,8 @@ import { useItems, useRemoveItem } from '../lib/queries';
 import type { MediaType, ItemRecord } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
 
-const typeLabels: Record<MediaType, string> = {
-  vinyl: 'Винил',
-  cd: 'CD',
-  cassette: 'Кассета',
-  other: 'Другое',
-};
-
-const typeFilterOptions: Array<{ value: 'all' | MediaType; label: string }> = [
-  { value: 'all', label: 'Все' },
-  { value: 'vinyl', label: 'Винил' },
-  { value: 'cd', label: 'CD' },
-  { value: 'cassette', label: 'Кассета' },
-  { value: 'other', label: 'Другое' },
-];
-
-const sortOptions: Array<{
-  value: 'addedDesc' | 'addedAsc' | 'titleAsc' | 'artistAsc' | 'yearDesc';
-  label: string;
-}> = [
-  { value: 'addedDesc', label: 'Сначала новые' },
-  { value: 'addedAsc', label: 'Сначала старые' },
-  { value: 'titleAsc', label: 'По названию' },
-  { value: 'artistAsc', label: 'По артисту' },
-  { value: 'yearDesc', label: 'По году' },
-];
-
 export function CollectionPage() {
+  const { t } = useTranslation();
   const search = useUi((s) => s.search);
   const filterType = useUi((s) => s.filterType);
   const sort = useUi((s) => s.sort);
@@ -48,6 +24,32 @@ export function CollectionPage() {
   const setSort = useUi((s) => s.setSort);
   const openDetail = useUi((s) => s.openDetail);
   const openAdd = useUi((s) => s.openAdd);
+
+  const typeLabels: Record<MediaType, string> = {
+    vinyl: t('common:media.vinyl'),
+    cd: t('common:media.cd'),
+    cassette: t('common:media.cassette'),
+    other: t('common:media.other'),
+  };
+
+  const typeFilterOptions: Array<{ value: 'all' | MediaType; label: string }> = [
+    { value: 'all', label: t('collection:filter.all') },
+    { value: 'vinyl', label: t('collection:filter.vinyl') },
+    { value: 'cd', label: t('collection:filter.cd') },
+    { value: 'cassette', label: t('collection:filter.cassette') },
+    { value: 'other', label: t('collection:filter.other') },
+  ];
+
+  const sortOptions: Array<{
+    value: 'addedDesc' | 'addedAsc' | 'titleAsc' | 'artistAsc' | 'yearDesc';
+    label: string;
+  }> = [
+    { value: 'addedDesc', label: t('collection:sort.added_desc') },
+    { value: 'addedAsc', label: t('collection:sort.added_asc') },
+    { value: 'titleAsc', label: t('collection:sort.title_asc') },
+    { value: 'artistAsc', label: t('collection:sort.artist_asc') },
+    { value: 'yearDesc', label: t('collection:sort.year_desc') },
+  ];
 
   const [localSearch, setLocalSearch] = useState(search);
 
@@ -65,15 +67,15 @@ export function CollectionPage() {
   return (
     <section className="animate-rise">
       <PageHeader
-        title="Коллекция"
+        title={t('collection:page.title')}
         subtitle={
           items.length === 0 && !isLoading
-            ? 'Пока пусто — добавьте первый релиз, чтобы начать.'
-            : `${items.length} релиз(ов) в коллекции`
+            ? t('collection:page.subtitle')
+            : `${items.length} ${t('collection:page.subtitle')}`
         }
         actions={
           <Button onClick={() => openAdd()} leftIcon={<PlusIcon />}>
-            Добавить
+            {t('collection:page.add_button')}
           </Button>
         }
       />
@@ -82,8 +84,8 @@ export function CollectionPage() {
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="max-w-md flex-1">
           <Input
-            label="Поиск"
-            placeholder="Название или артист"
+            label={t('collection:search.label')}
+            placeholder={t('collection:search.placeholder')}
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             onKeyDown={(e) => {
@@ -94,18 +96,18 @@ export function CollectionPage() {
         </div>
         <div className="flex flex-col gap-4 md:flex-row md:items-end">
           <div>
-            <span className="text-fg-heading mb-2 block text-sm font-medium">Носитель</span>
+            <span className="text-fg-heading mb-2 block text-sm font-medium">{t('collection:filter.media_type')}</span>
             <SegmentedControl
               options={typeFilterOptions}
               value={filterType}
               onChange={(v) => setFilterType(v as typeof filterType)}
-              ariaLabel="Фильтр по типу носителя"
+              ariaLabel={t('collection:filter.aria')}
               size="sm"
             />
           </div>
           <div>
             <label htmlFor="sort" className="text-fg-heading mb-2 block text-sm font-medium">
-              Сортировка
+              {t('collection:sort.label')}
             </label>
             <select
               id="sort"
@@ -134,15 +136,11 @@ export function CollectionPage() {
         </ul>
       ) : items.length === 0 ? (
         <EmptyState
-          title="Ничего не найдено"
-          description={
-            search
-              ? 'По заданным фильтрам ничего не найдено. Попробуйте изменить запрос или сбросить фильтр типа.'
-              : 'Добавьте первый релиз — по штрих-коду, каталожному номеру или вручную.'
-          }
+          title={t('collection:empty.title')}
+          description={t('collection:empty.suggestion')}
           action={
             <Button onClick={() => openAdd()} variant="brand">
-              Добавить релиз
+              {t('collection:empty.add_release')}
             </Button>
           }
         />
@@ -154,7 +152,7 @@ export function CollectionPage() {
               className="animate-rise"
               style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
             >
-              <ItemTile item={it} onOpen={() => openDetail(it.id)} />
+              <ItemTile item={it} onOpen={() => openDetail(it.id)} typeLabels={typeLabels} />
             </li>
           ))}
         </ul>
@@ -163,13 +161,14 @@ export function CollectionPage() {
   );
 }
 
-function ItemTile({ item, onOpen }: { item: ItemRecord; onOpen: () => void }) {
+function ItemTile({ item, onOpen, typeLabels }: { item: ItemRecord; onOpen: () => void; typeLabels: Record<string, string> }) {
+  const { t } = useTranslation();
   const removeItem = useRemoveItem();
   const [deleting, setDeleting] = useState(false);
 
   const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm(`Удалить «${item.release.title}» из коллекции?`)) return;
+    if (!window.confirm(`${t('collection:item.delete_aria')} «${item.release.title}»?`)) return;
     setDeleting(true);
     removeItem.mutate(item.id);
   };
@@ -188,14 +187,14 @@ function ItemTile({ item, onOpen }: { item: ItemRecord; onOpen: () => void }) {
     >
       {deleting ? (
         <div className="bg-surface/80 absolute inset-0 z-10 flex items-center justify-center">
-          <span className="text-fg-body-subtle text-sm">Удаляю…</span>
+          <span className="text-fg-body-subtle text-sm">{t('common:loading.generic')}</span>
         </div>
       ) : null}
       <button
         type="button"
         onClick={onDelete}
         className="hover:bg-danger-soft text-fg-danger absolute right-3 top-3 z-10 rounded-full p-2 opacity-0 transition-opacity group-hover:opacity-100"
-        aria-label="Удалить"
+        aria-label={t('collection:item.delete_aria')}
       >
         <TrashIcon />
       </button>
@@ -205,7 +204,7 @@ function ItemTile({ item, onOpen }: { item: ItemRecord; onOpen: () => void }) {
             releaseId={item.release.id}
             coverPath={item.release.coverPath}
             coverRemote={item.release.coverRemote}
-            alt={`Обложка — ${item.release.title}`}
+            alt={t('collection:item.cover_alt', { title: item.release.title })}
             size="thumb"
           />
         </div>

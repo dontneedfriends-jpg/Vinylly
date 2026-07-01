@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUi } from '../lib/ui-store';
 import { Card } from '@vinylly/ui';
 import { ThemeToggle } from './ThemeToggle';
@@ -11,44 +12,45 @@ export interface LayoutProps {
 
 type NavId = 'collection' | 'add' | 'settings';
 
-const navItems: Array<{ id: NavId; label: string; icon: ReactNode }> = [
-  {
-    id: 'collection',
-    label: 'Коллекция',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-        <path d="M6 4h12v16H6z" strokeLinejoin="round" />
-        <path d="M6 8h12M6 12h12M6 16h12" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    id: 'add',
-    label: 'Добавить',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    id: 'settings',
-    label: 'Настройки',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
-      </svg>
-    ),
-  },
-];
-
 export function Layout({ children }: LayoutProps) {
+  const { t } = useTranslation();
   const page = useUi((s) => s.page);
   const openCollection = useUi((s) => s.openCollection);
   const openAdd = useUi((s) => s.openAdd);
   const openSettings = useUi((s) => s.openSettings);
+
+  const navItems: Array<{ id: NavId; label: string; icon: ReactNode }> = [
+    {
+      id: 'collection',
+      label: t('layout:nav.collection'),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+          <path d="M6 4h12v16H6z" strokeLinejoin="round" />
+          <path d="M6 8h12M6 12h12M6 16h12" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+    {
+      id: 'add',
+      label: t('layout:nav.add'),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v8M8 12h8" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+    {
+      id: 'settings',
+      label: t('layout:nav.settings'),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+        </svg>
+      ),
+    },
+  ];
 
   const active: NavId = page === 'detail' ? 'collection' : (page as NavId);
 
@@ -68,7 +70,7 @@ export function Layout({ children }: LayoutProps) {
           <Card
             as="aside"
             role="navigation"
-            aria-label="Главная навигация"
+            aria-label={t('layout:nav.aria')}
             className="mr-4 flex h-[calc(100vh-3rem)] w-16 shrink-0 flex-col overflow-hidden transition-all duration-200 ease-in-out sm:mr-6 sm:h-[calc(100vh-3.5rem)] xl:w-64"
           >
             <nav className="scrollbar-neu flex flex-1 flex-col gap-1 overflow-y-auto px-2 pt-5 xl:px-3">

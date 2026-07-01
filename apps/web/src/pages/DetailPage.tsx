@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, Textarea, Badge, Input, PageHeader } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useUpdateItem, useRemoveItem } from '../lib/queries';
@@ -7,15 +8,16 @@ import { DetailRail } from '../components/RightRail';
 import { getProvidersRegistry } from '../lib/providers';
 import type { MediaType } from '@vinylly/db';
 
-const typeLabels: Record<MediaType, string> = {
-  vinyl: 'Винил',
-  cd: 'CD',
-  cassette: 'Кассета',
-  other: 'Другое',
-};
-
 export function DetailPage() {
+  const { t } = useTranslation();
   const itemId = useUi((s) => s.detailItemId);
+  const typeLabels: Record<MediaType, string> = {
+    vinyl: t('common:media.vinyl'),
+    cd: t('common:media.cd'),
+    cassette: t('common:media.cassette'),
+    other: t('common:media.other'),
+  };
+
   const openCollection = useUi((s) => s.openCollection);
   const setReleaseVideos = useUi((s) => s.setReleaseVideos);
   const { data: item } = useItem(itemId);
@@ -117,9 +119,9 @@ export function DetailPage() {
   if (!itemId) {
     return (
       <section>
-        <PageHeader title="Релиз не выбран" />
+        <PageHeader title={t('detail:page.no_release')} />
         <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
-          <Button onClick={openCollection}>К коллекции</Button>
+          <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
         </div>
       </section>
     );
@@ -127,7 +129,7 @@ export function DetailPage() {
   if (!item) {
     return (
       <section>
-        <PageHeader title="Загружаю…" />
+        <PageHeader title={t('detail:page.loading')} />
       </section>
     );
   }
@@ -152,19 +154,19 @@ export function DetailPage() {
         actions={
           <div className="flex gap-2">
             <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />}>
-              К коллекции
+              {t('detail:page.to_collection')}
             </Button>
             <Button
               variant="neutral"
               onClick={() => {
-                if (window.confirm(`Удалить «${item.release.title}» из коллекции?`)) {
+                if (window.confirm(`${t('detail:page.delete')} «${item.release.title}»?`)) {
                   removeItem.mutate(item.id);
                   openCollection();
                 }
               }}
               leftIcon={<TrashIcon />}
             >
-              Удалить
+              {t('detail:page.delete')}
             </Button>
           </div>
         }
@@ -210,13 +212,13 @@ export function DetailPage() {
             <div className="rounded-base border-border-default bg-surface shadow-neu-inset mt-2 inline-flex flex-wrap gap-x-6 gap-y-1 border px-5 py-4 text-sm">
               {item.barcode ? (
                 <span>
-                  <span className="text-fg-body-subtle">Штрих-код: </span>
+                  <span className="text-fg-body-subtle">{t('detail:about.barcode')}: </span>
                   <span className="text-fg-heading font-medium">{item.barcode}</span>
                 </span>
               ) : null}
               {item.catalogNumber ? (
                 <span>
-                  <span className="text-fg-body-subtle">Каталожный №: </span>
+                  <span className="text-fg-body-subtle">{t('detail:about.catalog_number')}: </span>
                   <span className="text-fg-heading font-medium">{item.catalogNumber}</span>
                 </span>
               ) : null}
@@ -230,10 +232,10 @@ export function DetailPage() {
         {/* Об альбоме */}
         {albumNotes || wikipediaHtml || extendedMeta || aboutLoading ? (
           <section>
-            <h2 className="text-fg-heading mb-5 text-2xl font-semibold">Об альбоме</h2>
+            <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:about.title')}</h2>
             {aboutLoading ? (
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border p-10">
-                <p className="text-fg-body-subtle text-sm">Загружаю информацию…</p>
+                <p className="text-fg-body-subtle text-sm">{t('detail:about.loading')}</p>
               </div>
             ) : (
               <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
@@ -242,7 +244,7 @@ export function DetailPage() {
                     <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
                       {extendedMeta.country ? (
                         <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
-                          <span className="text-fg-body-subtle text-sm">Страна</span>
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.country')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.country}
                           </span>
@@ -250,7 +252,7 @@ export function DetailPage() {
                       ) : null}
                       {extendedMeta.released ? (
                         <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
-                          <span className="text-fg-body-subtle text-sm">Релиз</span>
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.release_date')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.released}
                           </span>
@@ -258,7 +260,7 @@ export function DetailPage() {
                       ) : null}
                       {extendedMeta.format ? (
                         <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
-                          <span className="text-fg-body-subtle text-sm">Формат</span>
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.format')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.format}
                           </span>
@@ -266,7 +268,7 @@ export function DetailPage() {
                       ) : null}
                       {extendedMeta.labels?.length ? (
                         <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
-                          <span className="text-fg-body-subtle text-sm">Лейбл</span>
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.label')}</span>
                           <span className="text-fg-heading text-right text-sm font-medium">
                             {extendedMeta.labels.join(', ')}
                           </span>
@@ -274,7 +276,7 @@ export function DetailPage() {
                       ) : null}
                       {extendedMeta.barcode?.length ? (
                         <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
-                          <span className="text-fg-body-subtle text-sm">Штрих-код</span>
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.barcode')}</span>
                           <span className="text-fg-heading text-right font-mono text-xs font-medium">
                             {extendedMeta.barcode.join(', ')}
                           </span>
@@ -283,7 +285,7 @@ export function DetailPage() {
                       {extendedMeta.community ? (
                         <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
                           <span className="text-fg-body-subtle text-sm">
-                            Сообщество (have/want)
+                            {t('detail:about.have_want')}
                           </span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.community.have} / {extendedMeta.community.want}
@@ -292,7 +294,7 @@ export function DetailPage() {
                       ) : null}
                       {extendedMeta.extraArtists?.length ? (
                         <div className="border-border-default col-span-full flex flex-col gap-1 border-b pb-2">
-                          <span className="text-fg-body-subtle text-sm">Участники</span>
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.artists')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.extraArtists
                               .map((a) => `${a.name}${a.role ? ` (${a.role})` : ''}`)
@@ -302,14 +304,14 @@ export function DetailPage() {
                       ) : null}
                       {extendedMeta.discogsUrl ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-fg-body-subtle text-sm">Discogs</span>
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.discogs')}</span>
                           <a
                             href={extendedMeta.discogsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-fg-brand hover:text-fg-brand-strong inline-flex items-center gap-1 text-sm underline underline-offset-2"
                           >
-                            <span>открыть</span>
+                            <span>{t('detail:about.open')}</span>
                             <ExternalLinkIcon />
                           </a>
                         </div>
@@ -319,7 +321,7 @@ export function DetailPage() {
                   {albumNotes ? (
                     <div>
                       <span className="text-fg-body-subtle block text-xs font-medium uppercase tracking-wide">
-                        Заметки Discogs
+                        {t('detail:about.notes_discogs')}
                       </span>
                       <p className="text-fg-body mt-2 whitespace-pre-wrap text-sm leading-relaxed">
                         {albumNotes}
@@ -329,7 +331,7 @@ export function DetailPage() {
                   {wikipediaHtml ? (
                     <div>
                       <span className="text-fg-body-subtle block text-xs font-medium uppercase tracking-wide">
-                        Wikipedia
+                        {t('detail:about.wikipedia')}
                       </span>
                       <p className="text-fg-body mt-2 text-sm leading-relaxed">{wikipediaHtml}</p>
                     </div>
@@ -342,38 +344,38 @@ export function DetailPage() {
 
         {/* Мои заметки */}
         <section>
-          <h2 className="text-fg-heading mb-5 text-2xl font-semibold">Мои заметки</h2>
+          <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:my_notes.title')}</h2>
           <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
             <div className="grid gap-x-6 gap-y-5 md:grid-cols-3">
               <Input
-                label="Где хранится"
+                label={t('detail:my_notes.location')}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
               <Input
-                label="Конверт"
-                placeholder="NM / VG+ / G…"
+                label={t('detail:my_notes.sleeve')}
+                placeholder={t('detail:my_notes.sleeve_placeholder')}
                 value={sleeveCondition}
                 onChange={(e) => setSleeveCondition(e.target.value)}
               />
               <Input
-                label="Носитель"
-                placeholder="NM / VG+ / G…"
+                label={t('detail:my_notes.media')}
+                placeholder={t('detail:my_notes.media_placeholder')}
                 value={mediaCondition}
                 onChange={(e) => setMediaCondition(e.target.value)}
               />
             </div>
             <div className="mt-5">
               <Textarea
-                label="Заметки"
-                placeholder="Состояние, особенности, история покупки…"
+                label={t('detail:my_notes.notes_label')}
+                placeholder={t('detail:my_notes.notes_placeholder')}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
             <div className="mt-5 flex justify-end">
               <Button onClick={onSaveMeta} disabled={updateItem.isPending}>
-                {updateItem.isPending ? 'Сохраняю…' : 'Сохранить'}
+                {updateItem.isPending ? t('common:button.saving') : t('common:button.save')}
               </Button>
             </div>
           </div>
@@ -381,7 +383,7 @@ export function DetailPage() {
 
         {/* Треклист и видео — показываем под заметками, когда правый рейл свёрнут */}
         <section className="mt-8 block lg:hidden">
-          <h2 className="text-fg-heading mb-5 text-2xl font-semibold">Треклист</h2>
+          <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:tracklist.title')}</h2>
           <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
             <DetailRail />
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useItems, useTracks } from '../lib/queries';
@@ -7,16 +8,10 @@ import { useSettings } from '../lib/settings-store';
 import { getAppInfo, type AppInfo } from '../lib/app-info';
 import type { MediaType } from '@vinylly/db';
 
-const typeLabels: Record<MediaType, string> = {
-  vinyl: 'Винил',
-  cd: 'CD',
-  cassette: 'Кассета',
-  other: 'Другое',
-};
-
 /* ─────────── DETAIL RAIL — Tracklist ─────────── */
 
 export function DetailRail() {
+  const { t } = useTranslation();
   const itemId = useUi((s) => s.detailItemId);
   const setTrack = useUi((s) => s.setTrack);
   const selectedTrackId = useUi((s) => s.detailTrackId);
@@ -77,21 +72,21 @@ export function DetailRail() {
   };
 
   if (!itemId || tracks.length === 0) {
-    return <p className="text-fg-body-subtle text-sm">{!itemId ? '' : 'Треклист не загружен.'}</p>;
+    return <p className="text-fg-body-subtle text-sm">{!itemId ? '' : t('layout:rail.detail.tracklist_empty')}</p>;
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-fg-heading text-lg font-semibold">Треклист</h3>
-      <nav className="flex flex-col" aria-label="Треклист">
-        {tracks.map((t) => {
-          const active = t.id === selectedTrackId;
-          const isExpanded = t.id === expandedId;
+      <h3 className="text-fg-heading text-lg font-semibold">{t('layout:rail.detail.tracklist')}</h3>
+      <nav className="flex flex-col" aria-label={t('layout:rail.detail.tracklist_aria')}>
+        {tracks.map((tr) => {
+          const active = tr.id === selectedTrackId;
+          const isExpanded = tr.id === expandedId;
           return (
-            <div key={t.id}>
+            <div key={tr.id}>
               <button
                 type="button"
-                onClick={() => onTrackClick(t.id)}
+                onClick={() => onTrackClick(tr.id)}
                 aria-pressed={active}
                 className={
                   'rounded-base group flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm transition-all duration-200 ' +
@@ -103,14 +98,14 @@ export function DetailRail() {
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="flex w-6 shrink-0 items-center gap-1">
                     {active ? <PlayIcon /> : <MusicNoteIcon />}
-                    <span className="text-fg-body-subtle text-xs font-medium">{t.position}</span>
+                    <span className="text-fg-body-subtle text-xs font-medium">{tr.position}</span>
                   </span>
-                  <span className="truncate font-medium">{t.title}</span>
+                  <span className="truncate font-medium">{tr.title}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {t.lyrics && !isExpanded ? (
+                  {tr.lyrics && !isExpanded ? (
                     <Badge tone="brand" pill>
-                      текст
+                      {t('layout:rail.detail.lyrics_badge')}
                     </Badge>
                   ) : null}
                   {isExpanded ? (
@@ -118,9 +113,9 @@ export function DetailRail() {
                       <CollapseIcon />
                     </span>
                   ) : null}
-                  {t.duration ? (
+                  {tr.duration ? (
                     <span className="text-fg-body-subtle text-xs">
-                      {formatDuration(t.duration)}
+                      {formatDuration(tr.duration)}
                     </span>
                   ) : null}
                 </div>
@@ -144,6 +139,7 @@ export function DetailRail() {
 }
 
 function VideoRail() {
+  const { t } = useTranslation();
   const videos = useUi((s) => s.releaseVideos);
 
   if (videos.length === 0) return null;
@@ -151,7 +147,7 @@ function VideoRail() {
   return (
     <div>
       <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
-        Видео
+        {t('layout:rail.detail.video')}
       </h4>
       <div className="flex flex-col gap-2">
         {videos.map((v, i) => (
@@ -174,10 +170,18 @@ function VideoRail() {
 /* ─────────── COLLECTION RAIL — Stats & Filters ─────────── */
 
 function CollectionRail() {
+  const { t } = useTranslation();
   const { data: items = [] } = useItems({});
   const filterType = useUi((s) => s.filterType);
   const search = useUi((s) => s.search);
   const setFilterType = useUi((s) => s.setFilterType);
+
+  const typeLabels: Record<string, string> = {
+    vinyl: t('common:media.vinyl'),
+    cd: t('common:media.cd'),
+    cassette: t('common:media.cassette'),
+    other: t('common:media.other'),
+  };
 
   const stats = useMemo(() => {
     const total = items.length;
@@ -194,15 +198,15 @@ function CollectionRail() {
     <div className="flex flex-col gap-5">
       {/* Stats */}
       <div>
-        <h3 className="text-fg-heading mb-3 text-lg font-semibold">Статистика</h3>
+        <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.collection.stats')}</h3>
         <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-6 py-5">
           <div className="text-fg-heading text-2xl font-semibold">{stats.total}</div>
-          <div className="text-fg-body-subtle text-xs">всего релизов</div>
+          <div className="text-fg-body-subtle text-xs">{t('layout:rail.collection.total_releases')}</div>
           <div className="mt-3 flex flex-col gap-1">
-            {(Object.keys(stats.byType) as MediaType[]).map((t) => (
-              <div key={t} className="flex items-center justify-between text-sm">
-                <span className="text-fg-body">{typeLabels[t] ?? t}</span>
-                <span className="text-fg-heading font-medium">{stats.byType[t]}</span>
+            {(Object.keys(stats.byType) as MediaType[]).map((k) => (
+              <div key={k} className="flex items-center justify-between text-sm">
+                <span className="text-fg-body">{typeLabels[k] ?? k}</span>
+                <span className="text-fg-heading font-medium">{stats.byType[k]}</span>
               </div>
             ))}
           </div>
@@ -213,7 +217,7 @@ function CollectionRail() {
       {hasFilters ? (
         <div>
           <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-            Активные фильтры
+            {t('layout:rail.collection.active_filters')}
           </h4>
           <div className="flex flex-wrap gap-2">
             {filterType !== 'all' ? (
@@ -241,6 +245,7 @@ function CollectionRail() {
 /* ─────────── ADD RAIL — Tips ─────────── */
 
 function AddRail() {
+  const { t } = useTranslation();
   const addTracklist = useUi((s) => s.addTracklist);
   const addTracklistLoading = useUi((s) => s.addTracklistLoading);
   const addReleaseMeta = useUi((s) => s.addReleaseMeta);
@@ -250,24 +255,24 @@ function AddRail() {
     return (
       <div className="flex flex-col gap-5">
         <div>
-          <h3 className="text-fg-heading mb-3 text-lg font-semibold">Советы</h3>
+          <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.add.tips')}</h3>
           <ul className="flex flex-col gap-3">
             <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-5 py-4 text-sm">
-              <span className="text-fg-heading block text-xs font-semibold">Штрих-код</span>
+              <span className="text-fg-heading block text-xs font-semibold">{t('layout:rail.add.barcode')}</span>
               <span className="text-fg-body-subtle text-xs">
-                Введите или отсканируйте штрих-код для быстрого поиска.
+                {t('layout:rail.add.barcode_desc')}
               </span>
             </li>
             <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-5 py-4 text-sm">
-              <span className="text-fg-heading block text-xs font-semibold">Каталожный номер</span>
+              <span className="text-fg-heading block text-xs font-semibold">{t('layout:rail.add.catalog')}</span>
               <span className="text-fg-body-subtle text-xs">
-                Номер на обложке / корешке пластинки или CD.
+                {t('layout:rail.add.catalog_desc')}
               </span>
             </li>
             <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border px-5 py-4 text-sm">
-              <span className="text-fg-heading block text-xs font-semibold">Вручную</span>
+              <span className="text-fg-heading block text-xs font-semibold">{t('layout:rail.add.manual')}</span>
               <span className="text-fg-body-subtle text-xs">
-                Если релиз не нашёлся в источниках, добавьте его вручную.
+                {t('layout:rail.add.manual_desc')}
               </span>
             </li>
           </ul>
@@ -282,23 +287,23 @@ function AddRail() {
       {/* Album info */}
       {addReleaseMeta ? (
         <div>
-          <h3 className="text-fg-heading mb-3 text-lg font-semibold">Об альбоме</h3>
+          <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.add.about_album')}</h3>
           <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
             {addReleaseMeta.country ? (
               <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
-                <span className="text-fg-body-subtle">Страна</span>
+                <span className="text-fg-body-subtle">{t('layout:rail.add.country')}</span>
                 <span className="text-fg-heading font-medium">{addReleaseMeta.country}</span>
               </div>
             ) : null}
             {addReleaseMeta.released ? (
               <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
-                <span className="text-fg-body-subtle">Релиз</span>
+                <span className="text-fg-body-subtle">{t('layout:rail.add.release')}</span>
                 <span className="text-fg-heading font-medium">{addReleaseMeta.released}</span>
               </div>
             ) : null}
             {addReleaseMeta.format ? (
               <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
-                <span className="text-fg-body-subtle">Формат</span>
+                <span className="text-fg-body-subtle">{t('layout:rail.add.format')}</span>
                 <span className="text-fg-heading text-right font-medium">
                   {addReleaseMeta.format}
                 </span>
@@ -306,7 +311,7 @@ function AddRail() {
             ) : null}
             {addReleaseMeta.labels?.length ? (
               <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
-                <span className="text-fg-body-subtle">Лейбл</span>
+                <span className="text-fg-body-subtle">{t('layout:rail.add.label')}</span>
                 <span className="text-fg-heading text-right font-medium">
                   {addReleaseMeta.labels.join(', ')}
                 </span>
@@ -318,11 +323,11 @@ function AddRail() {
 
       {/* Tracklist */}
       <div>
-        <h3 className="text-fg-heading mb-3 text-lg font-semibold">Треклист</h3>
+        <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.add.tracklist')}</h3>
         {addTracklistLoading ? (
-          <p className="text-fg-body-subtle text-sm">Загружаю…</p>
+          <p className="text-fg-body-subtle text-sm">{t('common:loading.generic')}</p>
         ) : (
-          <nav className="flex flex-col" aria-label="Треклист">
+          <nav className="flex flex-col" aria-label={t('layout:rail.add.tracklist')}>
             {addTracklist.map((t, i) => (
               <div
                 key={`${t.position}-${i}`}
@@ -352,6 +357,7 @@ function AddRail() {
 /* ─────────── SETTINGS RAIL — App Info ─────────── */
 
 function SettingsRail() {
+  const { t } = useTranslation();
   const discogsToken = useSettings((s) => s.discogsToken);
   const hasToken = Boolean(discogsToken);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
@@ -366,7 +372,7 @@ function SettingsRail() {
     <div className="flex flex-col gap-6">
       <div>
         <h3 className="text-fg-heading mb-3.5 text-sm font-semibold uppercase tracking-wide">
-          Интеграции
+          {t('layout:rail.settings.integrations')}
         </h3>
         <div
           className={
@@ -389,13 +395,13 @@ function SettingsRail() {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-fg-heading text-sm font-semibold">Discogs</span>
                 <Badge tone={hasToken ? 'success' : 'warning'} pill>
-                  {hasToken ? 'настроен' : 'не задан'}
+                  {hasToken ? t('layout:rail.settings.discogs_configured') : t('layout:rail.settings.discogs_missing')}
                 </Badge>
               </div>
               <p className="text-fg-body-subtle mt-1.5 text-xs leading-snug">
                 {hasToken
-                  ? 'Поиск, обложки и треклисты работают.'
-                  : 'Без токена поиск релизов недоступен.'}
+                  ? t('layout:rail.settings.discogs_ok')
+                  : t('layout:rail.settings.discogs_no_token')}
               </p>
             </div>
           </div>
@@ -404,11 +410,11 @@ function SettingsRail() {
 
       <div>
         <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
-          О приложении
+          {t('layout:rail.settings.about')}
         </h4>
         <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
           <div className="flex items-center justify-between px-6 py-4 text-sm">
-            <span className="text-fg-body-subtle">Версия</span>
+            <span className="text-fg-body-subtle">{t('layout:rail.settings.version')}</span>
             <a
               href={appInfo?.repo ? `${appInfo.repo}/releases` : '#'}
               target="_blank"
@@ -419,23 +425,22 @@ function SettingsRail() {
             </a>
           </div>
           <div className="flex items-center justify-between px-6 py-4 text-sm">
-            <span className="text-fg-body-subtle">Сборка</span>
+            <span className="text-fg-body-subtle">{t('layout:rail.settings.build')}</span>
             <a
               href={commitLink ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="text-fg-heading hover:text-fg-brand font-mono text-xs transition-colors"
-              title="SHA коммита"
             >
               {appInfo?.commit ? appInfo.commit : '—'}
             </a>
           </div>
           <div className="flex items-center justify-between px-6 py-4 text-sm">
-            <span className="text-fg-body-subtle">Платформа</span>
+            <span className="text-fg-body-subtle">{t('layout:rail.settings.platform')}</span>
             <span className="text-fg-heading font-medium">{appInfo?.target ?? '—'}</span>
           </div>
           <div className="flex items-center justify-between px-6 py-4 text-sm">
-            <span className="text-fg-body-subtle">Собрано</span>
+            <span className="text-fg-body-subtle">{t('layout:rail.settings.built_at')}</span>
             <span className="text-fg-heading font-mono text-xs">
               {appInfo?.builtAt
                 ? new Date(appInfo.builtAt).toISOString().slice(0, 16).replace('T', ' ')
@@ -451,21 +456,21 @@ function SettingsRail() {
             className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading mt-2 flex items-center gap-2.5 px-4 py-3 text-xs transition-all duration-200"
           >
             <ExternalLinkIcon />
-            Открыть на GitHub
+            {t('layout:rail.settings.open_github')}
           </a>
         ) : null}
       </div>
 
       <div>
         <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
-          Внешние ссылки
+          {t('layout:rail.settings.external_links')}
         </h4>
         <ul className="flex flex-col gap-1.5">
           {[
             { name: 'MusicBrainz', url: 'https://musicbrainz.org' },
             { name: 'Cover Art Archive', url: 'https://coverartarchive.org' },
             {
-              name: 'Discogs для разработчиков',
+              name: t('layout:rail.settings.discogs_dev'),
               url: 'https://www.discogs.com/settings/developers',
             },
             { name: 'Genius', url: 'https://genius.com' },
@@ -491,6 +496,7 @@ function SettingsRail() {
 /* ─────────── EXPORT ─────────── */
 
 export function RightRail() {
+  const { t } = useTranslation();
   const page = useUi((s) => s.page);
   const detailItemId = useUi((s) => s.detailItemId);
 
@@ -512,7 +518,7 @@ export function RightRail() {
 
   return (
     <aside
-      aria-label="Боковая панель"
+      aria-label={t('layout:sidebar.aria')}
       className="rounded-base border-border-default bg-surface shadow-neu-sm scrollbar-neu flex h-[calc(100vh-3rem)] w-0 shrink-0 flex-col overflow-hidden border opacity-0 transition-all duration-200 ease-in-out sm:h-[calc(100vh-3.5rem)] lg:w-72 lg:opacity-100"
     >
       <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto px-6 py-6">{rendered}</div>

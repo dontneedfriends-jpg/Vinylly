@@ -10,7 +10,8 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "i18n:extract": "i18next-parser --config i18next-parser.config.cjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.2.8",
@@ -19,8 +20,11 @@
     "@vinylly/host": "workspace:*",
     "@vinylly/media-providers": "workspace:*",
     "@vinylly/ui": "workspace:*",
+    "i18next": "^26.3.4",
+    "i18next-browser-languagedetector": "^8.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-i18next": "^17.0.8",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
@@ -30,6 +34,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.19",
+    "i18next-parser": "^9.4.0",
     "jsdom": "^24.0.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",

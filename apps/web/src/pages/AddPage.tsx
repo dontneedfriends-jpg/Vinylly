@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Card,
   CardBody,
@@ -22,20 +23,6 @@ import type { MediaType, CreateItemInput } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
 import { getProvidersRegistry } from '../lib/providers';
 
-const typeLabels: Record<MediaType, string> = {
-  vinyl: 'Винил',
-  cd: 'CD',
-  cassette: 'Кассета',
-  other: 'Другое',
-};
-
-const formatFilterOptions: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Все' },
-  { value: 'Vinyl', label: 'Винил' },
-  { value: 'CD', label: 'CD' },
-  { value: 'Cassette', label: 'Кассета' },
-];
-
 const discogsFormatMap: Record<string, string | undefined> = {
   Vinyl: 'Vinyl',
   CD: 'CD',
@@ -44,11 +31,26 @@ const discogsFormatMap: Record<string, string | undefined> = {
 };
 
 export function AddPage() {
+  const { t } = useTranslation();
   const openCollection = useUi((s) => s.openCollection);
   const setAddTracklist = useUi((s) => s.setAddTracklist);
   const setAddReleaseMeta = useUi((s) => s.setAddReleaseMeta);
   const { data: collection } = useDefaultCollection();
   const createItem = useCreateItem();
+
+  const typeLabels: Record<MediaType, string> = {
+    vinyl: t('common:media.vinyl'),
+    cd: t('common:media.cd'),
+    cassette: t('common:media.cassette'),
+    other: t('common:media.other'),
+  };
+
+  const formatFilterOptions: Array<{ value: string; label: string }> = [
+    { value: '', label: t('common:filter.all') },
+    { value: 'Vinyl', label: t('common:media.vinyl') },
+    { value: 'CD', label: t('common:media.cd') },
+    { value: 'Cassette', label: t('common:media.cassette') },
+  ];
 
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -187,8 +189,8 @@ export function AddPage() {
     return (
       <section className="animate-rise">
         <PageHeader
-          title="Добавить релиз"
-          subtitle="Найдите релиз в источниках (Discogs, MusicBrainz) или добавьте вручную."
+          title={t('add:page.title')}
+          subtitle={t('add:page.subtitle')}
         />
 
         <Card className="mb-6">
@@ -196,8 +198,8 @@ export function AddPage() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <div className="flex-1">
                 <Input
-                  label="Что искать"
-                  placeholder="Название, артист, штрих-код или каталожный номер"
+                  label={t('add:search.label')}
+                  placeholder={t('add:search.placeholder')}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -207,20 +209,20 @@ export function AddPage() {
               </div>
               <div className="flex items-end gap-2">
                 <Button onClick={onSearch} disabled={searching || !query.trim()}>
-                  {searching ? 'Ищу…' : 'Найти'}
+                  {searching ? t('add:search.button_searching') : t('add:search.button_search')}
                 </Button>
                 <Button variant="neutral" onClick={onManual}>
-                  Вручную
+                  {t('add:search.button_manual')}
                 </Button>
               </div>
             </div>
             <div className="mt-4">
-              <span className="text-fg-heading mb-2 block text-sm font-medium">Формат</span>
+              <span className="text-fg-heading mb-2 block text-sm font-medium">{t('add:search.filter_format')}</span>
               <SegmentedControl
                 options={formatFilterOptions}
                 value={formatFilter}
                 onChange={(v) => setFormatFilter(v)}
-                ariaLabel="Фильтр по формату носителя"
+                ariaLabel={t('add:search.filter_aria')}
                 size="sm"
               />
             </div>
@@ -275,9 +277,7 @@ export function AddPage() {
             ))}
           </ul>
         ) : !searching && results.length === 0 ? (
-          <p className="text-fg-body-subtle text-sm">
-            Введите запрос для поиска. Если ничего не найдено — добавьте релиз вручную.
-          </p>
+          <p className="text-fg-body-subtle text-sm">{t('add:search.hint')}</p>
         ) : null}
       </section>
     );
@@ -300,10 +300,10 @@ export function AddPage() {
               }}
               leftIcon={<BackIcon />}
             >
-              Назад
+              {t('common:button.back')}
             </Button>
             <Button onClick={() => void onSave()} disabled={saving}>
-              {saving ? 'Сохраняю…' : 'В коллекцию'}
+              {saving ? t('common:button.saving') : t('add:form.save_to_collection')}
             </Button>
           </div>
         }
@@ -350,32 +350,32 @@ export function AddPage() {
       {/* ─── Form ─── */}
       <div className="mt-8">
         <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
-          <h3 className="text-fg-heading mb-5 text-lg font-semibold">Детали копии</h3>
+          <h3 className="text-fg-heading mb-5 text-lg font-semibold">{t('add:form.manual_title')}</h3>
           <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
-            <Input label="Штрих-код" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
+            <Input label={t('add:form.barcode')} value={barcode} onChange={(e) => setBarcode(e.target.value)} />
             <Input
-              label="Каталожный номер"
+              label={t('add:form.catalog_number')}
               value={catalogNumber}
               onChange={(e) => setCatalogNumber(e.target.value)}
             />
             <Input
-              label="Где хранится"
-              placeholder="Полка, коробка, шкаф…"
+              label={t('add:form.location')}
+              placeholder={t('add:form.location_placeholder')}
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             />
           </div>
           <div className="mt-5">
             <Textarea
-              label="Заметки"
-              placeholder="Состояние, особенности, история покупки…"
+              label={t('add:form.notes')}
+              placeholder={t('add:form.notes_placeholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
           <div className="mt-6 flex justify-end">
             <Button onClick={() => void onSave()} disabled={saving}>
-              {saving ? 'Сохраняю…' : 'В коллекцию'}
+              {saving ? t('common:button.saving') : t('add:form.save_to_collection')}
             </Button>
           </div>
         </div>

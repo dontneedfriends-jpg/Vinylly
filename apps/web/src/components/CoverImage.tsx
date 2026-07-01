@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getHostShell } from '@vinylly/host';
 
 export interface CoverImageProps {
@@ -23,6 +24,7 @@ export function CoverImage({
   size = 'thumb',
   className = '',
 }: CoverImageProps) {
+  const { t } = useTranslation();
   const [src, setSrc] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'ok' | 'missing'>('loading');
 
@@ -87,7 +89,7 @@ export function CoverImage({
       ) : status === 'loading' ? (
         <span className="text-fg-body-subtle text-xs">…</span>
       ) : (
-        <span className="text-fg-body-subtle px-3 text-center text-xs">Нет обложки</span>
+        <span className="text-fg-body-subtle px-3 text-center text-xs">{t('common:cover.no_cover')}</span>
       )}
     </div>
   );

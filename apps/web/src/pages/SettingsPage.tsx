@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Badge,
   Card,
@@ -7,6 +8,7 @@ import {
   CardFooter,
   Button,
   Input,
+  SegmentedControl,
   PageHeader,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
@@ -21,6 +23,7 @@ import {
   readFileText,
 } from '../lib/import-export';
 import { useSettings } from '../lib/settings-store';
+import { useLocale } from '../lib/locale-store';
 import { resetProvidersRegistry } from '../lib/providers';
 import { getHostShell } from '@vinylly/host';
 import type { CreateItemInput, TrackRecord } from '@vinylly/db';
@@ -28,6 +31,7 @@ import type { CreateItemInput, TrackRecord } from '@vinylly/db';
 type Status = { kind: 'idle' | 'ok' | 'error'; message: string };
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const openCollection = useUi((s) => s.openCollection);
   const { data: collection } = useDefaultCollection();
   const { data: items = [] } = useItems({});
@@ -42,7 +46,7 @@ export function SettingsPage() {
     const bundle = buildBundle(items, tracksByRelease);
     const date = new Date().toISOString().slice(0, 10);
     downloadFile(`vinylly-${date}.json`, bundleToJson(bundle), 'application/json');
-    setStatus({ kind: 'ok', message: `Экспортировано ${items.length} релизов в JSON.` });
+    setStatus({ kind: 'ok', message: t('settings:export.done', { count: items.length }) });
   };
 
   const onExportCsv = async () => {
@@ -50,7 +54,7 @@ export function SettingsPage() {
     const bundle = buildBundle(items, tracksByRelease);
     const date = new Date().toISOString().slice(0, 10);
     downloadFile(`vinylly-${date}.csv`, bundleToCsv(bundle), 'text/csv;charset=utf-8');
-    setStatus({ kind: 'ok', message: `Экспортировано ${items.length} релизов в CSV.` });
+    setStatus({ kind: 'ok', message: t('settings:export.done', { count: items.length }) });
   };
 
   const onImport = async (file: File) => {
@@ -77,10 +81,10 @@ export function SettingsPage() {
             coverRemote: it.release.coverRemote,
             thumbRemote: it.release.thumbRemote,
           },
-          tracklist: it.tracklist.map((t) => ({
-            position: t.position,
-            title: t.title,
-            duration: t.duration,
+          tracklist: it.tracklist.map((tr) => ({
+            position: tr.position,
+            title: tr.title,
+            duration: tr.duration,
           })),
           notes: it.notes,
           location: it.location,
@@ -94,7 +98,7 @@ export function SettingsPage() {
         await itemRepo.create(input);
         added += 1;
       }
-      setStatus({ kind: 'ok', message: `Импортировано ${added} релизов.` });
+      setStatus({ kind: 'ok', message: t('settings:import.done', { count: added }) });
     } catch (e) {
       setStatus({ kind: 'error', message: (e as Error).message });
     } finally {
@@ -105,17 +109,21 @@ export function SettingsPage() {
   return (
     <section className="animate-rise">
       <PageHeader
-        title="Настройки"
-        subtitle="API-ключи, импорт и экспорт коллекции, бэкап данных."
+        title={t('settings:page.title')}
+        subtitle={t('settings:page.subtitle')}
         actions={
           <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />}>
-            К коллекции
+            {t('settings:page.to_collection')}
           </Button>
         }
       />
 
       <div className="flex flex-col gap-6">
+        <SupportCard />
+
         <DiscogsCard token={discogsToken} onSave={setDiscogsToken} onClear={clearDiscogsToken} />
+
+        <LanguageCard />
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
@@ -125,27 +133,25 @@ export function SettingsPage() {
                   <ExportIcon />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <h3 className="text-fg-heading text-base font-semibold leading-tight">Экспорт</h3>
+                  <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:export.title')}</h3>
                   <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
-                    Скачайте коллекцию в файл
+                    {t('settings:export.description')}
                   </p>
                 </div>
               </div>
             </CardHeader>
             <CardBody className="px-12 py-6">
               <p className="text-fg-body-subtle text-[15px] leading-relaxed">
-                В коллекции сейчас:{' '}
-                <span className="text-fg-heading font-medium">{items.length}</span> релиз(ов).
-                Экспорт включает метаданные и треклист (без обложек).
+                {t('settings:export.collection_count', { count: items.length })}
               </p>
             </CardBody>
             <CardFooter className="pb-8 pt-5">
               <div className="ml-auto flex flex-wrap items-center gap-3">
                 <Button variant="neutral" onClick={onExportCsv} disabled={items.length === 0}>
-                  Скачать CSV
+                  {t('settings:export.csv')}
                 </Button>
                 <Button onClick={onExportJson} disabled={items.length === 0}>
-                  Скачать JSON
+                  {t('settings:export.json')}
                 </Button>
               </div>
             </CardFooter>
@@ -158,25 +164,24 @@ export function SettingsPage() {
                   <ImportIcon />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <h3 className="text-fg-heading text-base font-semibold leading-tight">Импорт</h3>
+                  <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:import.title')}</h3>
                   <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
-                    Загрузите ранее экспортированный файл
+                    {t('settings:import.description')}
                   </p>
                 </div>
               </div>
             </CardHeader>
             <CardBody className="px-12 py-6">
               <p className="text-fg-body-subtle text-[15px] leading-relaxed">
-                Импортируйте ранее экспортированный JSON. Релизы добавляются к коллекции; дубликаты
-                по source+sourceId не создаются.
+                {t('settings:import.body')}
               </p>
-              {busy ? <p className="text-fg-body-subtle mt-3 text-sm">Импортирую…</p> : null}
+              {busy ? <p className="text-fg-body-subtle mt-3 text-sm">{t('settings:import.progress')}</p> : null}
             </CardBody>
             <CardFooter className="pb-8 pt-5">
               <div className="ml-auto">
                 <label className="border-border-default bg-surface text-fg-heading rounded-base shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex cursor-pointer items-center gap-2.5 border px-5 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out">
                   <UploadIcon />
-                  <span>Выбрать файл…</span>
+                  <span>{t('settings:import.button')}</span>
                   <input
                     type="file"
                     accept="application/json,.json"
@@ -203,6 +208,105 @@ export function SettingsPage() {
   );
 }
 
+function LanguageCard() {
+  const { t } = useTranslation();
+  const locale = useLocale((s) => s.locale);
+  const setLocale = useLocale((s) => s.setLocale);
+
+  return (
+    <Card>
+      <CardHeader className="pb-6 pt-8">
+        <div className="flex items-start gap-5">
+          <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
+            <GlobeIcon />
+          </div>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:language.title')}</h3>
+          </div>
+        </div>
+      </CardHeader>
+      <CardBody className="px-12 py-6">
+        <SegmentedControl
+          value={locale}
+          onChange={(v) => setLocale(v)}
+          options={[
+            { value: 'ru', label: t('settings:language.ru') },
+            { value: 'en', label: t('settings:language.en') },
+          ]}
+          size="sm"
+        />
+      </CardBody>
+    </Card>
+  );
+}
+
+function SupportCard() {
+  const { t } = useTranslation();
+
+  return (
+    <Card>
+      <CardHeader className="pb-6 pt-8">
+        <div className="flex items-start gap-5">
+          <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
+            <HeartIcon />
+          </div>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:support.title')}</h3>
+            <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
+              {t('settings:support.description')}
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardBody className="px-12 py-6">
+        <div className="flex flex-wrap gap-3">
+          <a
+            href="https://boosty.to/annenskei/donate"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex items-center gap-2 border px-4 py-2 text-sm font-medium transition-all duration-200"
+          >
+            <HeartSmallIcon />
+            {t('settings:support.boosty')}
+          </a>
+          <a
+            href="https://dalink.to/annenskei"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex items-center gap-2 border px-4 py-2 text-sm font-medium transition-all duration-200"
+          >
+            <HeartSmallIcon />
+            {t('settings:support.donationalerts')}
+          </a>
+        </div>
+        <div className="mt-6 space-y-3">
+          <p className="text-fg-body-subtle text-xs font-medium uppercase tracking-wide">Crypto</p>
+          <div className="flex flex-col gap-2">
+            <span className="text-fg-body flex items-center gap-2 text-xs">
+              <span className="text-fg-body-subtle shrink-0 w-16">Bitcoin</span>
+              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-inset">
+                bc1qvuhvewu3rjth80wnpdxkrl6vwtgjtspszkcqap
+              </code>
+            </span>
+            <span className="text-fg-body flex items-center gap-2 text-xs">
+              <span className="text-fg-body-subtle shrink-0 w-16">Ethereum</span>
+              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-inset">
+                0xc126080ffD216827A37850a5511cf1273E303E73
+              </code>
+            </span>
+            <span className="text-fg-body flex items-center gap-2 text-xs">
+              <span className="text-fg-body-subtle shrink-0 w-16">Solana</span>
+              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-inset">
+                516jeJxi1gwaRH7aEEiopAUAGNHKMrUxWv4cfGm32GhB
+              </code>
+            </span>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 interface DiscogsCardProps {
   token: string;
   onSave(token: string): Promise<void>;
@@ -210,6 +314,7 @@ interface DiscogsCardProps {
 }
 
 function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -227,7 +332,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
     e?.preventDefault();
     const next = draft.trim();
     if (!next) {
-      setStatus({ kind: 'error', message: 'Введите токен, прежде чем сохранить.' });
+      setStatus({ kind: 'error', message: t('settings:discogs.error_empty') });
       return;
     }
     setBusy('save');
@@ -238,7 +343,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
       resetProvidersRegistry();
       setDraft('');
       setRevealed(false);
-      setStatus({ kind: 'ok', message: 'Токен сохранён. Поиск Discogs активирован.' });
+      setStatus({ kind: 'ok', message: t('settings:discogs.saved_ok') });
     } catch (err) {
       setStatus({ kind: 'error', message: (err as Error).message });
     } finally {
@@ -256,7 +361,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
       setDraft('');
       setRevealed(false);
       setConfirmingDelete(false);
-      setStatus({ kind: 'ok', message: 'Токен удалён.' });
+      setStatus({ kind: 'ok', message: t('settings:discogs.cleared_ok') });
     } catch (err) {
       setStatus({ kind: 'error', message: (err as Error).message });
     } finally {
@@ -276,12 +381,12 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
           headers: { Authorization: `Discogs token=${token}` },
         });
       const who = res.username ? ` (@${res.username})` : '';
-      setTestResult({ kind: 'ok', message: `Подключение установлено${who}.` });
+      setTestResult({ kind: 'ok', message: t('settings:discogs.test_ok', { username: who }) });
     } catch (err) {
       const msg = (err as Error).message ?? 'неизвестная ошибка';
       setTestResult({
         kind: 'error',
-        message: `Не удалось подключиться: ${msg}. Проверьте токен и интернет-соединение.`,
+        message: t('settings:discogs.test_fail', { error: msg }),
       });
     } finally {
       setBusy(null);
@@ -306,19 +411,19 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
             <VinylIcon />
           </div>
           <div className="min-w-0 flex-1 pt-1">
-            <h3 className="text-fg-heading text-lg font-semibold leading-tight">Discogs</h3>
+            <h3 className="text-fg-heading text-lg font-semibold leading-tight">{t('settings:discogs.title')}</h3>
             <p className="text-fg-body-subtle mt-2 text-sm leading-snug">
-              Поиск релизов, обложки и треклисты
+              {t('settings:discogs.description')}
             </p>
           </div>
-          <Badge tone={hasToken ? 'success' : 'warning'} pill>
-            {hasToken ? 'Настроено' : 'Не задано'}
+            <Badge tone={hasToken ? 'success' : 'warning'} pill>
+            {hasToken ? t('settings:discogs.configured') : t('settings:discogs.missing')}
           </Badge>
         </div>
       </CardHeader>
       <CardBody className="space-y-8 px-12 py-6">
         <p className="text-fg-body text-[15px] leading-relaxed">
-          Чтобы искать релизы и подгружать метаданные, нужен{' '}
+          {t('settings:discogs.intro')}{' '}
           <a
             href="https://www.discogs.com/settings/developers"
             target="_blank"
@@ -326,22 +431,22 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
             className="text-fg-brand-strong hover:text-fg-heading decoration-border-brand font-medium underline decoration-1 underline-offset-4 transition-colors"
           >
             Personal Access Token
-          </a>{' '}
-          из настроек разработчика Discogs.{' '}
+          </a>
+          .{' '}
           <a
             href="https://www.discogs.com/settings/developers"
             target="_blank"
             rel="noopener noreferrer"
             className="text-fg-body-subtle hover:text-fg-heading inline-flex items-center gap-1 transition-colors"
           >
-            Открыть инструкцию
+            {t('settings:discogs.instruction_link')}
             <ArrowUpRightIcon />
           </a>
         </p>
 
         <form onSubmit={onSubmit} className="space-y-6">
           <Input
-            label="Personal Access Token"
+            label={t('settings:discogs.token_label')}
             type={inputType}
             value={displayValue}
             onChange={(e) => {
@@ -351,9 +456,9 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
             placeholder={
               hasToken
                 ? revealed
-                  ? 'Токен отображается'
-                  : '••••••••••••••••••••••••••'
-                : 'Вставьте токен сюда'
+                  ? t('settings:discogs.placeholder_configured_revealed')
+                  : t('settings:discogs.placeholder_configured_hidden')
+                : t('settings:discogs.placeholder_empty')
             }
             autoComplete="off"
             spellCheck={false}
@@ -363,7 +468,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
                 <button
                   type="button"
                   onClick={toggleReveal}
-                  aria-label={revealed ? 'Скрыть токен' : 'Показать токен'}
+                  aria-label={revealed ? t('settings:discogs.hide_aria') : t('settings:discogs.show_aria')}
                   className="text-fg-body hover:text-fg-heading pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
                 >
                   {revealed ? <EyeOffIcon /> : <EyeIcon />}
@@ -373,9 +478,9 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
             helperText={
               hasToken
                 ? revealed
-                  ? 'Сейчас отображается сохранённый токен. Чтобы заменить, начните вводить новое значение.'
-                  : 'Введите новое значение, чтобы заменить текущий токен.'
-                : 'Токен сохранится локально и будет использоваться только для запросов к api.discogs.com.'
+                  ? t('settings:discogs.helper_revealed')
+                  : t('settings:discogs.helper_configured')
+                : t('settings:discogs.helper_empty')
             }
           />
 
@@ -383,7 +488,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
             <div className="rounded-base border-border-danger-subtle bg-danger-soft animate-rise flex flex-wrap items-center gap-5 px-6 py-5">
               <AlertIcon className="text-fg-danger-strong h-5 w-5 shrink-0" />
               <span className="text-fg-body text-[15px] leading-relaxed">
-                Удалить сохранённый токен? Поиск и подгрузка перестанут работать.
+                {t('settings:discogs.delete_confirm')}
               </span>
               <div className="ml-auto flex items-center gap-2">
                 <Button
@@ -393,7 +498,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
                   onClick={() => setConfirmingDelete(false)}
                   disabled={busy === 'clear'}
                 >
-                  Отмена
+                  {t('common:button.cancel')}
                 </Button>
                 <Button
                   type="button"
@@ -402,7 +507,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
                   onClick={onClearClick}
                   disabled={busy === 'clear'}
                 >
-                  {busy === 'clear' ? 'Удаляю…' : 'Да, удалить'}
+                  {busy === 'clear' ? t('settings:discogs.delete_progress') : t('settings:discogs.delete_yes')}
                 </Button>
               </div>
             </div>
@@ -428,7 +533,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
               onClick={() => setConfirmingDelete(true)}
               disabled={busy !== null}
             >
-              Удалить
+              {t('settings:discogs.delete_button')}
             </Button>
           ) : null}
           {hasToken ? (
@@ -439,7 +544,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
               disabled={busy !== null}
               leftIcon={busy === 'test' ? undefined : <BoltIcon />}
             >
-              {busy === 'test' ? 'Проверяю…' : 'Проверить подключение'}
+              {busy === 'test' ? t('settings:discogs.test_progress') : t('settings:discogs.test_button')}
             </Button>
           ) : null}
           <Button
@@ -448,7 +553,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
             leftIcon={busy === 'save' ? undefined : <CheckIcon />}
             disabled={!dirty || busy !== null}
           >
-            {busy === 'save' ? 'Сохраняю…' : hasToken ? 'Сохранить изменения' : 'Сохранить токен'}
+            {busy === 'save' ? t('settings:discogs.save_progress') : hasToken ? t('settings:discogs.save_change') : t('settings:discogs.save_new')}
           </Button>
         </div>
       </CardFooter>
@@ -675,6 +780,52 @@ function UploadIcon() {
     >
       <path d="M12 16V4M6 10l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 20h16" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function HeartIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function HeartSmallIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" />
     </svg>
   );
 }

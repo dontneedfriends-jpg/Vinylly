@@ -1,17 +1,19 @@
+import { useTranslation } from 'react-i18next';
 import { SegmentedControl } from '@vinylly/ui';
 import { useTheme, type ThemeMode } from '../lib/theme';
-
-const labels: Record<ThemeMode, string> = {
-  light: 'Светлая',
-  dark: 'Тёмная',
-  system: 'Сист.',
-};
 
 const order: ThemeMode[] = ['light', 'dark', 'system'];
 
 export function ThemeToggle() {
+  const { t } = useTranslation();
   const mode = useTheme((s) => s.mode);
   const setMode = useTheme((s) => s.setMode);
+
+  const labels: Record<ThemeMode, string> = {
+    light: t('layout:theme.light'),
+    dark: t('layout:theme.dark'),
+    system: t('layout:theme.system'),
+  };
 
   const cycle = () => {
     const idx = order.indexOf(mode);
@@ -23,7 +25,7 @@ export function ThemeToggle() {
     <>
       <div className="hidden xl:block">
         <SegmentedControl
-          ariaLabel="Тема оформления"
+          ariaLabel={t('layout:theme.aria')}
           value={mode}
           onChange={(v) => setMode(v as ThemeMode)}
           options={order.map((m) => ({ value: m, label: labels[m] }))}
@@ -35,7 +37,7 @@ export function ThemeToggle() {
         type="button"
         onClick={cycle}
         title={labels[mode]}
-        aria-label={`Тема оформления: ${labels[mode]}. Нажмите, чтобы переключить.`}
+        aria-label={t('layout:theme.cycle_label', { mode: labels[mode] })}
         className="rounded-base bg-surface text-fg-body hover:text-fg-heading shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset border-border-default flex h-10 w-full items-center justify-center border transition-all duration-200 ease-in-out xl:hidden"
       >
         {mode === 'light' ? <SunIcon /> : mode === 'dark' ? <MoonIcon /> : <SystemIcon />}
