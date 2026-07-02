@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUi } from '../lib/ui-store';
-import { Card } from '@vinylly/ui';
 import { ThemeToggle } from './ThemeToggle';
 import { RightRail } from './RightRail';
 import { Titlebar } from './Titlebar';
@@ -65,63 +64,77 @@ export function Layout({ children }: LayoutProps) {
       <Titlebar />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="mx-auto flex w-full max-w-[1280px] gap-0 px-4 py-4 sm:px-6 sm:py-6">
-          {/* ─── Sidebar ─── */}
-          <Card
-            as="aside"
-            role="navigation"
-            aria-label={t('layout:nav.aria')}
-            className="mr-4 flex h-[calc(100vh-3rem)] w-16 shrink-0 flex-col overflow-hidden transition-all duration-200 ease-in-out sm:mr-6 sm:h-[calc(100vh-3.5rem)] xl:w-64"
-          >
-            <nav className="scrollbar-neu flex flex-1 flex-col gap-1 overflow-y-auto px-2 pt-5 xl:px-3">
-              {navItems.map((it) => {
-                const isActive = active === it.id;
-                return (
-                  <button
-                    key={it.id}
-                    type="button"
-                    onClick={() => onClick(it.id)}
-                    aria-current={isActive ? 'page' : undefined}
-                    title={it.label}
-                    className={
-                      'group relative rounded-base flex items-center justify-center gap-3 border px-2 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out xl:justify-start xl:px-3 ' +
-                      (isActive
-                        ? 'bg-surface text-fg-brand-strong shadow-neu-inset border-transparent'
-                        : 'bg-surface text-fg-body hover:text-fg-heading hover:shadow-neu-sm border-transparent')
-                    }
-                  >
-                    <span
-                      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center ${isActive ? 'text-fg-brand' : ''}`}
-                    >
-                      {it.icon}
-                    </span>
-                    <span className="hidden xl:inline">{it.label}</span>
-                    <span className="xl:hidden rounded-base bg-surface text-fg-body shadow-neu-md pointer-events-none invisible absolute left-full ml-2 whitespace-nowrap px-2 py-1 text-xs font-medium opacity-0 transition-all group-hover:visible group-hover:opacity-100">
-                      {it.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="flex shrink-0 flex-col gap-3 px-2 py-4 xl:px-3">
-              <ThemeToggle />
-            </div>
-          </Card>
-
-          {/* ─── Main frame ─── */}
-          <main className="rounded-base border-border-default bg-surface shadow-neu-md flex h-[calc(100vh-3rem)] min-w-0 flex-1 flex-col overflow-hidden border sm:h-[calc(100vh-3.5rem)]">
-            <div className="scrollbar-neu min-h-0 flex-1 overflow-y-auto px-6 py-8 sm:px-8 sm:py-10 md:px-10">
-              {children}
-            </div>
-          </main>
-
-          {/* ─── Right rail (contextual) ─── */}
-          <div className="ml-0 shrink-0 transition-all duration-200 ease-in-out lg:ml-6">
-            <RightRail />
+        {/* ─── Sidebar ─── */}
+        <aside
+          role="navigation"
+          aria-label={t('layout:nav.aria')}
+          className="flex w-56 shrink-0 flex-col overflow-hidden border-r border-border-default"
+        >
+          {/* Brand */}
+          <div className="flex items-center gap-2.5 border-b border-border-default px-4 py-3">
+            <VinylMark />
+            <span className="text-fg-heading text-sm font-semibold tracking-tight">Vinylly</span>
           </div>
+
+          {/* Navigation */}
+          <nav className="scrollbar-neu flex flex-1 flex-col gap-1 overflow-y-auto p-2">
+            {navItems.map((it) => {
+              const isActive = active === it.id;
+              return (
+                <button
+                  key={it.id}
+                  type="button"
+                  onClick={() => onClick(it.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex items-center gap-3 rounded-base px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out ${
+                    isActive
+                      ? 'bg-surface text-fg-brand-strong shadow-neu-inset border border-transparent'
+                      : 'text-fg-body hover:text-fg-heading hover:shadow-neu-sm border border-transparent'
+                  }`}
+                >
+                  <span
+                    className={`inline-flex h-5 w-5 shrink-0 items-center justify-center ${isActive ? 'text-fg-brand' : ''}`}
+                  >
+                    {it.icon}
+                  </span>
+                  <span>{it.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Theme toggle */}
+          <div className="border-t border-border-default px-2 py-2.5">
+            <ThemeToggle />
+          </div>
+        </aside>
+
+        {/* ─── Content area (main + right rail) ─── */}
+        <div className="flex flex-1 min-w-0 overflow-hidden">
+          <main className="scrollbar-neu min-h-0 flex-1 overflow-y-auto px-8 py-10 sm:px-10 sm:py-12 md:px-12">
+            {children}
+          </main>
+          <RightRail />
         </div>
       </div>
     </div>
+  );
+}
+
+function VinylMark() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      className="text-fg-brand h-5 w-5 shrink-0"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9.5" />
+      <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="0.8" fill="var(--color-surface)" stroke="none" />
+      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" strokeLinecap="round" />
+    </svg>
   );
 }

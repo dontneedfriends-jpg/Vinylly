@@ -568,7 +568,7 @@ export function RightRail() {
   return (
     <aside
       aria-label={t('layout:sidebar.aria')}
-      className="rounded-base border-border-default bg-surface shadow-neu-sm scrollbar-neu flex h-[calc(100vh-3rem)] w-0 shrink-0 flex-col overflow-hidden border opacity-0 transition-all duration-200 ease-in-out sm:h-[calc(100vh-3.5rem)] lg:w-72 lg:opacity-100"
+      className="rounded-base border-border-default bg-surface shadow-neu-sm scrollbar-neu flex h-full w-0 shrink-0 flex-col overflow-hidden border opacity-0 transition-all duration-200 ease-in-out lg:w-72 lg:opacity-100"
     >
       <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto px-6 py-6">{rendered}</div>
     </aside>

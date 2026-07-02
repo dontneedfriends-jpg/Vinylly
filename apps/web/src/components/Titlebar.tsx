@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { isTauriEnvironment } from '@vinylly/host';
-import { useUi } from '../lib/ui-store';
 import {
   closeWindow,
   isMaximized,
@@ -9,22 +7,13 @@ import {
   startDragging,
   toggleMaximize,
 } from '../lib/window-controls';
-import { buildInfoText, getAppInfo } from '../lib/app-info';
 
 export function Titlebar() {
-  const { t } = useTranslation();
-  const page = useUi((s) => s.page);
-  const openCollection = useUi((s) => s.openCollection);
   const [tauri, setTauri] = useState(false);
   const [maximized, setMaximized] = useState(false);
-  const [buildLabel, setBuildLabel] = useState<string | null>(null);
 
   useEffect(() => {
     setTauri(isTauriEnvironment());
-  }, []);
-
-  useEffect(() => {
-    void getAppInfo().then((info) => setBuildLabel(buildInfoText(info)));
   }, []);
 
   useEffect(() => {
@@ -35,9 +24,7 @@ export function Titlebar() {
       try {
         const m = await isMaximized();
         if (!cancelled) setMaximized(m);
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
     void refresh();
 
@@ -49,11 +36,7 @@ export function Titlebar() {
     };
   }, [tauri]);
 
-  const onBrandClick = () => {
-    openCollection();
-  };
-
-  const onTitleMouseDown = (e: React.MouseEvent) => {
+  const onMouseDown = (e: React.MouseEvent) => {
     if (!tauri) return;
     if (e.target !== e.currentTarget) return;
     if (e.button !== 0) return;
@@ -62,94 +45,41 @@ export function Titlebar() {
 
   return (
     <header
-      className="bg-surface text-fg-body border-border-default flex h-10 shrink-0 select-none items-center justify-between border-b"
+      className="bg-surface flex h-9 shrink-0 select-none items-center border-b border-border-default"
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
-      {/* Brand (left) — also draggable */}
       <div
-        className="flex h-full flex-1 cursor-pointer items-center gap-2.5 px-4"
-        onMouseDown={onTitleMouseDown}
-        onClick={onBrandClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onBrandClick();
-          }
-        }}
-        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-      >
-        <VinylMark />
-        <div className="flex flex-col leading-none">
-          <span className="text-fg-heading text-sm font-semibold tracking-tight">Vinylly</span>
-          <span className="text-fg-body-subtle text-[10px]">{t('layout:titlebar.app_name')}</span>
-        </div>
-      </div>
-
-      {/* Center — drag region */}
-      <div
-        className="hidden h-full flex-1 md:block"
-        onMouseDown={onTitleMouseDown}
+        className="h-full flex-1"
+        onMouseDown={onMouseDown}
         onDoubleClick={() => {
           if (tauri) void toggleMaximize();
         }}
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         aria-hidden
       />
-
-      {/* Right — current page indicator + window controls */}
       <div
         className="flex h-full items-center gap-1 px-2"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
-        <span className="text-fg-body-subtle mr-2 hidden text-xs font-medium uppercase tracking-wide md:inline">
-          {pageLabel(t, page)}
-        </span>
-        {buildLabel ? (
-          <span
-            className="text-fg-body-subtle mr-1 hidden font-mono text-[10px] md:inline"
-            title={t('layout:titlebar.version_build')}
-          >
-            {buildLabel}
-          </span>
-        ) : null}
-
         {tauri ? <WindowControls maximized={maximized} /> : null}
       </div>
     </header>
   );
 }
 
-function pageLabel(t: (key: string) => string, page: string): string {
-  switch (page) {
-    case 'collection':
-      return t('layout:titlebar.page_collection');
-    case 'add':
-      return t('layout:titlebar.page_add');
-    case 'detail':
-      return t('layout:titlebar.page_detail');
-    case 'settings':
-      return t('layout:titlebar.page_settings');
-    default:
-      return '';
-  }
-}
-
 function WindowControls({ maximized }: { maximized: boolean }) {
-  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-1">
-      <TitlebarButton onClick={() => void minimizeWindow()} ariaLabel={t('layout:titlebar.minimize')}>
+      <TitlebarButton onClick={() => void minimizeWindow()} ariaLabel="Minimize">
         <MinimizeIcon />
       </TitlebarButton>
       <TitlebarButton
         onClick={() => void toggleMaximize()}
-        ariaLabel={maximized ? t('layout:titlebar.restore') : t('layout:titlebar.maximize')}
+        ariaLabel={maximized ? 'Restore' : 'Maximize'}
       >
         {maximized ? <RestoreIcon /> : <MaximizeIcon />}
       </TitlebarButton>
-      <TitlebarButton onClick={() => void closeWindow()} ariaLabel={t('layout:titlebar.close')} variant="danger">
+      <TitlebarButton onClick={() => void closeWindow()} ariaLabel="Close" variant="danger">
         <CloseIcon />
       </TitlebarButton>
     </div>
@@ -186,34 +116,9 @@ function TitlebarButton({
   );
 }
 
-function VinylMark() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      className="text-fg-brand h-5 w-5 shrink-0"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="9.5" />
-      <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r="0.8" fill="var(--color-surface)" stroke="none" />
-      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function MinimizeIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-3.5 w-3.5"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
       <path d="M5 13h14" strokeLinecap="round" />
     </svg>
   );
@@ -221,14 +126,7 @@ function MinimizeIcon() {
 
 function MaximizeIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-3.5 w-3.5"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
       <rect x="5" y="5" width="14" height="14" rx="1.5" />
     </svg>
   );
@@ -236,14 +134,7 @@ function MaximizeIcon() {
 
 function RestoreIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-3.5 w-3.5"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
       <rect x="7" y="7" width="11" height="11" rx="1.5" />
       <path d="M4 16V6a1.5 1.5 0 0 1 1.5-1.5H16" strokeLinecap="round" />
     </svg>
@@ -252,14 +143,7 @@ function RestoreIcon() {
 
 function CloseIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-3.5 w-3.5"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
       <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
     </svg>
   );
