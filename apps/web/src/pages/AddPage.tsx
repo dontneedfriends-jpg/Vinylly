@@ -74,6 +74,7 @@ export function AddPage() {
   const [sleeveCondition, setSleeveCondition] = useState('');
   const [mediaCondition, setMediaCondition] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [coverLightboxTrigger, setCoverLightboxTrigger] = useState(0);
 
   const onSearch = async () => {
     if (!query.trim()) return;
@@ -207,7 +208,7 @@ export function AddPage() {
   if (!selected) {
     return (
       <section className="animate-rise">
-        <PageHeader
+        <PageHeader level="h1"
           title={t('add:page.title')}
           subtitle={t('add:page.subtitle')}
         />
@@ -297,15 +298,15 @@ export function AddPage() {
                         </span>
                         {r.release.year ? <span>· {r.release.year}</span> : null}
                       </div>
-                      <h3 className="text-fg-heading mt-3 line-clamp-1 pl-3 text-base font-semibold leading-tight">
+                      <h3 className="text-fg-heading mt-3 line-clamp-1 text-base font-semibold leading-tight">
                         {r.release.title}
                       </h3>
-                      <p className="text-fg-body-subtle mt-1 line-clamp-1 pl-3 text-sm leading-relaxed">
+                      <p className="text-fg-body-subtle mt-1 line-clamp-1 text-sm leading-relaxed">
                         {r.release.artist}
                       </p>
                     </div>
                   </div>
-                </Card>
+                  </Card>
               </li>
             ))}
           </ul>
@@ -318,35 +319,15 @@ export function AddPage() {
 
   return (
     <section className="animate-rise">
-      <PageHeader
-        title={releaseDetail?.title ?? selected.title}
-        subtitle={releaseDetail?.artist ?? selected.artist}
-        actions={
-          <div className="flex gap-2">
-            <Button
-              variant="neutral"
-              onClick={() => {
-                setSelected(null);
-                setReleaseDetail(null);
-                setAddTracklist([], false);
-                setAddReleaseMeta(null);
-              }}
-              leftIcon={<BackIcon />}
-            >
-              {t('common:button.back')}
-            </Button>
-            <Button onClick={() => void onSave()} disabled={saving}>
-              {saving ? t('common:button.saving') : t('add:form.save_to_collection')}
-            </Button>
-          </div>
-        }
-      />
-
-      {/* ─── Album preview card (like collection tile) ─── */}
-      <Card variant="interactive" as="div" className="w-full overflow-hidden text-left">
-        <div className="flex flex-col gap-6 p-8 md:flex-row">
+      <div className="w-full overflow-hidden text-left rounded-base border-border-default bg-surface shadow-neu-md border">
+        <div className="flex flex-col gap-6 p-10 md:flex-row">
           <div className="w-full shrink-0 md:w-[180px]">
-            <div className="rounded-base shadow-neu-inset aspect-square overflow-hidden">
+            <button
+              type="button"
+              className="rounded-base shadow-neu-xl aspect-square w-full overflow-hidden focus-visible:shadow-neu-xs focus-visible:border-border-default-strong cursor-pointer border-0 bg-transparent p-0"
+              onClick={() => setCoverLightboxTrigger((n) => n + 1)}
+              aria-label={selected?.title}
+            >
               <CoverImage
                 releaseId={`${selected.source}-${selected.sourceId}`}
                 coverPath={null}
@@ -354,9 +335,10 @@ export function AddPage() {
                 alt={selected.title}
                 size="full"
               />
-            </div>
+            </button>
             {releaseDetail?.images?.length ? (
               <Gallery
+                openLightbox={coverLightboxTrigger}
                 releaseId={`${selected.source}-${selected.sourceId}`}
                 images={releaseDetail.images.map((img) => ({
                   type: img.type,
@@ -366,12 +348,12 @@ export function AddPage() {
               />
             ) : null}
           </div>
-          <div className="flex flex-1 flex-col justify-center gap-3">
+          <div className="flex flex-1 flex-col justify-start gap-3">
             <div>
               <h2 className="text-fg-heading text-xl font-semibold">
                 {releaseDetail?.title ?? selected.title}
               </h2>
-              <p className="text-fg-body mt-0.5 text-sm">
+              <p className="text-fg-body mt-1 text-sm">
                 {releaseDetail?.artist ?? selected.artist}
               </p>
             </div>
@@ -388,13 +370,13 @@ export function AddPage() {
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* ─── Form ─── */}
       <div className="mt-8">
         <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
-          <h3 className="text-fg-heading mb-5 text-lg font-semibold">{t('add:form.manual_title')}</h3>
-          <div className="mb-5">
+          <h3 className="text-fg-heading mb-6 text-lg font-semibold">{t('add:form.manual_title')}</h3>
+          <div className="mb-6">
             <span className="text-fg-heading mb-2 block text-sm font-medium">{t('add:form.media_type')}</span>
             <SegmentedControl
               options={[
@@ -422,7 +404,7 @@ export function AddPage() {
               onChange={(e) => setLocation(e.target.value)}
             />
           </div>
-          <div className="mt-5 grid gap-x-6 gap-y-5 md:grid-cols-2">
+          <div className="mt-6 grid gap-x-6 gap-y-5 md:grid-cols-2">
             <ConditionPicker
               label={t('detail:my_notes.sleeve')}
               value={sleeveCondition}
@@ -434,7 +416,7 @@ export function AddPage() {
               onChange={setMediaCondition}
             />
           </div>
-          <div className="mt-5">
+          <div className="mt-6">
             <Textarea
               label={t('add:form.notes')}
               placeholder={t('add:form.notes_placeholder')}
@@ -442,7 +424,7 @@ export function AddPage() {
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
-          <div className="mt-5">
+          <div className="mt-6">
             <TagInput
               label={t('add:form.tags')}
               tags={tags}
@@ -450,7 +432,19 @@ export function AddPage() {
               placeholder={t('add:form.tags_placeholder')}
             />
           </div>
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <Button
+              variant="neutral"
+              onClick={() => {
+                setSelected(null);
+                setReleaseDetail(null);
+                setAddTracklist([], false);
+                setAddReleaseMeta(null);
+              }}
+              leftIcon={<BackIcon />}
+            >
+              {t('common:button.back')}
+            </Button>
             <Button onClick={() => void onSave()} disabled={saving}>
               {saving ? t('common:button.saving') : t('add:form.save_to_collection')}
             </Button>

@@ -37,6 +37,7 @@ export default {
         'border-brand-subtle': 'var(--color-border-brand-subtle)',
         'border-danger-subtle': 'var(--color-border-danger-subtle)',
         'border-success-subtle': 'var(--color-border-success-subtle)',
+        'border-warning-subtle': 'var(--color-border-warning-subtle)',
       },
       fontFamily: {
         sans: [

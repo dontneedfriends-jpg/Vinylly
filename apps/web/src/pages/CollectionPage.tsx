@@ -80,7 +80,7 @@ export function CollectionPage() {
 
   return (
     <section className="animate-rise">
-      <PageHeader
+      <PageHeader level="h1"
         title={t('collection:page.title')}
         subtitle={
           displayedItems.length === 0 && !isLoading
@@ -187,7 +187,6 @@ function ItemTile({ item, onOpen, typeLabels, onDelete }: { item: ItemRecord; on
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm(`${t('collection:item.delete_aria')} «${item.release.title}»?`)) return;
     onDelete();
   };
 
@@ -227,10 +226,10 @@ function ItemTile({ item, onOpen, typeLabels, onDelete }: { item: ItemRecord; on
             <span>{typeLabels[item.type]}</span>
             {item.release.year ? <span>· {item.release.year}</span> : null}
           </div>
-          <h3 className="text-fg-heading mt-3 line-clamp-1 pl-3 text-base font-semibold leading-tight">
+          <h3 className="text-fg-heading mt-3 line-clamp-1 text-base font-semibold leading-tight">
             {item.release.title}
           </h3>
-          <p className="text-fg-body-subtle mt-1 line-clamp-1 pl-3 text-sm leading-relaxed">
+          <p className="text-fg-body-subtle mt-1 line-clamp-1 text-sm leading-relaxed">
             {item.release.artist}
           </p>
         </div>
@@ -244,7 +243,6 @@ function ListItemTile({ item, onOpen, typeLabels, onDelete }: { item: ItemRecord
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm(`${t('collection:item.delete_aria')} «${item.release.title}»?`)) return;
     onDelete();
   };
 

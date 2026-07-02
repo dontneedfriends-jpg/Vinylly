@@ -42,7 +42,7 @@ export function ConditionPicker({
               onClick={() => onChange(active ? '' : opt.value)}
               aria-pressed={active}
               title={active ? undefined : opt.label}
-              className={`rounded-DEFAULT inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium transition-all duration-200 ${
+              className={`rounded-DEFAULT inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium transition-all duration-200 focus-visible:shadow-neu-xs focus-visible:border-border-default-strong ${
                 active
                   ? 'border-border-default bg-surface text-fg-brand-strong shadow-neu-sm'
                   : 'border-transparent bg-transparent text-fg-body-subtle hover:text-fg-body hover:shadow-neu-2xs'

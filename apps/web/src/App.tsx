@@ -129,7 +129,7 @@ function Toast() {
 
   return (
     <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-rise">
-      <div className="rounded-base border-border-default bg-surface shadow-neu-lg flex items-center gap-4 border px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.18)]">
+      <div className="rounded-base border-border-default bg-surface shadow-neu-lg flex items-center gap-4 border px-5 py-3">
         <span className="text-fg-body text-sm">{toast.message}</span>
         {toast.action ? (
           <button

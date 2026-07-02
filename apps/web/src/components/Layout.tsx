@@ -65,7 +65,7 @@ export function Layout({ children }: LayoutProps) {
       <Titlebar />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="mx-auto flex w-full max-w-[1400px] gap-0 px-4 py-4 sm:px-6 sm:py-6">
+        <div className="mx-auto flex w-full max-w-[1280px] gap-0 px-4 py-4 sm:px-6 sm:py-6">
           {/* ─── Sidebar ─── */}
           <Card
             as="aside"

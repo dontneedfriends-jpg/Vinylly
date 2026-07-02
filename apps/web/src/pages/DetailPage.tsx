@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker, TagInput, EmptyState } from '@vinylly/ui';
+import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker, TagInput, ConfirmModal } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useUpdateItem, useRemoveItem } from '../lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
@@ -36,6 +36,7 @@ export function DetailPage() {
   const [albumNotes, setAlbumNotes] = useState<string | null>(null);
   const [wikipediaHtml, setWikipediaHtml] = useState<string | null>(null);
   const [aboutLoading, setAboutLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [extendedMeta, setExtendedMeta] = useState<{
     country?: string;
     released?: string;
@@ -101,11 +102,11 @@ export function DetailPage() {
         if (cancelled) break;
         const wikiTitle = t.replace(/\s+/g, '_').replace(/[^\wа-яА-ЯёЁ\s_-]/g, '');
         try {
-          const res = await fetch(
+          const shell = getHostShell();
+          const data = await shell.net().fetchJson<{ extract?: string }>(
             `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`,
           );
-          if (res.ok && !cancelled) {
-            const data = (await res.json()) as { extract?: string };
+          if (!cancelled) {
             setWikipediaHtml(data.extract ?? null);
             found = true;
             break;
@@ -154,46 +155,9 @@ export function DetailPage() {
     });
   };
 
-  if (!item) {
-    return (
-      <section className="animate-rise">
-        <EmptyState
-          title={t('detail:page.no_release')}
-          description=""
-          action={
-            <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
-          }
-        />
-      </section>
-    );
-  }
 
   return (
     <section className="animate-rise">
-      <PageHeader
-        title={item.release.title}
-        subtitle={item.release.artist}
-        actions={
-          <div className="flex gap-2">
-            <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />}>
-              {t('detail:page.to_collection')}
-            </Button>
-            <Button
-              variant="neutral"
-              onClick={() => {
-                if (window.confirm(`${t('detail:page.delete')} «${item.release.title}»?`)) {
-                  removeItem.mutate(item.id);
-                  openCollection();
-                }
-              }}
-              leftIcon={<TrashIcon />}
-            >
-              {t('detail:page.delete')}
-            </Button>
-          </div>
-        }
-      />
-
       {/* ─── Hero: Cover + Key Info ─── */}
       <div className="flex flex-col gap-8 md:flex-row">
         {/* Cover */}
@@ -220,7 +184,7 @@ export function DetailPage() {
         </div>
 
         {/* Key Info */}
-        <div className="flex flex-1 flex-col justify-center gap-4">
+        <div className="flex flex-1 flex-col justify-start gap-4">
           <div>
             <h1 className="text-fg-heading text-3xl font-semibold md:text-4xl">
               {item.release.title}
@@ -241,7 +205,7 @@ export function DetailPage() {
           </div>
 
           {item.barcode || item.catalogNumber ? (
-            <div className="rounded-base border-border-default bg-surface shadow-neu-inset mt-2 inline-flex flex-wrap gap-x-6 gap-y-1 border px-5 py-4 text-sm">
+            <div className="rounded-base border-border-default bg-surface shadow-neu-inset inline-flex flex-wrap gap-x-6 gap-y-1 border px-5 py-4 text-sm">
               {item.barcode ? (
                 <span>
                   <span className="text-fg-body-subtle">{t('detail:about.barcode')}: </span>
@@ -256,6 +220,19 @@ export function DetailPage() {
               ) : null}
             </div>
           ) : null}
+
+          <div className="flex items-center gap-2">
+            <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />}>
+              {t('detail:page.to_collection')}
+            </Button>
+            <Button
+              variant="neutral"
+              onClick={() => setShowDeleteConfirm(true)}
+              leftIcon={<TrashIcon />}
+            >
+              {t('detail:page.delete')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -266,7 +243,7 @@ export function DetailPage() {
           <section>
             <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:about.title')}</h2>
             {aboutLoading ? (
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border p-10">
+              <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
                 <p className="text-fg-body-subtle text-sm">{t('detail:about.loading')}</p>
               </div>
             ) : (
@@ -425,6 +402,21 @@ export function DetailPage() {
           </div>
         </section>
       </div>
+
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title={t('detail:page.delete')}
+        message={`${t('detail:page.delete')} «${item.release.title}»?`}
+        confirmLabel={t('detail:page.delete')}
+        cancelLabel={t('common:button.cancel')}
+        variant="danger"
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          removeItem.mutate(item.id);
+          openCollection();
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </section>
   );
 }

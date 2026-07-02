@@ -46,8 +46,7 @@ export function Button({
     'bg-surface border border-border-default ' +
     `${shadowFor(variant)} ` +
     'transition-all duration-200 ease-in-out ' +
-    'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-neu-sm ' +
-    'focus:outline-none focus-visible:ring-2 focus-visible:ring-fg-brand/40';
+    'disabled:text-fg-disabled disabled:cursor-not-allowed disabled:hover:shadow-neu-sm';
 
   return (
     <button

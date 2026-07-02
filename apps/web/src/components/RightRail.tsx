@@ -4,8 +4,6 @@ import { Badge, Input } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useItems, useTracks } from '../lib/queries';
 import { getProvidersRegistry } from '../lib/providers';
-import { useSettings } from '../lib/settings-store';
-import { getAppInfo, type AppInfo } from '../lib/app-info';
 import type { MediaType } from '@vinylly/db';
 import { ExternalLink } from './ExternalLink';
 
@@ -122,7 +120,7 @@ export function DetailRail() {
                 </div>
               </button>
               {isExpanded && lyricsText ? (
-                <div className="border-border-default bg-surface/50 border-t px-4 py-4">
+                <div className="border-border-default bg-surface shadow-neu-inset rounded-base mt-0.5 border px-4 py-4">
                   <pre className="text-fg-body whitespace-pre-wrap font-sans text-xs leading-relaxed">
                     {lyricsText}
                   </pre>
@@ -544,210 +542,6 @@ function AddRail() {
 
 /* ─────────── SETTINGS RAIL — App Info ─────────── */
 
-function SettingsRail() {
-  const { t } = useTranslation();
-  const discogsToken = useSettings((s) => s.discogsToken);
-  const hasToken = Boolean(discogsToken);
-  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
-
-  useEffect(() => {
-    void getAppInfo().then(setAppInfo);
-  }, []);
-
-  const commitLink = appInfo?.commit ? `${appInfo.repo}/commit/${appInfo.commit}` : appInfo?.repo;
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h3 className="text-fg-heading mb-3.5 text-sm font-semibold uppercase tracking-wide">
-          {t('layout:rail.settings.integrations')}
-        </h3>
-        <div
-          className={
-            hasToken
-              ? 'rounded-base border-border-default bg-surface shadow-neu-2xs border px-6 py-5'
-              : 'rounded-base border-border-warning bg-warning-soft border px-6 py-5'
-          }
-        >
-          <div className="flex items-start gap-3.5">
-            <div
-              className={
-                hasToken
-                  ? 'rounded-base bg-surface shadow-neu-inset flex h-10 w-10 shrink-0 items-center justify-center'
-                  : 'rounded-base bg-surface flex h-10 w-10 shrink-0 items-center justify-center'
-              }
-            >
-              <VinylIcon />
-            </div>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-fg-heading text-sm font-semibold">Discogs</span>
-                <Badge tone={hasToken ? 'success' : 'warning'} pill>
-                  {hasToken ? t('layout:rail.settings.discogs_configured') : t('layout:rail.settings.discogs_missing')}
-                </Badge>
-              </div>
-              <p className="text-fg-body-subtle mt-1.5 text-xs leading-snug">
-                {hasToken
-                  ? t('layout:rail.settings.discogs_ok')
-                  : t('layout:rail.settings.discogs_no_token')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <SupportRail />
-
-      <div>
-        <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
-          {t('layout:rail.settings.about')}
-        </h4>
-        <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
-          <div className="flex items-center justify-between px-6 py-4 text-sm">
-            <span className="text-fg-body-subtle">{t('layout:rail.settings.version')}</span>
-            <ExternalLink
-              href={appInfo?.repo ? `${appInfo.repo}/releases` : '#'}
-              className="text-fg-heading hover:text-fg-brand font-medium transition-colors"
-            >
-              {appInfo?.version ?? '—'}
-            </ExternalLink>
-          </div>
-          <div className="flex items-center justify-between px-6 py-4 text-sm">
-            <span className="text-fg-body-subtle">{t('layout:rail.settings.build')}</span>
-            <ExternalLink
-              href={commitLink ?? '#'}
-              className="text-fg-heading hover:text-fg-brand font-mono text-xs transition-colors"
-            >
-              {appInfo?.commit ? appInfo.commit : '—'}
-            </ExternalLink>
-          </div>
-          <div className="flex items-center justify-between px-6 py-4 text-sm">
-            <span className="text-fg-body-subtle">{t('layout:rail.settings.platform')}</span>
-            <span className="text-fg-heading font-medium">{appInfo?.target ?? '—'}</span>
-          </div>
-          <div className="flex items-center justify-between px-6 py-4 text-sm">
-            <span className="text-fg-body-subtle">{t('layout:rail.settings.built_at')}</span>
-            <span className="text-fg-heading font-mono text-xs">
-              {appInfo?.builtAt
-                ? new Date(appInfo.builtAt).toISOString().slice(0, 16).replace('T', ' ')
-                : '—'}
-            </span>
-          </div>
-        </div>
-        {appInfo?.repo ? (
-          <ExternalLink
-            href={appInfo.repo}
-            className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading mt-2 flex items-center gap-2.5 px-4 py-3 text-xs transition-all duration-200"
-          >
-            <ExternalLinkIcon />
-            {t('layout:rail.settings.open_github')}
-          </ExternalLink>
-        ) : null}
-      </div>
-
-      <div>
-        <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
-          {t('layout:rail.settings.external_links')}
-        </h4>
-        <ul className="flex flex-col gap-1.5">
-          {[
-            { name: 'MusicBrainz', url: 'https://musicbrainz.org' },
-            { name: 'Cover Art Archive', url: 'https://coverartarchive.org' },
-            {
-              name: t('layout:rail.settings.discogs_dev'),
-              url: 'https://www.discogs.com/settings/developers',
-            },
-            { name: 'Genius', url: 'https://genius.com' },
-          ].map((src) => (
-            <li key={src.name}>
-              <ExternalLink
-                href={src.url}
-                className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-4 py-3 text-xs transition-all duration-200"
-              >
-                <ExternalLinkIcon />
-                {src.name}
-              </ExternalLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────── SUPPORT RAIL — Donations ─────────── */
-
-function HeartIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0" aria-hidden>
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CryptoIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0" aria-hidden>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v10M9 10l3-3 3 3M9 14l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SupportRail() {
-  const { t } = useTranslation();
-
-  return (
-    <div>
-      <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
-        {t('layout:rail.settings.support')}
-      </h4>
-      <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-6 py-5">
-        <ExternalLink
-          href="https://boosty.to/annenskei/donate"
-          className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200"
-        >
-          <HeartIcon />
-          {t('settings:support.boosty')}
-        </ExternalLink>
-        <ExternalLink
-          href="https://dalink.to/annenskei"
-          className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200"
-        >
-          <HeartIcon />
-          {t('settings:support.donationalerts')}
-        </ExternalLink>
-        <details className="group">
-          <summary className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex cursor-pointer items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200">
-            <CryptoIcon />
-            <span className="text-fg-heading font-medium">Crypto</span>
-          </summary>
-          <div className="mt-2 space-y-2 border-t border-border-default pt-2">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-fg-body-subtle shrink-0 w-14">Bitcoin</span>
-              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
-                bc1qvuhvewu3rjth80wnpdxkrl6vwtgjtspszkcqap
-              </code>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-fg-body-subtle shrink-0 w-14">Ethereum</span>
-              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
-                0xc126080ffD216827A37850a5511cf1273E303E73
-              </code>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-fg-body-subtle shrink-0 w-14">Solana</span>
-              <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
-                516jeJxi1gwaRH7aEEiopAUAGNHKMrUxWv4cfGm32GhB
-              </code>
-            </div>
-          </div>
-        </details>
-      </div>
-    </div>
-  );
-}
-
 /* ─────────── EXPORT ─────────── */
 
 export function RightRail() {
@@ -764,7 +558,7 @@ export function RightRail() {
       case 'add':
         return <AddRail />;
       case 'settings':
-        return <SettingsRail />;
+        return null;
     }
   };
 
@@ -880,43 +674,6 @@ function VideoIcon() {
     >
       <rect x="2" y="6" width="20" height="12" rx="2" />
       <path d="M10 9l5 3-5 3V9z" />
-    </svg>
-  );
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-3 w-3 shrink-0"
-      aria-hidden
-    >
-      <path
-        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function VinylIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="text-fg-body h-5 w-5"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5.5" />
-      <circle cx="12" cy="12" r="2" />
-      <circle cx="12" cy="12" r="0.6" fill="currentColor" />
     </svg>
   );
 }

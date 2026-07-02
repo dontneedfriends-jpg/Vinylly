@@ -1,232 +1,101 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Badge,
-  Card,
-  CardBody,
-  CardHeader,
-  CardFooter,
   Button,
   Input,
   SegmentedControl,
-  PageHeader,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
-import { itemRepo, trackRepo } from '../lib/db';
-import { useDefaultCollection, useItems } from '../lib/queries';
-import {
-  buildBundle,
-  bundleToCsv,
-  bundleToJson,
-  downloadFile,
-  parseBundle,
-  readFileText,
-} from '../lib/import-export';
 import { useSettings } from '../lib/settings-store';
 import { useLocale } from '../lib/locale-store';
+import { useTheme, type ThemeMode } from '../lib/theme';
+import { getAppInfo, type AppInfo } from '../lib/app-info';
 import { resetProvidersRegistry } from '../lib/providers';
 import { getHostShell } from '@vinylly/host';
 import { ExternalLink } from '../components/ExternalLink';
-import type { CreateItemInput, TrackRecord } from '@vinylly/db';
+import { serializeDb, restoreFromJsonFile } from '../lib/db';
 
-type Status = { kind: 'idle' | 'ok' | 'error'; message: string };
+type SettingsTab = 'language' | 'theme' | 'backup' | 'discogs' | 'about';
+
+const tabs: { id: SettingsTab; icon: React.ReactNode; labelKey: string }[] = [
+  { id: 'language', icon: <GlobeIcon />, labelKey: 'settings:language.title' },
+  { id: 'theme', icon: <PaletteIcon />, labelKey: 'Оформление' },
+  { id: 'backup', icon: <ShieldIcon />, labelKey: 'settings:backup.title' },
+  { id: 'discogs', icon: <VinylIcon />, labelKey: 'settings:discogs.title' },
+  { id: 'about', icon: <InfoIcon />, labelKey: 'О приложении' },
+];
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('language');
   const openCollection = useUi((s) => s.openCollection);
-  const { data: collection } = useDefaultCollection();
-  const { data: items = [] } = useItems({});
   const discogsToken = useSettings((s) => s.discogsToken);
   const setDiscogsToken = useSettings((s) => s.setDiscogsToken);
   const clearDiscogsToken = useSettings((s) => s.clearDiscogsToken);
-  const [status, setStatus] = useState<Status>({ kind: 'idle', message: '' });
-  const [busy, setBusy] = useState(false);
-
-  const onExportJson = async () => {
-    const tracksByRelease = await loadAllTracks(items.map((it) => it.release.id));
-    const bundle = buildBundle(items, tracksByRelease);
-    const date = new Date().toISOString().slice(0, 10);
-    downloadFile(`vinylly-${date}.json`, bundleToJson(bundle), 'application/json');
-    setStatus({ kind: 'ok', message: t('settings:export.done', { count: items.length }) });
-  };
-
-  const onExportCsv = async () => {
-    const tracksByRelease = await loadAllTracks(items.map((it) => it.release.id));
-    const bundle = buildBundle(items, tracksByRelease);
-    const date = new Date().toISOString().slice(0, 10);
-    downloadFile(`vinylly-${date}.csv`, bundleToCsv(bundle), 'text/csv;charset=utf-8');
-    setStatus({ kind: 'ok', message: t('settings:export.done', { count: items.length }) });
-  };
-
-  const onImport = async (file: File) => {
-    if (!collection) return;
-    setBusy(true);
-    try {
-      const raw = await readFileText(file);
-      const bundle = parseBundle(raw);
-      let added = 0;
-      for (const it of bundle.items) {
-        const input: CreateItemInput = {
-          collectionId: collection.id,
-          type: it.type,
-          release: {
-            source: it.release.source,
-            sourceId: it.release.sourceId,
-            title: it.release.title,
-            artist: it.release.artist,
-            year: it.release.year,
-            genres: it.release.genres,
-            styles: it.release.styles,
-            coverPath: it.release.coverPath,
-            thumbPath: it.release.thumbPath,
-            coverRemote: it.release.coverRemote,
-            thumbRemote: it.release.thumbRemote,
-          },
-          tracklist: it.tracklist.map((tr) => ({
-            position: tr.position,
-            title: tr.title,
-            duration: tr.duration,
-          })),
-          notes: it.notes,
-          location: it.location,
-          tags: it.tags,
-          acquiredAt: it.acquiredAt,
-          barcode: it.barcode,
-          catalogNumber: it.catalogNumber,
-          sleeveCondition: it.sleeveCondition,
-          mediaCondition: it.mediaCondition,
-        };
-        await itemRepo.create(input);
-        added += 1;
-      }
-      setStatus({ kind: 'ok', message: t('settings:import.done', { count: added }) });
-    } catch (e) {
-      setStatus({ kind: 'error', message: (e as Error).message });
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <section className="animate-rise">
-      <PageHeader
-        title={t('settings:page.title')}
-        subtitle={t('settings:page.subtitle')}
-        actions={
-          <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />}>
-            {t('settings:page.to_collection')}
-          </Button>
-        }
-      />
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-fg-heading text-2xl font-semibold">{t('settings:page.title')}</h1>
+        <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />} size="sm">
+          {t('settings:page.to_collection')}
+        </Button>
+      </div>
 
-      <div className="flex flex-col gap-6">
-        <LanguageCard />
+      <div className="flex gap-8">
+        <nav className="w-48 shrink-0">
+          <div className="rounded-base border-border-default bg-surface shadow-neu-md flex flex-col gap-1 border p-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-3 rounded-base px-4 py-2.5 text-left text-sm transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? 'bg-surface text-fg-heading shadow-neu-inset font-medium'
+                    : 'text-fg-body hover:text-fg-heading shadow-neu-2xs hover:shadow-neu-xs'
+                }`}
+              >
+                <span className="h-5 w-5 shrink-0">{tab.icon}</span>
+                <span>{t(tab.labelKey)}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
 
-        <BackupCard onStatus={setStatus} />
-
-        <DiscogsCard token={discogsToken} onSave={setDiscogsToken} onClear={clearDiscogsToken} />
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader className="pb-6 pt-8">
-              <div className="flex items-start gap-5">
-                <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
-                  <ExportIcon />
-                </div>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:export.title')}</h3>
-                  <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
-                    {t('settings:export.description')}
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardBody className="px-12 py-6">
-              <p className="text-fg-body-subtle text-[15px] leading-relaxed">
-                {t('settings:export.collection_count', { count: items.length })}
-              </p>
-            </CardBody>
-            <CardFooter className="pb-8 pt-5">
-              <div className="ml-auto flex flex-wrap items-center gap-3">
-                <Button variant="neutral" onClick={onExportCsv} disabled={items.length === 0}>
-                  {t('settings:export.csv')}
-                </Button>
-                <Button onClick={onExportJson} disabled={items.length === 0}>
-                  {t('settings:export.json')}
-                </Button>
-              </div>
-            </CardFooter>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-6 pt-8">
-              <div className="flex items-start gap-5">
-                <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
-                  <ImportIcon />
-                </div>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:import.title')}</h3>
-                  <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
-                    {t('settings:import.description')}
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardBody className="px-12 py-6">
-              <p className="text-fg-body-subtle text-[15px] leading-relaxed">
-                {t('settings:import.body')}
-              </p>
-              {busy ? <p className="text-fg-body-subtle mt-3 text-sm">{t('settings:import.progress')}</p> : null}
-            </CardBody>
-            <CardFooter className="pb-8 pt-5">
-              <div className="ml-auto">
-                <label className="border-border-default bg-surface text-fg-heading rounded-base shadow-neu-sm hover:shadow-neu-md active:shadow-neu-inset inline-flex cursor-pointer items-center gap-2.5 border px-5 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out">
-                  <UploadIcon />
-                  <span>{t('settings:import.button')}</span>
-                  <input
-                    type="file"
-                    accept="application/json,.json"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) void onImport(f);
-                      e.target.value = '';
-                    }}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </CardFooter>
-          </Card>
+        <div className="min-w-0 flex-1">
+          {activeTab === 'language' ? <LanguageSection /> : null}
+          {activeTab === 'theme' ? <ThemeSection /> : null}
+          {activeTab === 'backup' ? <BackupSection /> : null}
+          {activeTab === 'discogs' ? (
+            <DiscogsSection token={discogsToken} onSave={setDiscogsToken} onClear={clearDiscogsToken} />
+          ) : null}
+          {activeTab === 'about' ? <AboutSection /> : null}
         </div>
       </div>
 
-      {status.kind !== 'idle' ? (
-        <div className="mt-6">
-          <Alert tone={status.kind === 'error' ? 'danger' : 'success'}>{status.message}</Alert>
-        </div>
-      ) : null}
+      <SupportSection />
     </section>
   );
 }
 
-function LanguageCard() {
+function LanguageSection() {
   const { t } = useTranslation();
   const locale = useLocale((s) => s.locale);
   const setLocale = useLocale((s) => s.setLocale);
 
   return (
-    <Card>
-      <CardHeader className="pb-6 pt-8">
-        <div className="flex items-start gap-5">
-          <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
-            <GlobeIcon />
-          </div>
-          <div className="min-w-0 flex-1 pt-0.5">
-            <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:language.title')}</h3>
-          </div>
+    <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-8">
+      <div className="flex items-start gap-5">
+        <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
+          <GlobeIcon />
         </div>
-      </CardHeader>
-      <CardBody className="px-12 py-6">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-fg-heading text-lg font-semibold">{t('settings:language.title')}</h2>
+        </div>
+      </div>
+      <div className="mt-6">
         <SegmentedControl
           value={locale}
           onChange={(v) => setLocale(v)}
@@ -236,82 +105,96 @@ function LanguageCard() {
           ]}
           size="sm"
         />
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }
 
-function BackupCard({ onStatus }: { onStatus: (s: Status) => void }) {
+function BackupSection() {
   const { t } = useTranslation();
+  const showToast = useUi((s) => s.showToast);
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const onBackup = async () => {
     setBusy(true);
     try {
-      const shell = getHostShell();
-      const dbPath = shell.paths().dataDir + '/vinylly.sqlite';
-      const bytes = await shell.fs().readBinary(dbPath);
-      const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer]);
+      const json = serializeDb();
+      const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const date = new Date().toISOString().slice(0, 19).replace(/[:]/g, '-');
-      const filename = `vinylly-backup-${date}.sqlite`;
+      const filename = `vinylly-backup-${date}.json`;
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-      onStatus({ kind: 'ok', message: t('settings:backup.done', { filename }) });
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast(t('settings:backup.done', { filename }));
     } catch (e) {
-      onStatus({ kind: 'error', message: t('settings:backup.error', { error: (e as Error).message }) });
+      showToast(t('settings:backup.error', { error: String(e) }));
     } finally {
       setBusy(false);
     }
   };
 
+  const onRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    try {
+      await restoreFromJsonFile(file);
+      showToast(t('settings:backup.restore_done'));
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+      showToast(t('settings:backup.restore_error', { error: String(e) }));
+      setBusy(false);
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader className="pb-6 pt-8">
-        <div className="flex items-start gap-5">
-          <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
-            <ShieldIcon />
-          </div>
-          <div className="min-w-0 flex-1 pt-0.5">
-            <h3 className="text-fg-heading text-base font-semibold leading-tight">{t('settings:backup.title')}</h3>
-            <p className="text-fg-body-subtle mt-2 text-xs leading-snug">
-              {t('settings:backup.description')}
-            </p>
-          </div>
+    <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-8">
+      <div className="flex items-start gap-5">
+        <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
+          <ShieldIcon />
         </div>
-      </CardHeader>
-      <CardBody className="px-12 py-6">
-        <p className="text-fg-body-subtle text-[15px] leading-relaxed">{t('settings:export.collection_count', { count: 0 })}</p>
-      </CardBody>
-      <CardFooter className="pb-8 pt-5">
-        <div className="ml-auto">
-          <Button onClick={onBackup} disabled={busy} leftIcon={busy ? undefined : <DownloadIcon />}>
-            {busy ? t('common:loading.generic') : t('settings:backup.button')}
-          </Button>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-fg-heading text-lg font-semibold">{t('settings:backup.title')}</h2>
+          <p className="text-fg-body-subtle mt-1 text-sm">{t('settings:backup.description')}</p>
         </div>
-      </CardFooter>
-    </Card>
+      </div>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <Button onClick={onBackup} disabled={busy} leftIcon={busy ? undefined : <DownloadIcon />}>
+          {busy ? t('common:loading.generic') : t('settings:backup.button')}
+        </Button>
+        <Button
+          variant="neutral"
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+          leftIcon={busy ? undefined : <UploadIcon />}
+        >
+          {busy ? t('common:loading.generic') : t('settings:backup.restore_button')}
+        </Button>
+        <input ref={fileRef} type="file" accept=".json" onChange={onRestore} className="hidden" />
+      </div>
+    </div>
   );
 }
 
-interface DiscogsCardProps {
+interface DiscogsSectionProps {
   token: string;
   onSave(token: string): Promise<void>;
   onClear(): Promise<void>;
 }
 
-function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
+function DiscogsSection({ token, onSave, onClear }: DiscogsSectionProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [status, setStatus] = useState<Status>({ kind: 'idle', message: '' });
-  const [testResult, setTestResult] = useState<Status | null>(null);
+  const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'error'; message: string }>({ kind: 'idle', message: '' });
+  const [testResult, setTestResult] = useState<{ kind: 'idle' | 'ok' | 'error'; message: string } | null>(null);
   const [busy, setBusy] = useState<'save' | 'clear' | 'test' | null>(null);
 
   const hasToken = Boolean(token);
@@ -396,24 +279,23 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-6 pt-8">
-        <div className="flex items-start gap-5">
-          <div className="rounded-base bg-brand-softer border-border-brand-subtle flex h-12 w-12 shrink-0 items-center justify-center border">
-            <VinylIcon />
-          </div>
-          <div className="min-w-0 flex-1 pt-1">
-            <h3 className="text-fg-heading text-lg font-semibold leading-tight">{t('settings:discogs.title')}</h3>
-            <p className="text-fg-body-subtle mt-2 text-sm leading-snug">
-              {t('settings:discogs.description')}
-            </p>
-          </div>
-            <Badge tone={hasToken ? 'success' : 'warning'} pill>
-            {hasToken ? t('settings:discogs.configured') : t('settings:discogs.missing')}
-          </Badge>
+    <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-8">
+      <div className="flex items-start gap-5">
+        <div className="rounded-base bg-brand-softer border-border-brand-subtle flex h-12 w-12 shrink-0 items-center justify-center border">
+          <VinylIcon />
         </div>
-      </CardHeader>
-      <CardBody className="space-y-8 px-12 py-6">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-4">
+            <h2 className="text-fg-heading text-lg font-semibold">{t('settings:discogs.title')}</h2>
+            <Badge tone={hasToken ? 'success' : 'warning'} pill>
+              {hasToken ? t('settings:discogs.configured') : t('settings:discogs.missing')}
+            </Badge>
+          </div>
+          <p className="text-fg-body-subtle mt-1 text-sm">{t('settings:discogs.description')}</p>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-6">
         <p className="text-fg-body text-[15px] leading-relaxed">
           {t('settings:discogs.intro')}{' '}
           <ExternalLink
@@ -432,7 +314,7 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
           </ExternalLink>
         </p>
 
-        <form onSubmit={onSubmit} className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-5">
           <Input
             label={t('settings:discogs.token_label')}
             type={inputType}
@@ -510,42 +392,41 @@ function DiscogsCard({ token, onSave, onClear }: DiscogsCardProps) {
               {testResult.message}
             </Alert>
           ) : null}
+
+          <div className="flex items-center justify-end gap-3">
+            {hasToken && !confirmingDelete ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={busy !== null}
+              >
+                {t('settings:discogs.delete_button')}
+              </Button>
+            ) : null}
+            {hasToken ? (
+              <Button
+                type="button"
+                variant="neutral"
+                onClick={onTest}
+                disabled={busy !== null}
+                leftIcon={busy === 'test' ? undefined : <BoltIcon />}
+              >
+                {busy === 'test' ? t('settings:discogs.test_progress') : t('settings:discogs.test_button')}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              onClick={onSubmit}
+              leftIcon={busy === 'save' ? undefined : <CheckIcon />}
+              disabled={!dirty || busy !== null}
+            >
+              {busy === 'save' ? t('settings:discogs.save_progress') : hasToken ? t('settings:discogs.save_change') : t('settings:discogs.save_new')}
+            </Button>
+          </div>
         </form>
-      </CardBody>
-      <CardFooter className="pb-8 pt-5">
-        <div className="ml-auto flex flex-wrap items-center gap-3">
-          {hasToken && !confirmingDelete ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setConfirmingDelete(true)}
-              disabled={busy !== null}
-            >
-              {t('settings:discogs.delete_button')}
-            </Button>
-          ) : null}
-          {hasToken ? (
-            <Button
-              type="button"
-              variant="neutral"
-              onClick={onTest}
-              disabled={busy !== null}
-              leftIcon={busy === 'test' ? undefined : <BoltIcon />}
-            >
-              {busy === 'test' ? t('settings:discogs.test_progress') : t('settings:discogs.test_button')}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            onClick={onSubmit}
-            leftIcon={busy === 'save' ? undefined : <CheckIcon />}
-            disabled={!dirty || busy !== null}
-          >
-            {busy === 'save' ? t('settings:discogs.save_progress') : hasToken ? t('settings:discogs.save_change') : t('settings:discogs.save_new')}
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -585,25 +466,222 @@ function Alert({ tone, children }: { tone: AlertTone; children: React.ReactNode 
   );
 }
 
-async function loadAllTracks(releaseIds: string[]): Promise<Map<string, TrackRecord[]>> {
-  const out = new Map<string, TrackRecord[]>();
-  for (const id of releaseIds) {
-    const tracks = await trackRepo.listByRelease(id);
-    out.set(id, tracks);
-  }
-  return out;
+/* ─── Icons ─── */
+
+function PaletteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a3 3 0 0 0 0 6 3 3 0 0 1 0 6 3 3 0 0 0 0 6M19 12a3 3 0 0 0-3-3 3 3 0 0 1-3-3 3 3 0 0 1 3-3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <circle cx="12" cy="12" r="5" />
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MonitorIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ThemeSection() {
+  const mode = useTheme((s) => s.mode);
+  const setMode = useTheme((s) => s.setMode);
+
+  const options: { value: ThemeMode; label: string; icon: React.ReactNode }[] = [
+    { value: 'light', label: 'Светлая', icon: <SunIcon /> },
+    { value: 'dark', label: 'Тёмная', icon: <MoonIcon /> },
+    { value: 'system', label: 'Системная', icon: <MonitorIcon /> },
+  ];
+
+  return (
+    <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-8">
+      <div className="flex items-start gap-5">
+        <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
+          <PaletteIcon />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-fg-heading text-lg font-semibold">Оформление</h2>
+          <p className="text-fg-body-subtle mt-1 text-sm">Переключение между светлой и тёмной темой</p>
+        </div>
+      </div>
+      <div className="mt-6 flex flex-wrap gap-2">
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => setMode(o.value)}
+            className={`flex items-center gap-2 rounded-base px-4 py-2.5 text-sm transition-all duration-200 ${
+              o.value === mode
+                ? 'bg-surface text-fg-heading shadow-neu-inset font-medium'
+                : 'text-fg-body hover:text-fg-heading shadow-neu-2xs hover:shadow-neu-xs'
+            }`}
+          >
+            {o.icon}
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AboutSection() {
+  const [info, setInfo] = useState<AppInfo | null>(null);
+
+  useEffect(() => {
+    void getAppInfo().then(setInfo);
+  }, []);
+
+  const rows: { label: string; value: string }[] = [
+    { label: 'Версия', value: info?.version ?? '—' },
+    { label: 'Коммит', value: info?.commit ?? '—' },
+    { label: 'Платформа', value: info?.target ?? '—' },
+    {
+      label: 'Сборка',
+      value: info?.builtAt ? new Date(info.builtAt).toISOString().slice(0, 16).replace('T', ' ') : '—',
+    },
+  ];
+
+  return (
+    <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-8">
+      <div className="flex items-start gap-5">
+        <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
+          <InfoIcon />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-fg-heading text-lg font-semibold">О приложении</h2>
+          <p className="text-fg-body-subtle mt-1 text-sm">{info?.name ?? 'Vinylly'}</p>
+        </div>
+      </div>
+      <div className="mt-6">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center justify-between px-6 py-4 text-sm">
+              <span className="text-fg-body-subtle">{r.label}</span>
+              <span className="text-fg-heading ml-4 font-medium">{r.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {info?.repo ? (
+        <div className="mt-4">
+          <ExternalLink
+            href={info.repo}
+            className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading inline-flex items-center gap-2 px-4 py-3 text-sm transition-all duration-200"
+          >
+            <ExternalLinkIcon />
+            Исходный код на GitHub
+          </ExternalLink>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function HeartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M12 21.4l-1.1-1C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c2 0 3.8 1.3 4.5 2.5C12.7 4.3 14.5 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.9 11.9l-1.1 1z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CryptoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 6v12M8 9h6a3 3 0 0 1 0 6H8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SupportSection() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="mt-10">
+      <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-8">
+        <div className="flex items-start gap-5">
+          <div className="rounded-base bg-surface shadow-neu-inset flex h-11 w-11 shrink-0 items-center justify-center">
+            <HeartIcon />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-fg-heading text-lg font-semibold">{t('settings:support.title')}</h2>
+            <p className="text-fg-body-subtle mt-1 text-sm">{t('settings:support.description')}</p>
+          </div>
+        </div>
+        <div className="mt-6">
+          <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-6 py-5">
+            <ExternalLink
+              href="https://boosty.to/annenskei/donate"
+              className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200"
+            >
+              <HeartIcon />
+              {t('settings:support.boosty')}
+            </ExternalLink>
+            <ExternalLink
+              href="https://dalink.to/annenskei"
+              className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200"
+            >
+              <HeartIcon />
+              {t('settings:support.donationalerts')}
+            </ExternalLink>
+            <details className="group">
+              <summary className="rounded-base hover:shadow-neu-2xs text-fg-body hover:text-fg-heading flex cursor-pointer items-center gap-2.5 px-2 py-2 text-sm transition-all duration-200">
+                <CryptoIcon />
+                <span className="text-fg-heading font-medium">Crypto</span>
+              </summary>
+              <div className="mt-2 space-y-2 border-t border-border-default pt-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-fg-body-subtle w-14 shrink-0">Bitcoin</span>
+                  <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
+                    bc1qvuhvewu3rjth80wnpdxkrl6vwtgjtspszkcqap
+                  </code>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-fg-body-subtle w-14 shrink-0">Ethereum</span>
+                  <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
+                    0xc126080ffD216827A37850a5511cf1273E303E73
+                  </code>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-fg-body-subtle w-14 shrink-0">Solana</span>
+                  <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">
+                    516jeJxi1gwaRH7aEEiopAUAGNHKMrUxWv4cfGm32GhB
+                  </code>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function BackIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -611,14 +689,7 @@ function BackIcon() {
 
 function VinylIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="text-fg-brand-strong h-6 w-6"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5" aria-hidden>
       <circle cx="12" cy="12" r="9.5" />
       <circle cx="12" cy="12" r="6" />
       <circle cx="12" cy="12" r="2.5" />
@@ -629,14 +700,7 @@ function VinylIcon() {
 
 function KeyIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-4 w-4"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4" aria-hidden>
       <circle cx="8" cy="15" r="4" />
       <path d="M10.85 12.15L19 4M15 8l3 3M18 5l3 3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -645,14 +709,7 @@ function KeyIcon() {
 
 function EyeIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -661,19 +718,8 @@ function EyeIcon() {
 
 function EyeOffIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-      aria-hidden
-    >
-      <path
-        d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6.5 0 10 6 10 6a17.6 17.6 0 0 1-3.2 4M6.6 6.6A17.7 17.7 0 0 0 2 12s3.5 6 10 6c1.4 0 2.7-.2 3.9-.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6.5 0 10 6 10 6a17.6 17.6 0 0 1-3.2 4M6.6 6.6A17.7 17.7 0 0 0 2 12s3.5 6 10 6c1.4 0 2.7-.2 3.9-.6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M14.1 14.1A3 3 0 0 1 9.9 9.9" />
     </svg>
   );
@@ -681,14 +727,7 @@ function EyeOffIcon() {
 
 function CheckIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      className="h-4 w-4"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-4 w-4" aria-hidden>
       <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -696,14 +735,7 @@ function CheckIcon() {
 
 function AlertIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      className={className}
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
       <circle cx="12" cy="12" r="10" />
       <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
     </svg>
@@ -712,14 +744,7 @@ function AlertIcon({ className = 'h-4 w-4' }: { className?: string }) {
 
 function InfoIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      className="h-4 w-4"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden>
       <circle cx="12" cy="12" r="10" />
       <path d="M12 16v-4M12 8h.01" strokeLinecap="round" />
     </svg>
@@ -728,85 +753,40 @@ function InfoIcon() {
 
 function BoltIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function ArrowUpRightIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-3.5 w-3.5"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden>
       <path d="M7 17L17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function UploadIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-      aria-hidden
-    >
-      <path d="M12 16V4M6 10l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4 20h16" strokeLinecap="round" />
     </svg>
   );
 }
 
 function GlobeIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-5 w-5"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5" aria-hidden>
       <circle cx="12" cy="12" r="9" />
       <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function ExportIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="text-fg-body-subtle h-5 w-5"
-      aria-hidden
-    >
-      <path d="M12 4v12M8 8l4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function ShieldIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-fg-body-subtle h-5 w-5" aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5" aria-hidden>
       <path d="M12 2l7 4v5c0 4-3 7.7-7 9-4-1.3-7-5-7-9V6l7-4z" strokeLinejoin="round" />
       <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -822,17 +802,10 @@ function DownloadIcon() {
   );
 }
 
-function ImportIcon() {
+function UploadIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="text-fg-body-subtle h-5 w-5"
-      aria-hidden
-    >
-      <path d="M12 16V4M8 12l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M12 4v12M6 10l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 20h16" strokeLinecap="round" />
     </svg>
   );

@@ -30,3 +30,6 @@ export type { TagInputProps } from './TagInput';
 
 export { PageHeader } from './PageHeader';
 export type { PageHeaderProps } from './PageHeader';
+
+export { ConfirmModal } from './ConfirmModal';
+export type { ConfirmModalProps } from './ConfirmModal';

@@ -37,6 +37,7 @@
     --color-border-brand-subtle: rgba(15, 98, 254, 0.2);
     --color-border-danger-subtle: rgba(218, 30, 40, 0.2);
     --color-border-success-subtle: rgba(25, 128, 56, 0.2);
+    --color-border-warning-subtle: rgba(178, 134, 0, 0.2);
 
     /* neutral borders — Carbon-style translucent black on light */
     --color-border-default: rgba(0, 0, 0, 0.08);
@@ -86,6 +87,7 @@
     --color-border-brand-subtle: rgba(69, 137, 255, 0.3);
     --color-border-danger-subtle: rgba(255, 131, 137, 0.3);
     --color-border-success-subtle: rgba(66, 190, 101, 0.3);
+    --color-border-warning-subtle: rgba(241, 194, 27, 0.3);
 
     --color-border-default: rgba(255, 255, 255, 0.08);
     --color-border-default-medium: rgba(255, 255, 255, 0.16);
@@ -131,6 +133,7 @@
       --color-border-brand-subtle: rgba(69, 137, 255, 0.3);
       --color-border-danger-subtle: rgba(255, 131, 137, 0.3);
       --color-border-success-subtle: rgba(66, 190, 101, 0.3);
+      --color-border-warning-subtle: rgba(241, 194, 27, 0.3);
 
       --color-border-default: rgba(255, 255, 255, 0.08);
       --color-border-default-medium: rgba(255, 255, 255, 0.16);

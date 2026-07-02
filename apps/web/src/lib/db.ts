@@ -134,6 +134,23 @@ class LocalStoragePrisma {
       if (!v) return null;
       return this.hydrate(v as Record<string, unknown>);
     },
+    findFirst: async (args?: {
+      where?: { release?: { source?: string; sourceId?: string } };
+      include?: { release?: boolean };
+    }) => {
+      const src = args?.where?.release;
+      if (!src?.source || !src?.sourceId) return null;
+      for (const [k, v] of this.kv) {
+        if (!k.startsWith('item:')) continue;
+        const row = v as Record<string, unknown>;
+        const releaseKey = `release:${row.releaseId as string}`;
+        const rel = this.kv.get(releaseKey) as Record<string, unknown> | undefined;
+        if (rel && rel.source === src.source && rel.sourceId === src.sourceId) {
+          return this.hydrateSync(row);
+        }
+      }
+      return null;
+    },
     create: async (args: { data: Record<string, unknown> }) => {
       const id = String(args.data.id);
       const createdAt = new Date().toISOString();
@@ -258,6 +275,59 @@ class LocalStoragePrisma {
 
 let initialized = false;
 let initPromise: Promise<{ id: string; name: string }> | null = null;
+
+/**
+ * Serialize current DB state as JSON (localStorage-format array).
+ */
+export function serializeDb(): string {
+  if (typeof localStorage === 'undefined') throw new Error('localStorage not available');
+  const raw = localStorage.getItem(`vinylly:${DB_SNAPSHOT_KEY}`);
+  if (!raw) throw new Error('No data to export');
+  return raw;
+}
+
+/**
+ * Restore DB from a JSON backup file and reload the page.
+ * Accepts both localStorage-format and Tauri-snapshot-format JSON.
+ */
+export async function restoreFromJsonFile(file: File): Promise<void> {
+  const text = await file.text();
+  const data = JSON.parse(text) as unknown;
+
+  let entries: Array<[string, unknown]>;
+  if (Array.isArray(data)) {
+    entries = data as Array<[string, unknown]>;
+  } else if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    entries = [];
+    if (obj.collection) entries.push(['__collection', obj.collection]);
+    if (Array.isArray(obj.items)) {
+      for (const [k, v] of obj.items as Array<[string, unknown]>) entries.push([`item:${k}`, v]);
+    }
+    if (Array.isArray(obj.releases)) {
+      for (const [k, v] of obj.releases as Array<[string, unknown]>) entries.push([`release:${k}`, v]);
+    }
+    if (Array.isArray(obj.tracks)) {
+      for (const [k, v] of obj.tracks as Array<[string, unknown]>) entries.push([`track:${k}`, v]);
+    }
+  } else {
+    throw new Error('Invalid backup format');
+  }
+
+  // Write to localStorage
+  localStorage.setItem(`vinylly:${DB_SNAPSHOT_KEY}`, JSON.stringify(entries));
+
+  // In Tauri mode, persist to Rust side too
+  if (isTauri()) {
+    const snap = {
+      collection: entries.find(([k]) => k === '__collection')?.[1] ?? null,
+      items: entries.filter(([k]) => k.startsWith('item:')).map(([k, v]) => [k.slice('item:'.length), v]),
+      releases: entries.filter(([k]) => k.startsWith('release:')).map(([k, v]) => [k.slice('release:'.length), v]),
+      tracks: entries.filter(([k]) => k.startsWith('track:')).map(([k, v]) => [k.slice('track:'.length), v]),
+    };
+    await tauriSaveSnapshot(snap);
+  }
+}
 
 export function useVinylDbInit() {
   const [ready, setReady] = useState(initialized);

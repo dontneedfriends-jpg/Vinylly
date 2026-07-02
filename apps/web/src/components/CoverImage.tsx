@@ -73,8 +73,6 @@ export function CoverImage({
       className={`rounded-base border-border-default bg-surface relative flex h-full w-full items-center justify-center overflow-hidden border ${
         size === 'thumb' ? 'shadow-neu-inset' : 'shadow-neu-md'
       } ${className}`}
-      role="img"
-      aria-label={alt}
     >
       {src ? (
         <img
