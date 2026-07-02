@@ -10,6 +10,7 @@
   "filter.other": "Другое",
   "filter.vinyl": "Винил",
   "item.deleted_undo": "Удалён «{{title}}».",
+  "item.delete_error": "Не удалось удалить: {{error}}",
   "item.cover_alt": "Обложка — {{title}}",
   "item.delete_aria": "Удалить",
   "page.add_button": "Добавить",

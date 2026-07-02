@@ -32,18 +32,18 @@ export function SegmentedControl<T extends string>({
     >
       {options.map((opt) => {
         const active = opt.value === value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            aria-pressed={active}
-            className={`rounded-base inline-flex items-center justify-center gap-1.5 border ${padding} font-medium transition-all duration-200 ease-in-out focus-visible:shadow-neu-xs focus-visible:border-border-default-strong ${
-              active
-                ? 'border-border-default bg-surface text-fg-brand-strong shadow-neu-sm'
-                : 'text-fg-body-subtle hover:text-fg-body border-transparent bg-transparent'
-            }`}
-          >
+return (
+      <button
+        key={opt.value}
+        type="button"
+        onClick={() => onChange(opt.value)}
+        aria-pressed={active}
+        className={`flex-1 rounded-base inline-flex items-center justify-center gap-1.5 border ${padding} font-medium transition-all duration-200 ease-in-out focus-visible:shadow-neu-xs focus-visible:border-border-default-strong ${
+          active
+            ? 'border-border-default bg-surface text-fg-brand-strong shadow-neu-sm'
+            : 'text-fg-body-subtle hover:text-fg-body border-transparent bg-transparent'
+        }`}
+      >
             {opt.icon ? (
               <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
                 {opt.icon}

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker, TagInput, ConfirmModal } from '@vinylly/ui';
+import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker, TagInput } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItem, useUpdateItem, useRemoveItem } from '../lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,7 +25,7 @@ export function DetailPage() {
 
   const openCollection = useUi((s) => s.openCollection);
   const setReleaseVideos = useUi((s) => s.setReleaseVideos);
-  const { data: item } = useItem(itemId);
+  const { data: item, isFetched } = useItem(itemId);
   const updateItem = useUpdateItem();
 
   const [notes, setNotes] = useState(item?.notes ?? '');
@@ -33,10 +33,10 @@ export function DetailPage() {
   const [sleeveCondition, setSleeveCondition] = useState(item?.sleeveCondition ?? '');
   const [mediaCondition, setMediaCondition] = useState(item?.mediaCondition ?? '');
   const [tags, setTags] = useState<string[]>(item?.tags ?? []);
+  const [lightboxTrigger, setLightboxTrigger] = useState(0);
   const [albumNotes, setAlbumNotes] = useState<string | null>(null);
   const [wikipediaHtml, setWikipediaHtml] = useState<string | null>(null);
   const [aboutLoading, setAboutLoading] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [extendedMeta, setExtendedMeta] = useState<{
     country?: string;
     released?: string;
@@ -49,6 +49,11 @@ export function DetailPage() {
     extraArtists?: Array<{ name: string; role: string }>;
   } | null>(null);
   const removeItem = useRemoveItem();
+  const queryClient = useQueryClient();
+  const showToast = useUi((s) => s.showToast);
+  const hideToast = useUi((s) => s.hideToast);
+  const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [scheduledItemId, setScheduledItemId] = useState<string | null>(null);
 
   useEffect(() => {
     const current = item;
@@ -134,10 +139,40 @@ export function DetailPage() {
       </section>
     );
   }
-  if (!item) {
+  if (!itemId) {
+    return (
+      <section>
+        <PageHeader title={t('detail:page.no_release')} />
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+          <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
+        </div>
+      </section>
+    );
+  }
+  if (!item && !isFetched) {
     return (
       <section>
         <PageHeader title={t('detail:page.loading')} />
+      </section>
+    );
+  }
+  if (!item) {
+    return (
+      <section>
+        <PageHeader title={t('detail:page.no_release')} />
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+          <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
+        </div>
+      </section>
+    );
+  }
+  if (scheduledItemId === item.id) {
+    return (
+      <section>
+        <PageHeader title={t('detail:page.no_release')} />
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+          <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
+        </div>
       </section>
     );
   }
@@ -155,6 +190,54 @@ export function DetailPage() {
     });
   };
 
+  const onDelete = () => {
+    if (removeTimerRef.current) {
+      clearTimeout(removeTimerRef.current);
+      removeTimerRef.current = null;
+      const prevId = scheduledItemId;
+      if (prevId) {
+        setScheduledItemId(null);
+        removeItem.mutate(prevId, {
+          onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['items'] });
+            void queryClient.invalidateQueries({ queryKey: ['item', prevId] });
+          },
+          onError: (err) => {
+            showToast(t('collection:item.delete_error', { error: String(err) }));
+          },
+        });
+      }
+    }
+    const id = item.id;
+    const title = item.release.title;
+    setScheduledItemId(id);
+    showToast(t('detail:page.deleted_undo', { title }), {
+      label: t('common:button.undo'),
+      onClick: () => {
+        if (removeTimerRef.current) {
+          clearTimeout(removeTimerRef.current);
+          removeTimerRef.current = null;
+        }
+        setScheduledItemId(null);
+        hideToast();
+      },
+    });
+    removeTimerRef.current = setTimeout(() => {
+      removeTimerRef.current = null;
+      removeItem.mutate(id, {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: ['items'] });
+          void queryClient.invalidateQueries({ queryKey: ['item', id] });
+        },
+        onError: (err) => {
+          setScheduledItemId(null);
+          hideToast();
+          showToast(t('collection:item.delete_error', { error: String(err) }));
+        },
+      });
+    }, 4000);
+  };
+
 
   return (
     <section className="animate-rise">
@@ -169,11 +252,13 @@ export function DetailPage() {
               coverRemote={item.release.coverRemote}
               alt={item.release.title}
               size="full"
+              onClick={() => setLightboxTrigger((n) => n + 1)}
             />
           </div>
           <Gallery
             releaseId={item.release.id}
             images={item.release.images}
+            openTrigger={lightboxTrigger}
           />
           <div className="mt-3">
             <CoverUploadButton
@@ -227,7 +312,7 @@ export function DetailPage() {
             </Button>
             <Button
               variant="neutral"
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={onDelete}
               leftIcon={<TrashIcon />}
             >
               {t('detail:page.delete')}
@@ -402,21 +487,6 @@ export function DetailPage() {
           </div>
         </section>
       </div>
-
-      <ConfirmModal
-        open={showDeleteConfirm}
-        title={t('detail:page.delete')}
-        message={`${t('detail:page.delete')} «${item.release.title}»?`}
-        confirmLabel={t('detail:page.delete')}
-        cancelLabel={t('common:button.cancel')}
-        variant="danger"
-        onConfirm={() => {
-          setShowDeleteConfirm(false);
-          removeItem.mutate(item.id);
-          openCollection();
-        }}
-        onCancel={() => setShowDeleteConfirm(false)}
-      />
     </section>
   );
 }

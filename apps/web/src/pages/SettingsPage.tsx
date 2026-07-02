@@ -339,7 +339,7 @@ function DiscogsSection({ token, onSave, onClear }: DiscogsSectionProps) {
                   type="button"
                   onClick={toggleReveal}
                   aria-label={revealed ? t('settings:discogs.hide_aria') : t('settings:discogs.show_aria')}
-                  className="text-fg-body hover:text-fg-heading pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
+                  className="text-fg-body hover:text-fg-heading pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-DEFAULT transition-colors"
                 >
                   {revealed ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
@@ -494,15 +494,6 @@ function MoonIcon() {
   );
 }
 
-function MonitorIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <rect x="2" y="3" width="20" height="14" rx="2" />
-      <path d="M8 21h8M12 17v4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function ThemeSection() {
   const mode = useTheme((s) => s.mode);
   const setMode = useTheme((s) => s.setMode);
@@ -510,7 +501,6 @@ function ThemeSection() {
   const options: { value: ThemeMode; label: string; icon: React.ReactNode }[] = [
     { value: 'light', label: 'Светлая', icon: <SunIcon /> },
     { value: 'dark', label: 'Тёмная', icon: <MoonIcon /> },
-    { value: 'system', label: 'Системная', icon: <MonitorIcon /> },
   ];
 
   return (

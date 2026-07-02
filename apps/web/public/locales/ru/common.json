@@ -7,6 +7,7 @@
   "button.undo": "Отменить",
   "button.saving": "Сохраняю…",
   "cover.no_cover": "Нет обложки",
+  "cover.zoom_aria": "Открыть изображение",
   "duration.format": "{{minutes}}:{{seconds}}",
   "filter.all": "Все",
   "image_type.primary": "Обложка",

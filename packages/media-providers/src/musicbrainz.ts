@@ -1,4 +1,5 @@
 import { withCache } from './cache';
+import { stripArtistPrefix } from './parse';
 import type {
   MediaProvider,
   NormalizedRelease,
@@ -84,7 +85,7 @@ export class MusicBrainzProvider implements MediaProvider {
         release: {
           source: this.name,
           sourceId: r.id,
-          title: r.title,
+          title: stripArtistPrefix(r.title, r['artist-credit']?.[0]?.name ?? ''),
           artist: r['artist-credit']?.[0]?.name ?? '',
           year: r.date ? Number(r.date.slice(0, 4)) : null,
           genres: [],
@@ -109,7 +110,7 @@ export class MusicBrainzProvider implements MediaProvider {
         return {
           source: this.name,
           sourceId: r.id,
-          title: r.title,
+          title: stripArtistPrefix(r.title, r['artist-credit']?.[0]?.name ?? ''),
           artist: r['artist-credit']?.[0]?.name ?? '',
           year: r.date ? Number(r.date.slice(0, 4)) : null,
           genres: r.genres?.map((g) => g.name) ?? [],

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -9,6 +9,7 @@ import {
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItems, useRemoveItem } from '../lib/queries';
+import { useQueryClient } from '@tanstack/react-query';
 import type { MediaType, ItemRecord } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
 
@@ -45,6 +46,7 @@ export function CollectionPage() {
 
   const { data: items = [], isLoading } = useItems(filter);
   const removeItem = useRemoveItem();
+  const queryClient = useQueryClient();
 
   const [scheduledId, setScheduledId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,9 +56,33 @@ export function CollectionPage() {
     [items, scheduledId],
   );
 
+  // Clear scheduledId only after refetch confirms item is gone (no flash)
+  useEffect(() => {
+    if (scheduledId && !items.some((it) => it.id === scheduledId)) {
+      setScheduledId(null);
+    }
+  }, [items, scheduledId]);
+
   const onDelete = useCallback(
     (item: ItemRecord) => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      // Flush any pending deletion immediately instead of silently cancelling
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+          const prevId = scheduledId;
+        if (prevId) {
+          setScheduledId(null);
+          removeItem.mutate(prevId, {
+            onSuccess: () => {
+              void queryClient.invalidateQueries({ queryKey: ['items'] });
+              void queryClient.invalidateQueries({ queryKey: ['item', prevId] });
+            },
+            onError: (err) => {
+              showToast(t('collection:item.delete_error', { error: String(err) }));
+            },
+          });
+        }
+      }
       setScheduledId(item.id);
       const msg = t('collection:item.deleted_undo', { title: item.release.title });
       showToast(msg, {
@@ -70,12 +96,21 @@ export function CollectionPage() {
       });
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
-        setScheduledId(null);
-        hideToast();
-        removeItem.mutate(item.id);
-      }, 7000);
+        removeItem.mutate(item.id, {
+          onSuccess: () => {
+            hideToast();
+            void queryClient.invalidateQueries({ queryKey: ['items'] });
+            void queryClient.invalidateQueries({ queryKey: ['item', item.id] });
+          },
+          onError: (err) => {
+            setScheduledId(null);
+            hideToast();
+            showToast(t('collection:item.delete_error', { error: String(err) }));
+          },
+        });
+      }, 4000);
     },
-    [t, showToast, hideToast, removeItem],
+    [t, showToast, hideToast, removeItem, scheduledId],
   );
 
   return (
@@ -125,7 +160,7 @@ export function CollectionPage() {
       {/* ─── Grid/List ─── */}
       {isLoading ? (
         viewMode === 'grid' ? (
-          <ul className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <li key={i} className="animate-rise" style={{ animationDelay: `${i * 40}ms` }}>
                 <SkeletonCard />
@@ -166,7 +201,7 @@ export function CollectionPage() {
           ))}
         </div>
       ) : (
-        <ul className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {displayedItems.map((it, i) => (
             <li
               key={it.id}
@@ -205,7 +240,7 @@ function ItemTile({ item, onOpen, typeLabels, onDelete }: { item: ItemRecord; on
       <button
         type="button"
         onClick={handleDelete}
-        className="hover:bg-danger-soft text-fg-danger absolute right-3 top-3 z-10 rounded-full p-2 opacity-0 transition-opacity group-hover:opacity-100"
+        className="text-fg-danger hover:text-fg-danger-strong hover:shadow-neu-2xs absolute right-3 top-3 z-10 rounded-full p-2 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
         aria-label={t('collection:item.delete_aria')}
       >
         <TrashIcon />
@@ -285,7 +320,7 @@ function ListItemTile({ item, onOpen, typeLabels, onDelete }: { item: ItemRecord
       <button
         type="button"
         onClick={handleDelete}
-        className="hover:bg-danger-soft text-fg-danger rounded-full p-2 opacity-0 transition-opacity group-hover:opacity-100"
+        className="text-fg-danger hover:text-fg-danger-strong hover:shadow-neu-2xs rounded-full p-2 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
         aria-label={t('collection:item.delete_aria')}
       >
         <TrashIcon />

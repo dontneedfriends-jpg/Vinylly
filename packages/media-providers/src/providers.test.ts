@@ -87,7 +87,7 @@ describe('DiscogsProvider', () => {
     const r = await p.search({ text: 'wall' });
     expect(r).toHaveLength(1);
     expect(r[0]?.release.artist).toBe('Pink Floyd');
-    expect(r[0]?.release.title).toBe('Pink Floyd - The Wall');
+    expect(r[0]?.release.title).toBe('The Wall');
     expect(r[0]?.release.genres).toEqual(['Rock']);
   });
 });

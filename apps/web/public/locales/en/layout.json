@@ -48,7 +48,6 @@
   "theme.cycle_label": "Theme: {{mode}}. Click to toggle.",
   "theme.dark": "Dark",
   "theme.light": "Light",
-  "theme.system": "System",
   "titlebar.app_name": "Audio Collection Catalog",
   "titlebar.close": "Close",
   "titlebar.maximize": "Maximize",

@@ -11,13 +11,13 @@ describe('ThemeToggle', () => {
     localStorage.clear();
   });
 
-  it('renders three segmented theme options', async () => {
+  it('renders two theme options', async () => {
     const { useTheme } = await import('../lib/theme');
     useTheme.getState().setMode('light');
     render(<ThemeToggle />);
     expect(screen.getByRole('button', { name: /Светлая/, pressed: true })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Тёмная/, pressed: false })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Сист\./, pressed: false })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Сист/ })).not.toBeInTheDocument();
   });
 
   it('marks the active theme as pressed', async () => {

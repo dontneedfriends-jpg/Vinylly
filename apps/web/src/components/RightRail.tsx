@@ -474,7 +474,7 @@ function AddRail() {
       {addReleaseMeta ? (
         <div>
           <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.add.about_album')}</h3>
-          <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
+          <div className="rounded-base bg-surface shadow-neu-inset flex flex-col">
             {addReleaseMeta.country ? (
               <div className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
                 <span className="text-fg-body-subtle">{t('layout:rail.add.country')}</span>
@@ -568,9 +568,9 @@ export function RightRail() {
   return (
     <aside
       aria-label={t('layout:sidebar.aria')}
-      className="rounded-base border-border-default bg-surface shadow-neu-sm scrollbar-neu flex h-full w-0 shrink-0 flex-col overflow-hidden border opacity-0 transition-all duration-200 ease-in-out lg:w-72 lg:opacity-100"
+      className="rounded-base bg-surface shadow-neu-md scrollbar-neu flex h-full w-0 shrink-0 flex-col overflow-hidden opacity-0 transition-all duration-200 ease-in-out lg:w-72 lg:opacity-100"
     >
-      <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto px-6 py-6">{rendered}</div>
+      <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto p-4">{rendered}</div>
     </aside>
   );
 }
@@ -594,7 +594,7 @@ function BarChart({ data, maxBars }: { data: Array<[string, number]>; maxBars: n
               className="rounded-base bg-surface border-border-default shadow-neu-2xs relative h-5 flex-1 overflow-hidden border"
             >
               <div
-                className="bg-surface border-border-default-medium shadow-neu-xs h-full rounded-[5px] border"
+                className="bg-surface border-border-default-medium shadow-neu-xs h-full rounded-DEFAULT border"
                 style={{ width: `${Math.max(pct, 4)}%` }}
               />
             </div>

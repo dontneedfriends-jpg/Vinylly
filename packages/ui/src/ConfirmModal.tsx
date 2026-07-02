@@ -45,7 +45,7 @@ export function ConfirmModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-overlay"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"

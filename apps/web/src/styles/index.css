@@ -45,6 +45,14 @@
     --color-border-default-strong: rgba(0, 0, 0, 0.32);
     --color-border-brand: rgba(15, 98, 254, 0.5);
 
+    /* overlay scrim — modal/lightbox backdrops and floating controls */
+    --color-overlay: rgba(0, 0, 0, 0.5);
+    --color-overlay-strong: rgba(0, 0, 0, 0.7);
+    --color-overlay-control: rgba(0, 0, 0, 0.4);
+    --color-overlay-control-hover: rgba(0, 0, 0, 0.6);
+    --color-overlay-caption: rgba(0, 0, 0, 0.6);
+    --color-fg-on-overlay: #ffffff;
+
     /* Neumorphic shadows on #f4f4f4 — dark goes to Carbon Gray 30, light goes to White 0 */
     --shadow-2xs: 1px 1px 2px #c6c6c6, -1px -1px 2px #ffffff;
     --shadow-xs: 2px 2px 4px #c6c6c6, -2px -2px 4px #ffffff;
@@ -94,6 +102,13 @@
     --color-border-default-strong: rgba(255, 255, 255, 0.32);
     --color-border-brand: rgba(69, 137, 255, 0.5);
 
+    --color-overlay: rgba(0, 0, 0, 0.7);
+    --color-overlay-strong: rgba(0, 0, 0, 0.85);
+    --color-overlay-control: rgba(0, 0, 0, 0.5);
+    --color-overlay-control-hover: rgba(0, 0, 0, 0.75);
+    --color-overlay-caption: rgba(0, 0, 0, 0.7);
+    --color-fg-on-overlay: #ffffff;
+
     /* Neumorphic shadows on #161616 — dark goes to black, light goes to Carbon Gray 90 */
     --shadow-2xs: 1px 1px 2px #000000, -1px -1px 2px #262626;
     --shadow-xs: 2px 2px 4px #000000, -2px -2px 4px #262626;
@@ -103,52 +118,6 @@
     --shadow-xl: 10px 10px 20px #000000, -10px -10px 20px #262626;
     --shadow-2xl: 12px 12px 24px #000000, -12px -12px 24px #262626;
     --shadow-inset: inset 2px 2px 5px #000000, inset -3px -3px 7px #262626;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-      color-scheme: dark;
-
-      --color-surface: #161616;
-      --color-fg-heading: #f4f4f4;
-      --color-fg-body: #c6c6c6;
-      --color-fg-body-subtle: #8d8d8d;
-      --color-fg-brand: #4589ff;
-      --color-fg-brand-strong: #a6c8ff;
-      --color-fg-secondary: #78a9ff;
-      --color-fg-disabled: #6f6f6f;
-      --color-fg-danger: #ff8389;
-      --color-fg-danger-strong: #fa4d56;
-      --color-fg-success: #42be65;
-      --color-fg-success-strong: #6fdc8c;
-      --color-fg-warning: #f1c21b;
-
-      --color-brand-softer: rgba(69, 137, 255, 0.1);
-      --color-brand-soft: rgba(69, 137, 255, 0.18);
-      --color-danger-soft: rgba(255, 131, 137, 0.1);
-      --color-success-soft: rgba(66, 190, 101, 0.1);
-      --color-warning-soft: rgba(241, 194, 27, 0.1);
-      --color-secondary-soft: rgba(120, 169, 255, 0.1);
-
-      --color-border-brand-subtle: rgba(69, 137, 255, 0.3);
-      --color-border-danger-subtle: rgba(255, 131, 137, 0.3);
-      --color-border-success-subtle: rgba(66, 190, 101, 0.3);
-      --color-border-warning-subtle: rgba(241, 194, 27, 0.3);
-
-      --color-border-default: rgba(255, 255, 255, 0.08);
-      --color-border-default-medium: rgba(255, 255, 255, 0.16);
-      --color-border-default-strong: rgba(255, 255, 255, 0.32);
-      --color-border-brand: rgba(69, 137, 255, 0.5);
-
-      --shadow-2xs: 1px 1px 2px #000000, -1px -1px 2px #262626;
-      --shadow-xs: 2px 2px 4px #000000, -2px -2px 4px #262626;
-      --shadow-sm: 3px 3px 6px #000000, -3px -3px 6px #262626;
-      --shadow-md: 6px 6px 12px #000000, -6px -6px 12px #262626;
-      --shadow-lg: 8px 8px 16px #000000, -8px -8px 16px #262626;
-      --shadow-xl: 10px 10px 20px #000000, -10px -10px 20px #262626;
-      --shadow-2xl: 12px 12px 24px #000000, -12px -12px 24px #262626;
-      --shadow-inset: inset 2px 2px 5px #000000, inset -3px -3px 7px #262626;
-    }
   }
 
   html,

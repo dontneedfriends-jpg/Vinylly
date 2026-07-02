@@ -26,9 +26,15 @@ export interface GalleryProps {
   releaseId: string;
   images: ReleaseImage[];
   openLightbox?: number;
+  openTrigger?: number;
 }
 
-export function Gallery({ releaseId, images: initialImages, openLightbox }: GalleryProps) {
+export function Gallery({
+  releaseId,
+  images: initialImages,
+  openLightbox,
+  openTrigger,
+}: GalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [items, setItems] = useState(initialImages);
@@ -42,6 +48,14 @@ export function Gallery({ releaseId, images: initialImages, openLightbox }: Gall
       setLightboxOpen(true);
     }
   }, [openLightbox]);
+
+  useEffect(() => {
+    if (openTrigger === undefined) return;
+    if (openTrigger === 0) return;
+    if (items.length === 0) return;
+    setSelectedIndex(0);
+    setLightboxOpen(true);
+  }, [openTrigger, items.length]);
 
   if (items.length === 0) return null;
 
@@ -62,8 +76,14 @@ export function Gallery({ releaseId, images: initialImages, openLightbox }: Gall
 
   return (
     <>
-      <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-2">
-        {items.map((img, i) => (
+      <div
+        className={`mt-4 grid gap-2 ${
+          items.length > 2
+            ? 'grid-cols-3'
+            : 'grid-cols-[repeat(auto-fill,minmax(44px,1fr))]'
+        }`}
+      >
+        {items.slice(0, 2).map((img, i) => (
           <div
             key={`${i}-${img.uri}`}
             draggable
@@ -83,6 +103,15 @@ export function Gallery({ releaseId, images: initialImages, openLightbox }: Gall
             />
           </div>
         ))}
+        {items.length > 2 ? (
+          <MoreTile
+            count={items.length - 2}
+            onClick={() => {
+              setSelectedIndex(2);
+              setLightboxOpen(true);
+            }}
+          />
+        ) : null}
       </div>
 
       {lightboxOpen ? (
@@ -144,6 +173,22 @@ function Thumbnail({
           <span className="text-fg-body-subtle text-[10px]">…</span>
         </div>
       )}
+    </button>
+  );
+}
+
+/* ─── MoreTile ─── */
+
+function MoreTile({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`Ещё ${count}`}
+      aria-label={`Показать ещё ${count} изображений`}
+      className="border-border-default-medium shadow-neu-2xs hover:shadow-neu-xs flex aspect-square items-center justify-center rounded-base border transition-all duration-200"
+    >
+      <span className="text-fg-heading text-sm font-semibold">+{count}</span>
     </button>
   );
 }
@@ -291,7 +336,7 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-strong select-none"
       onClick={onOverlayClick}
       ref={containerRef}
       tabIndex={0}
@@ -306,7 +351,7 @@ function Lightbox({
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-overlay-control text-fg-on-overlay hover:bg-overlay-control-hover transition-colors"
         aria-label="Close"
       >
         <CloseIcon />
@@ -316,7 +361,7 @@ function Lightbox({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
-          className="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+          className="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-overlay-control text-fg-on-overlay hover:bg-overlay-control-hover transition-colors"
           aria-label="Previous"
         >
           <ChevronLeftIcon />
@@ -327,7 +372,7 @@ function Lightbox({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); goNext(); }}
-          className="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+          className="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-overlay-control text-fg-on-overlay hover:bg-overlay-control-hover transition-colors"
           aria-label="Next"
         >
           <ChevronRightIcon />
@@ -360,16 +405,16 @@ function Lightbox({
           />
         ) : (
           <div className="flex h-64 w-64 items-center justify-center">
-            <span className="text-white/60 text-sm">…</span>
+            <span className="text-fg-on-overlay/60 text-sm">…</span>
           </div>
         )}
       </div>
 
       {total > 1 ? (
-        <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-xs text-white/80">
+        <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full bg-overlay-caption px-4 py-2 text-xs text-fg-on-overlay/80">
           <span>{currentIndex + 1} / {total}</span>
           {current?.type ? (
-            <span className="ml-2 text-white/60">{typeLabels[current.type] ?? current.type}</span>
+            <span className="ml-2 text-fg-on-overlay/60">{typeLabels[current.type] ?? current.type}</span>
           ) : null}
         </div>
       ) : null}

@@ -24,6 +24,7 @@
   "my_notes.sleeve_placeholder": "NM / VG+ / G…",
   "my_notes.title": "My notes",
   "page.delete": "Delete",
+  "page.deleted_undo": "«{{title}}» removed from collection",
   "page.loading": "Loading…",
   "page.no_release": "No release selected",
   "page.to_collection": "To collection",

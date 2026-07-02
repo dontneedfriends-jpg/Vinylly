@@ -7,6 +7,7 @@
   "button.undo": "Undo",
   "button.saving": "Saving…",
   "cover.no_cover": "No cover",
+  "cover.zoom_aria": "Open image",
   "duration.format": "{{minutes}}:{{seconds}}",
   "filter.all": "All",
   "image_type.primary": "Front cover",

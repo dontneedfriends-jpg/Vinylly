@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { SegmentedControl } from '@vinylly/ui';
 import { useTheme, type ThemeMode } from '../lib/theme';
 
-const order: ThemeMode[] = ['light', 'dark', 'system'];
+const order: ThemeMode[] = ['light', 'dark'];
 
 export function ThemeToggle() {
   const { t } = useTranslation();
@@ -12,7 +12,6 @@ export function ThemeToggle() {
   const labels: Record<ThemeMode, string> = {
     light: t('layout:theme.light'),
     dark: t('layout:theme.dark'),
-    system: t('layout:theme.system'),
   };
 
   return (

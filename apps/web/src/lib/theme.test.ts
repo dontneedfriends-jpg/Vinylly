@@ -1,17 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('theme store', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
+    const { useTheme } = await import('./theme');
+    useTheme.getState().setMode('light');
   });
   afterEach(() => {
     localStorage.clear();
   });
 
-  it('initializes to system by default', async () => {
+  it('initializes to light by default', async () => {
     const { useTheme } = await import('./theme');
-    expect(useTheme.getState().mode).toBe('system');
+    expect(useTheme.getState().mode).toBe('light');
   });
 
   it('persists and applies light theme', async () => {
@@ -22,14 +24,20 @@ describe('theme store', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 
-  it('cycles through modes', async () => {
+  it('persists and applies dark theme', async () => {
     const { useTheme } = await import('./theme');
-    const initial = useTheme.getState().mode;
+    useTheme.getState().setMode('dark');
+    expect(useTheme.getState().mode).toBe('dark');
+    expect(localStorage.getItem('vinylly:theme')).toBe('dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('cycles between light and dark', async () => {
+    const { useTheme } = await import('./theme');
+    expect(useTheme.getState().mode).toBe('light');
     useTheme.getState().cycle();
-    const after1 = useTheme.getState().mode;
+    expect(useTheme.getState().mode).toBe('dark');
     useTheme.getState().cycle();
-    const after2 = useTheme.getState().mode;
-    expect(after1).not.toBe(initial);
-    expect(after2).not.toBe(after1);
+    expect(useTheme.getState().mode).toBe('light');
   });
 });

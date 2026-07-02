@@ -9,6 +9,7 @@ export interface CoverImageProps {
   alt: string;
   size?: 'thumb' | 'full';
   className?: string;
+  onClick?: () => void;
 }
 
 function bytesToBlobUrl(bytes: Uint8Array): string {
@@ -23,6 +24,7 @@ export function CoverImage({
   alt,
   size = 'thumb',
   className = '',
+  onClick,
 }: CoverImageProps) {
   const { t } = useTranslation();
   const [src, setSrc] = useState<string | null>(null);
@@ -68,27 +70,38 @@ export function CoverImage({
     };
   }, [releaseId, coverPath, coverRemote]);
 
-  return (
-    <div
-      className={`rounded-base border-border-default bg-surface relative flex h-full w-full items-center justify-center overflow-hidden border ${
-        size === 'thumb' ? 'shadow-neu-inset' : 'shadow-neu-md'
-      } ${className}`}
-    >
-      {src ? (
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          className="h-full w-full object-cover"
-          onLoad={() => setStatus('ok')}
-          onError={() => setStatus('missing')}
-        />
-      ) : status === 'loading' ? (
-        <span className="text-fg-body-subtle text-xs">…</span>
-      ) : (
-        <span className="text-fg-body-subtle px-3 text-center text-xs">{t('common:cover.no_cover')}</span>
-      )}
-    </div>
+  const containerClass = `rounded-base border-border-default bg-surface relative flex h-full w-full items-center justify-center overflow-hidden border ${
+    size === 'thumb' ? 'shadow-neu-inset' : 'shadow-neu-md'
+  } ${onClick && src ? 'cursor-zoom-in transition-shadow duration-200 hover:shadow-neu-lg' : ''} ${className}`;
+
+  const inner = src ? (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      className="h-full w-full object-cover"
+      onLoad={() => setStatus('ok')}
+      onError={() => setStatus('missing')}
+    />
+  ) : status === 'loading' ? (
+    <span className="text-fg-body-subtle text-xs">…</span>
+  ) : (
+    <span className="text-fg-body-subtle px-3 text-center text-xs">{t('common:cover.no_cover')}</span>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={t('common:cover.zoom_aria', { defaultValue: 'Open image' })}
+        className={containerClass}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return <div className={containerClass}>{inner}</div>;
 }

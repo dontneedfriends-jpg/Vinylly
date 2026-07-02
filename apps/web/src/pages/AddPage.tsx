@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -15,7 +15,8 @@ import {
   SkeletonCard,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
-import { useCreateItem, useDefaultCollection } from '../lib/queries';
+import { useCreateItem, useDefaultCollection, useItems, useRemoveItem } from '../lib/queries';
+import { useQueryClient } from '@tanstack/react-query';
 import { itemRepo } from '../lib/db';
 import {
   ensureReleaseAssets,
@@ -37,11 +38,16 @@ const discogsFormatMap: Record<string, string | undefined> = {
 
 export function AddPage() {
   const { t } = useTranslation();
-  const openCollection = useUi((s) => s.openCollection);
   const setAddTracklist = useUi((s) => s.setAddTracklist);
   const setAddReleaseMeta = useUi((s) => s.setAddReleaseMeta);
   const { data: collection } = useDefaultCollection();
   const createItem = useCreateItem();
+  const removeItem = useRemoveItem();
+  const queryClient = useQueryClient();
+  const showToast = useUi((s) => s.showToast);
+  const hideToast = useUi((s) => s.hideToast);
+  const { data: allItems = [] } = useItems({});
+  const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const typeLabels: Record<MediaType, string> = {
     vinyl: t('common:media.vinyl'),
@@ -150,6 +156,24 @@ export function AddPage() {
     setAddReleaseMeta(null);
   };
 
+  const onBackToSearch = () => {
+    setSelected(null);
+    setReleaseDetail(null);
+    setAddTracklist([], false);
+    setAddReleaseMeta(null);
+  };
+
+  const existingItem = useMemo(() => {
+    if (!selected) return null;
+    return (
+      allItems.find(
+        (it) =>
+          it.release.source === selected.source &&
+          it.release.sourceId === selected.sourceId,
+      ) ?? null
+    );
+  }, [allItems, selected]);
+
   const onSave = async () => {
     if (!selected || !collection) return;
     setSaving(true);
@@ -197,12 +221,44 @@ export function AddPage() {
       }
       const shell = getHostShell();
       await shell.fs().ensureDir(shell.paths().coversDir);
-      openCollection();
+      showToast(t('add:form.added_toast', { title: created.release.title }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSaving(false);
     }
+  };
+
+  const onRemoveFromCollection = () => {
+    if (!existingItem) return;
+    if (removeTimerRef.current) {
+      clearTimeout(removeTimerRef.current);
+      removeTimerRef.current = null;
+    }
+    const id = existingItem.id;
+    showToast(t('add:form.removed_toast', { title: existingItem.release.title }), {
+      label: t('common:button.undo'),
+      onClick: () => {
+        if (removeTimerRef.current) {
+          clearTimeout(removeTimerRef.current);
+          removeTimerRef.current = null;
+        }
+        hideToast();
+      },
+    });
+    removeTimerRef.current = setTimeout(() => {
+      removeTimerRef.current = null;
+      removeItem.mutate(id, {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: ['items'] });
+          void queryClient.invalidateQueries({ queryKey: ['item', id] });
+        },
+        onError: (err) => {
+          hideToast();
+          showToast(t('collection:item.delete_error', { error: String(err) }));
+        },
+      });
+    }, 4000);
   };
 
   if (!selected) {
@@ -252,7 +308,7 @@ export function AddPage() {
         </Card>
 
         {searching && results.length === 0 ? (
-          <ul className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <li key={i}>
                 <SkeletonCard />
@@ -265,8 +321,8 @@ export function AddPage() {
             description={t('add:search.try_different')}
           />
         ) : results.length > 0 ? (
-          <ul className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
-            {results.map((r, i) => (
+<ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {results.map((r, i) => (
               <li
                 key={`${r.provider}-${r.release.sourceId}-${i}`}
                 className="animate-rise"
@@ -368,6 +424,32 @@ export function AddPage() {
                 </Badge>
               ))}
             </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                variant="neutral"
+                onClick={onBackToSearch}
+                leftIcon={<BackIcon />}
+              >
+                {t('common:button.back')}
+              </Button>
+              {existingItem ? (
+                <Button
+                  variant="secondary"
+                  onClick={onRemoveFromCollection}
+                  leftIcon={<CheckIcon />}
+                >
+                  {t('add:form.in_collection')}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => void onSave()}
+                  disabled={saving}
+                  leftIcon={saving ? undefined : <CheckIcon />}
+                >
+                  {saving ? t('common:button.saving') : t('add:form.save_to_collection')}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -432,23 +514,6 @@ export function AddPage() {
               placeholder={t('add:form.tags_placeholder')}
             />
           </div>
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <Button
-              variant="neutral"
-              onClick={() => {
-                setSelected(null);
-                setReleaseDetail(null);
-                setAddTracklist([], false);
-                setAddReleaseMeta(null);
-              }}
-              leftIcon={<BackIcon />}
-            >
-              {t('common:button.back')}
-            </Button>
-            <Button onClick={() => void onSave()} disabled={saving}>
-              {saving ? t('common:button.saving') : t('add:form.save_to_collection')}
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -486,6 +551,21 @@ function VinylIcon() {
       <circle cx="12" cy="12" r="5.5" />
       <circle cx="12" cy="12" r="2" />
       <circle cx="12" cy="12" r="0.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

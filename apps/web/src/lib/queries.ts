@@ -71,8 +71,9 @@ export function useRemoveItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => itemRepo.remove(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       void qc.invalidateQueries({ queryKey: ['items'] });
+      void qc.invalidateQueries({ queryKey: ['item', id] });
     },
   });
 }

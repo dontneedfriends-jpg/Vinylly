@@ -45,7 +45,7 @@ export function Titlebar() {
 
   return (
     <header
-      className="bg-surface flex h-9 shrink-0 select-none items-center border-b border-border-default"
+      className="flex h-9 shrink-0 select-none items-center"
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
       <div
@@ -57,19 +57,17 @@ export function Titlebar() {
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         aria-hidden
       />
-      <div
-        className="flex h-full items-center gap-1 px-2"
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-      >
-        {tauri ? <WindowControls maximized={maximized} /> : null}
-      </div>
+      {tauri ? <WindowControls maximized={maximized} /> : null}
     </header>
   );
 }
 
 function WindowControls({ maximized }: { maximized: boolean }) {
   return (
-    <div className="flex items-center gap-1">
+    <div
+      className="flex h-full items-center gap-2 px-3"
+      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+    >
       <TitlebarButton onClick={() => void minimizeWindow()} ariaLabel="Minimize">
         <MinimizeIcon />
       </TitlebarButton>
@@ -97,19 +95,17 @@ function TitlebarButton({
   children: React.ReactNode;
   variant?: 'default' | 'danger';
 }) {
-  const base =
-    'inline-flex h-7 w-9 items-center justify-center rounded-base border border-transparent bg-surface text-fg-body transition-all duration-200 ease-in-out';
   const variantClass =
     variant === 'danger'
-      ? 'hover:text-fg-danger-strong hover:bg-danger-soft'
-      : 'hover:text-fg-heading';
+      ? 'text-fg-danger hover:text-fg-danger-strong'
+      : 'text-fg-body hover:text-fg-heading';
 
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className={`${base} ${variantClass} hover:shadow-neu-2xs active:shadow-neu-inset`}
+      className={`bg-surface border-border-default shadow-neu-2xs hover:shadow-neu-xs active:shadow-neu-inset inline-flex h-8 w-10 items-center justify-center rounded-base border transition-all duration-200 ease-in-out ${variantClass}`}
     >
       {children}
     </button>
@@ -118,7 +114,7 @@ function TitlebarButton({
 
 function MinimizeIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <path d="M5 13h14" strokeLinecap="round" />
     </svg>
   );
@@ -126,7 +122,7 @@ function MinimizeIcon() {
 
 function MaximizeIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <rect x="5" y="5" width="14" height="14" rx="1.5" />
     </svg>
   );
@@ -134,7 +130,7 @@ function MaximizeIcon() {
 
 function RestoreIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <rect x="7" y="7" width="11" height="11" rx="1.5" />
       <path d="M4 16V6a1.5 1.5 0 0 1 1.5-1.5H16" strokeLinecap="round" />
     </svg>
@@ -143,7 +139,7 @@ function RestoreIcon() {
 
 function CloseIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
     </svg>
   );

@@ -67,7 +67,7 @@ class LocalStoragePrisma {
       // ignore
     }
   }
-  private persist() {
+  private async persist() {
     const snap = {
       collection: this.kv.get('__collection') ?? null,
       items: Array.from(this.kv.entries())
@@ -85,11 +85,19 @@ class LocalStoragePrisma {
         `vinylly:${DB_SNAPSHOT_KEY}`,
         JSON.stringify(Array.from(this.kv.entries())),
       );
-    } catch {
-      // localStorage quota — ignore
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        console.warn('localStorage quota exceeded');
+      } else {
+        console.warn('localStorage write failed', e);
+      }
     }
     if (isTauri()) {
-      void tauriSaveSnapshot(snap);
+      try {
+        await tauriSaveSnapshot(snap);
+      } catch (e) {
+        console.error('Tauri snapshot save failed, data may not persist on reload', e);
+      }
     }
     for (const l of this.listeners) l();
   }
@@ -106,7 +114,7 @@ class LocalStoragePrisma {
     create: async (args: { data: { id: string; name: string } }) => {
       const v = { id: args.data.id, name: args.data.name };
       this.kv.set('__collection', v);
-      this.persist();
+      await this.persist();
       return v;
     },
   };
@@ -156,7 +164,7 @@ class LocalStoragePrisma {
       const createdAt = new Date().toISOString();
       const row = { ...args.data, createdAt, updatedAt: createdAt };
       this.kv.set(`item:${id}`, row);
-      this.persist();
+      await this.persist();
       return row;
     },
     update: async (args: { where: { id: string }; data: Record<string, unknown> }) => {
@@ -165,12 +173,12 @@ class LocalStoragePrisma {
       if (!existing) throw new Error(`Item not found: ${id}`);
       const updated = { ...existing, ...args.data, updatedAt: new Date().toISOString() };
       this.kv.set(`item:${id}`, updated);
-      this.persist();
+      await this.persist();
       return updated;
     },
     delete: async (args: { where: { id: string } }) => {
       this.kv.delete(`item:${args.where.id}`);
-      this.persist();
+      await this.persist();
       return { id: args.where.id };
     },
   };
@@ -202,7 +210,7 @@ class LocalStoragePrisma {
         ? { ...existing, ...args.update, id, updatedAt: new Date().toISOString() }
         : { ...args.create, id, updatedAt: new Date().toISOString() };
       this.kv.set(key, merged);
-      this.persist();
+      await this.persist();
       return merged;
     },
     update: async (args: { where: { id: string }; data: Record<string, unknown> }) => {
@@ -211,7 +219,7 @@ class LocalStoragePrisma {
       if (!existing) throw new Error(`Release not found: ${args.where.id}`);
       const merged = { ...existing, ...args.data, updatedAt: new Date().toISOString() };
       this.kv.set(key, merged);
-      this.persist();
+      await this.persist();
       return merged;
     },
   };
@@ -230,7 +238,7 @@ class LocalStoragePrisma {
     },
     createMany: async (args: { data: Array<Record<string, unknown>> }) => {
       for (const t of args.data) this.kv.set(`track:${t.id}`, t);
-      this.persist();
+      await this.persist();
       return { count: args.data.length };
     },
     deleteMany: async (args: { where: { releaseId?: string } }) => {
@@ -243,7 +251,7 @@ class LocalStoragePrisma {
           count += 1;
         }
       }
-      this.persist();
+      await this.persist();
       return { count };
     },
     update: async (args: { where: { id: string }; data: Record<string, unknown> }) => {
@@ -251,7 +259,7 @@ class LocalStoragePrisma {
       if (!existing) throw new Error(`Track not found: ${args.where.id}`);
       const updated = { ...existing, ...args.data };
       this.kv.set(`track:${args.where.id}`, updated);
-      this.persist();
+      await this.persist();
       return updated;
     },
   };

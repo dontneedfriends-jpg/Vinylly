@@ -24,6 +24,7 @@
   "my_notes.sleeve_placeholder": "NM / VG+ / G…",
   "my_notes.title": "Мои заметки",
   "page.delete": "Удалить",
+  "page.deleted_undo": "«{{title}}» удалён из коллекции",
   "page.loading": "Загружаю…",
   "page.no_release": "Релиз не выбран",
   "page.to_collection": "К коллекции",

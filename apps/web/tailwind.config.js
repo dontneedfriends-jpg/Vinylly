@@ -38,6 +38,14 @@ export default {
         'border-danger-subtle': 'var(--color-border-danger-subtle)',
         'border-success-subtle': 'var(--color-border-success-subtle)',
         'border-warning-subtle': 'var(--color-border-warning-subtle)',
+
+        // Overlay scrim — modal/lightbox backdrops, floating controls on dark surfaces
+        overlay: 'var(--color-overlay)',
+        'overlay-strong': 'var(--color-overlay-strong)',
+        'overlay-control': 'var(--color-overlay-control)',
+        'overlay-control-hover': 'var(--color-overlay-control-hover)',
+        'overlay-caption': 'var(--color-overlay-caption)',
+        'fg-on-overlay': 'var(--color-fg-on-overlay)',
       },
       fontFamily: {
         sans: [

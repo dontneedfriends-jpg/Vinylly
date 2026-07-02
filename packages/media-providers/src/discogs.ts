@@ -1,4 +1,5 @@
 import { withCache } from './cache';
+import { extractArtist, stripArtistPrefix } from './parse';
 import type {
   MediaProvider,
   NormalizedRelease,
@@ -126,7 +127,7 @@ export class DiscogsProvider implements MediaProvider {
         release: {
           source: this.name,
           sourceId: String(r.id),
-          title: r.title,
+          title: stripArtistPrefix(r.title, extractArtist(r.title)),
           artist: extractArtist(r.title),
           year: r.year ?? null,
           genres: r.genre ?? [],
@@ -184,11 +185,6 @@ export class DiscogsProvider implements MediaProvider {
   }
 }
 
-function extractArtist(title: string): string {
-  const idx = title.indexOf(' - ');
-  return idx === -1 ? title : title.slice(0, idx).trim();
-}
-
 function parseDuration(s: string | undefined): number | null {
   if (!s) return null;
   const m = s.match(/(\d+):(\d+)/);
@@ -211,7 +207,7 @@ export function normalizeDiscogsRelease(
   return {
     source,
     sourceId: String(r.id),
-    title: r.title,
+    title: stripArtistPrefix(r.title, r.artists?.[0]?.name ?? extractArtist(r.title)),
     artist: r.artists?.[0]?.name ?? extractArtist(r.title),
     year: r.year ?? null,
     genres: r.genres ?? [],

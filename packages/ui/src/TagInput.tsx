@@ -62,7 +62,7 @@ export function TagInput({ label, tags, onChange, placeholder, disabled, id }: T
         {tags.map((tag) => (
           <span
             key={tag}
-            className="bg-surface border-border-default shadow-neu-2xs inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium leading-relaxed"
+            className="bg-surface border-border-default shadow-neu-2xs inline-flex items-center gap-1 rounded-DEFAULT px-2 py-0.5 text-xs font-medium leading-relaxed"
           >
             {tag}
             <button
