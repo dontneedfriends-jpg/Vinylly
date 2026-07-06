@@ -15,6 +15,15 @@ export interface ReleaseRecord {
   title: string;
   artist: string;
   year: number | null;
+  lowestPrice: number | null;
+  numForSale: number | null;
+  trackCount: number | null;
+  totalDurationMs: number | null;
+  masterId: number | null;
+  communityHave: number | null;
+  communityWant: number | null;
+  communityRatingAvg: number | null;
+  communityRatingCount: number | null;
   genres: string[];
   styles: string[];
   coverPath: string | null;
@@ -22,6 +31,13 @@ export interface ReleaseRecord {
   coverRemote: string | null;
   thumbRemote: string | null;
   images: ReleaseImage[];
+}
+
+export interface WantlistEntry {
+  id: string;
+  notes: string | null;
+  addedAt: string;
+  release: ReleaseRecord;
 }
 
 export interface ReleaseImage {
@@ -45,6 +61,8 @@ export interface ItemRecord {
   type: MediaType;
   barcode: string | null;
   catalogNumber: string | null;
+  discogsInstanceId: number | null;
+  purchasePrice: number | null;
   sleeveCondition: string | null;
   mediaCondition: string | null;
   notes: string | null;

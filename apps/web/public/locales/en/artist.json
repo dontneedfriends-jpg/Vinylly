@@ -1,0 +1,11 @@
+{
+  "page.no_artist": "No artist selected",
+  "page.subtitle": "{{owned}} owned · {{wanted}} wanted",
+  "page.on_discogs": "Discogs profile",
+  "section.owned": "Owned",
+  "section.wanted": "Wanted",
+  "section.open_wantlist": "Open wantlist",
+  "empty.owned": "No releases by this artist in your collection.",
+  "empty.wanted": "Not hunting anything by this artist.",
+  "more": "+ {{count}} more"
+}

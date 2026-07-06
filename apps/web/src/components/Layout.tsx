@@ -9,7 +9,7 @@ export interface LayoutProps {
   children?: ReactNode;
 }
 
-type NavId = 'collection' | 'add' | 'settings';
+type NavId = 'collection' | 'add' | 'wantlist' | 'stats' | 'settings';
 
 export function Layout({ children }: LayoutProps) {
   const { t } = useTranslation();
@@ -17,6 +17,8 @@ export function Layout({ children }: LayoutProps) {
   const openCollection = useUi((s) => s.openCollection);
   const openAdd = useUi((s) => s.openAdd);
   const openSettings = useUi((s) => s.openSettings);
+  const openStats = useUi((s) => s.openStats);
+  const openWantlist = useUi((s) => s.openWantlist);
 
   const navItems: Array<{ id: NavId; label: string; icon: ReactNode }> = [
     {
@@ -40,6 +42,24 @@ export function Layout({ children }: LayoutProps) {
       ),
     },
     {
+      id: 'wantlist',
+      label: t('layout:nav.wantlist'),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5 shrink-0 block" aria-hidden>
+          <path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z" strokeLinejoin="round" />
+        </svg>
+      ),
+    },
+    {
+      id: 'stats',
+      label: t('layout:nav.stats'),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5 shrink-0 block" aria-hidden>
+          <path d="M4 20h16M6 16V9M10 16V5M14 16v-5M18 16V8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+    },
+    {
       id: 'settings',
       label: t('layout:nav.settings'),
       icon: (
@@ -51,11 +71,20 @@ export function Layout({ children }: LayoutProps) {
     },
   ];
 
-  const active: NavId = page === 'detail' ? 'collection' : (page as NavId);
+  const active: NavId =
+    page === 'detail' || page === 'artist'
+      ? 'collection'
+      : page === 'stats'
+        ? 'stats'
+        : page === 'wantlist'
+          ? 'wantlist'
+          : (page as NavId);
 
   const onClick = (id: NavId) => {
     if (id === 'collection') return openCollection();
     if (id === 'add') return openAdd();
+    if (id === 'wantlist') return openWantlist();
+    if (id === 'stats') return openStats();
     return openSettings();
   };
 
@@ -102,8 +131,6 @@ export function Layout({ children }: LayoutProps) {
               );
             })}
           </nav>
-
-          {/* Theme toggle */}
           <ThemeToggle />
         </aside>
 

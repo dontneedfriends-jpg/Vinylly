@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -15,7 +15,8 @@ import {
   SkeletonCard,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
-import { useCreateItem, useDefaultCollection, useItems, useRemoveItem } from '../lib/queries';
+import { useSettings } from '../lib/settings-store';
+import { useCreateItem, useDefaultCollection, useItems, useRemoveItem, useAddToWantlist, useRemoveFromWantlist, useWantlist } from '../lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { itemRepo } from '../lib/db';
 import {
@@ -47,6 +48,9 @@ export function AddPage() {
   const showToast = useUi((s) => s.showToast);
   const hideToast = useUi((s) => s.hideToast);
   const { data: allItems = [] } = useItems({});
+  const { data: wantlist = [] } = useWantlist();
+  const addToWantlist = useAddToWantlist();
+  const wantlistRemove = useRemoveFromWantlist();
   const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const typeLabels: Record<MediaType, string> = {
@@ -69,12 +73,17 @@ export function AddPage() {
   const [selected, setSelected] = useState<NormalizedRelease | null>(null);
   const [releaseDetail, setReleaseDetail] = useState<NormalizedRelease | null>(null);
   const [, setLoadingDetail] = useState(false);
+
+  const discogsUsername = useSettings((s) => s.discogsUsername);
+  const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
   const [type, setType] = useState<MediaType>('vinyl');
+  const [syncDiscogs, setSyncDiscogs] = useState(true);
   const [formatFilter, setFormatFilter] = useState('');
   const [notes, setNotes] = useState('');
   const [location, setLocation] = useState('');
   const [barcode, setBarcode] = useState('');
   const [catalogNumber, setCatalogNumber] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sleeveCondition, setSleeveCondition] = useState('');
@@ -142,8 +151,8 @@ export function AddPage() {
     setSelected({
       source: 'manual',
       sourceId: `manual-${Date.now()}`,
-      title: 'Новый релиз',
-      artist: 'Неизвестный артист',
+      title: t('add:manual.default_title'),
+      artist: t('add:manual.default_artist'),
       year: null,
       genres: [],
       styles: [],
@@ -174,6 +183,11 @@ export function AddPage() {
     );
   }, [allItems, selected]);
 
+  const existingWantlist = useMemo(() => {
+    if (!selected) return null;
+    return wantlist.find((w) => w.release.source === selected.source && w.release.sourceId === selected.sourceId) ?? null;
+  }, [wantlist, selected]);
+
   const onSave = async () => {
     if (!selected || !collection) return;
     setSaving(true);
@@ -194,6 +208,7 @@ export function AddPage() {
           title: selected.title,
           artist: selected.artist,
           year: selected.year,
+          masterId: (releaseDetail ?? selected).masterId,
           genres: selected.genres,
           styles: selected.styles,
         },
@@ -202,6 +217,7 @@ export function AddPage() {
         location: location || null,
         barcode: barcode || null,
         catalogNumber: catalogNumber || null,
+        purchasePrice: purchasePrice,
         sleeveCondition: sleeveCondition || null,
         mediaCondition: mediaCondition || null,
         tags,
@@ -221,11 +237,71 @@ export function AddPage() {
       }
       const shell = getHostShell();
       await shell.fs().ensureDir(shell.paths().coversDir);
+      // sync to Discogs
+      if (syncDiscogs && discogsSyncEnabled && discogsUsername && selected.source === 'discogs') {
+        const registry = getProvidersRegistry();
+        const instanceId = await registry.addToDiscogsCollection(discogsUsername, Number(selected.sourceId));
+        if (instanceId != null) {
+          await itemRepo.update(created.id, { discogsInstanceId: instanceId });
+        } else {
+          showToast(t('add:form.discogs_sync_failed'));
+        }
+      }
       showToast(t('add:form.added_toast', { title: created.release.title }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onAddToWantlist = async () => {
+    if (!selected) return;
+    try {
+      const detail = releaseDetail ?? selected;
+      await addToWantlist.mutateAsync({
+        release: {
+          source: selected.source,
+          sourceId: selected.sourceId,
+          title: selected.title,
+          artist: selected.artist,
+          year: selected.year,
+          masterId: detail.masterId,
+          genres: selected.genres,
+          styles: selected.styles,
+          coverRemote: detail.coverUrl ?? null,
+          thumbRemote: detail.thumbUrl ?? null,
+        },
+      });
+      // also push to Discogs if token configured
+      if (discogsUsername) {
+        const registry = getProvidersRegistry();
+        const synced = await registry.addToDiscogsWantlist(discogsUsername, Number(selected.sourceId));
+        if (!synced) showToast(t('wantlist:add.discogs_sync_failed'));
+      }
+      showToast(t('wantlist:add.added_toast', { title: selected.title }));
+    } catch (err) {
+      console.warn('[wantlist] add failed:', err);
+      showToast(t('wantlist:add.error', { error: String(err) }));
+    }
+  };
+
+  const onRemoveFromWantlist = async () => {
+    if (!existingWantlist) return;
+    try {
+      await wantlistRemove.mutateAsync(existingWantlist.id);
+      if (discogsUsername) {
+        const registry = getProvidersRegistry();
+        const synced = await registry.removeFromDiscogsWantlist(
+          discogsUsername,
+          Number(existingWantlist.release.sourceId),
+        );
+        if (!synced) showToast(t('wantlist:add.discogs_sync_failed'));
+      }
+      showToast(t('wantlist:add.removed_toast', { title: existingWantlist.release.title }));
+    } catch (err) {
+      console.warn('[wantlist] remove failed:', err);
+      showToast(t('wantlist:add.error', { error: String(err) }));
     }
   };
 
@@ -235,8 +311,9 @@ export function AddPage() {
       clearTimeout(removeTimerRef.current);
       removeTimerRef.current = null;
     }
-    const id = existingItem.id;
-    showToast(t('add:form.removed_toast', { title: existingItem.release.title }), {
+    const snapshot = existingItem;
+    const id = snapshot.id;
+    showToast(t('add:form.removed_toast', { title: snapshot.release.title }), {
       label: t('common:button.undo'),
       onClick: () => {
         if (removeTimerRef.current) {
@@ -248,10 +325,23 @@ export function AddPage() {
     });
     removeTimerRef.current = setTimeout(() => {
       removeTimerRef.current = null;
+      const registry = getProvidersRegistry();
+      const shouldSync =
+        discogsUsername &&
+        discogsSyncEnabled &&
+        snapshot.discogsInstanceId != null &&
+        snapshot.release.source === 'discogs';
       removeItem.mutate(id, {
         onSuccess: () => {
           void queryClient.invalidateQueries({ queryKey: ['items'] });
           void queryClient.invalidateQueries({ queryKey: ['item', id] });
+          if (shouldSync) {
+            void registry.removeFromDiscogsCollection(
+              discogsUsername!,
+              Number(snapshot.release.sourceId),
+              snapshot.discogsInstanceId!,
+            );
+          }
         },
         onError: (err) => {
           hideToast();
@@ -260,6 +350,17 @@ export function AddPage() {
       });
     }, 4000);
   };
+
+  // Clear pending delete when navigating away from the form
+  useEffect(
+    () => () => {
+      if (removeTimerRef.current) {
+        clearTimeout(removeTimerRef.current);
+        removeTimerRef.current = null;
+      }
+    },
+    [],
+  );
 
   if (!selected) {
     return (
@@ -319,6 +420,17 @@ export function AddPage() {
           <EmptyState
             title={t('add:search.no_results')}
             description={t('add:search.try_different')}
+            action={
+              <a
+                href={`https://www.discogs.com/search/?q=${encodeURIComponent(query.trim())}&type=release`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-base bg-surface shadow-neu-sm hover:shadow-neu-md text-fg-heading inline-flex items-center gap-2 px-4 py-2 text-sm transition-all"
+              >
+                {t('add:search.open_discogs_search')}
+                <ExternalLinkIcon />
+              </a>
+            }
           />
         ) : results.length > 0 ? (
 <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -424,7 +536,7 @@ export function AddPage() {
                 </Badge>
               ))}
             </div>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button
                 variant="neutral"
                 onClick={onBackToSearch}
@@ -449,6 +561,35 @@ export function AddPage() {
                   {saving ? t('common:button.saving') : t('add:form.save_to_collection')}
                 </Button>
               )}
+              {existingWantlist ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => void onRemoveFromWantlist()}
+                  leftIcon={<HeartIcon />}
+                >
+                  {t('wantlist:form.in_wantlist')}
+                </Button>
+              ) : (
+                <Button
+                  variant="neutral"
+                  onClick={() => void onAddToWantlist()}
+                  disabled={addToWantlist.isPending}
+                  leftIcon={addToWantlist.isPending ? undefined : <HeartIcon />}
+                >
+                  {addToWantlist.isPending ? t('common:button.saving') : t('wantlist:form.add_to_wantlist')}
+                </Button>
+              )}
+              {selected?.source === 'discogs' && discogsUsername && discogsSyncEnabled ? (
+                <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={syncDiscogs}
+                    onChange={(e) => setSyncDiscogs(e.target.checked)}
+                    className="rounded-base border-border-default bg-surface h-3.5 w-3.5"
+                  />
+                  <span className="text-fg-body-subtle">{t('add:form.sync_discogs')}</span>
+                </label>
+              ) : null}
             </div>
           </div>
         </div>
@@ -485,6 +626,15 @@ export function AddPage() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             />
+            <Input
+              label={t('add:form.purchase_price')}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={purchasePrice ?? ''}
+              onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : null)}
+            />
           </div>
           <div className="mt-6 grid gap-x-6 gap-y-5 md:grid-cols-2">
             <ConditionPicker
@@ -519,6 +669,14 @@ export function AddPage() {
 
       {error ? <p className="text-fg-danger mt-4 text-sm">{error}</p> : null}
     </section>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0" aria-hidden>
+      <path d="M14 4h6v6M10 14L20 4M19 13v6a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -566,6 +724,14 @@ function CheckIcon() {
       aria-hidden
     >
       <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function HeartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z" strokeLinejoin="round" />
     </svg>
   );
 }

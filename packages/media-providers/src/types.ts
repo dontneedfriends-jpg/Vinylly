@@ -25,9 +25,12 @@ export interface NormalizedRelease {
   released?: string;
   labels?: string[];
   format?: string;
-  community?: { have: number; want: number };
+  community?: { have: number; want: number; rating?: { average: number; count: number } };
+  numForSale?: number;
+  lowestPrice?: number | null;
   discogsUrl?: string;
   masterUrl?: string | null;
+  masterId?: number | null;
   barcode?: string[];
   videos?: Array<{ uri: string; title: string }>;
   extraArtists?: Array<{ name: string; role: string }>;

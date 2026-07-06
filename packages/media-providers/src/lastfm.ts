@@ -30,6 +30,12 @@ interface LastFmSearchResponse {
   };
 }
 
+interface LastFmSimilarResponse {
+  similarartists: {
+    artist: Array<{ name: string; match?: string }>;
+  };
+}
+
 export class LastFmProvider implements MediaProvider {
   readonly name = 'lastfm' as const;
 
@@ -83,6 +89,23 @@ export class LastFmProvider implements MediaProvider {
 
   async getLyrics(_artist: string, _title: string): Promise<LyricsResult | null> {
     return null;
+  }
+
+  async getRelatedArtists(artistName: string, limit = 10): Promise<string[]> {
+    if (!this.isEnabled() || !artistName) return [];
+    const params = new URLSearchParams({
+      method: 'artist.getsimilar',
+      artist: artistName,
+      api_key: this.config.apiKey,
+      format: 'json',
+      limit: String(limit),
+    });
+    return withCache(`lastfm:similar:${params.toString()}`, TTL, async () => {
+      const data = await getHostShell()
+        .net()
+        .fetchJson<LastFmSimilarResponse>(`${BASE}/?${params.toString()}`);
+      return (data.similarartists?.artist ?? []).slice(0, limit).map((a) => a.name);
+    });
   }
 }
 

@@ -1,0 +1,16 @@
+{
+  "page.title": "Хочется",
+  "page.subtitle": "В списке желаемого: {{count}}",
+  "page.subtitle_empty": "Записывайте релизы, которые ищете",
+  "page.add_button": "Добавить",
+  "item.remove_aria": "Убрать из списка желаемого",
+  "empty.title": "Список желаемого пуст",
+  "empty.suggestion": "Найдите релизы и добавьте их в список желаемого.",
+  "empty.add_button": "Найти релизы",
+  "form.add_to_wantlist": "В список желаемого",
+  "form.in_wantlist": "В списке желаемого",
+  "add.added_toast": "«{{title}}» добавлено в список желаемого",
+  "add.removed_toast": "«{{title}}» убрано из списка желаемого",
+  "add.discogs_sync_failed": "Добавлено локально, но не удалось синхронизировать с Discogs",
+  "add.error": "Ошибка: {{error}}"
+}

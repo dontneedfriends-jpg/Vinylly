@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker, TagInput } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
-import { useItem, useUpdateItem, useRemoveItem } from '../lib/queries';
+import { useSettings } from '../lib/settings-store';
+import { useItem, useUpdateItem, useRemoveItem, useWantlist, useItems } from '../lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { CoverImage } from '../components/CoverImage';
 import { Gallery } from '../components/Gallery';
 import { ExternalLink } from '../components/ExternalLink';
 import { DetailRail } from '../components/RightRail';
+import { MasterVariants } from '../components/MasterVariants';
 import { getProvidersRegistry } from '../lib/providers';
-import type { MediaType } from '@vinylly/db';
+import type { MediaType, ItemRecord } from '@vinylly/db';
 import { itemRepo } from '../lib/db';
 import { getHostShell } from '@vinylly/host';
 
@@ -24,12 +26,16 @@ export function DetailPage() {
   };
 
   const openCollection = useUi((s) => s.openCollection);
+  const openArtist = useUi((s) => s.openArtist);
   const setReleaseVideos = useUi((s) => s.setReleaseVideos);
   const { data: item, isFetched } = useItem(itemId);
+  const allItemsQuery = useItems({});
+  const { data: wantlist = [] } = useWantlist();
   const updateItem = useUpdateItem();
 
   const [notes, setNotes] = useState(item?.notes ?? '');
   const [location, setLocation] = useState(item?.location ?? '');
+  const [purchasePrice, setPurchasePrice] = useState<number | null>(item?.purchasePrice ?? null);
   const [sleeveCondition, setSleeveCondition] = useState(item?.sleeveCondition ?? '');
   const [mediaCondition, setMediaCondition] = useState(item?.mediaCondition ?? '');
   const [tags, setTags] = useState<string[]>(item?.tags ?? []);
@@ -42,9 +48,11 @@ export function DetailPage() {
     released?: string;
     labels?: string[];
     format?: string;
-    community?: { have: number; want: number };
+    community?: { have: number; want: number; rating?: { average: number; count: number } };
     discogsUrl?: string;
     barcode?: string[];
+    numForSale?: number;
+    lowestPrice?: number | null;
     videos?: Array<{ uri: string; title: string }>;
     extraArtists?: Array<{ name: string; role: string }>;
   } | null>(null);
@@ -52,19 +60,40 @@ export function DetailPage() {
   const queryClient = useQueryClient();
   const showToast = useUi((s) => s.showToast);
   const hideToast = useUi((s) => s.hideToast);
+  const discogsUsername = useSettings((s) => s.discogsUsername);
+  const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
   const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [scheduledItemId, setScheduledItemId] = useState<string | null>(null);
+  const [scheduledSnapshot, setScheduledSnapshot] = useState<ItemRecord | null>(null);
 
+  const syncDiscogsDelete = (itemArg: ItemRecord | undefined | null) => {
+    if (!itemArg || !discogsUsername || !discogsSyncEnabled) return;
+    if (itemArg.release.source !== 'discogs' || itemArg.discogsInstanceId == null) return;
+    const registry = getProvidersRegistry();
+    void registry.removeFromDiscogsCollection(discogsUsername, Number(itemArg.release.sourceId), itemArg.discogsInstanceId);
+  };
+
+  const itemIdKey = item?.id;
   useEffect(() => {
     const current = item;
     if (current) {
       setNotes(current.notes ?? '');
       setLocation(current.location ?? '');
+      setPurchasePrice(current.purchasePrice ?? null);
       setSleeveCondition(current.sleeveCondition ?? '');
       setMediaCondition(current.mediaCondition ?? '');
       setTags(current.tags ?? []);
     }
-  }, [item]);
+    // Switching items invalidates any pending delete on the previous one
+    setScheduledItemId(null);
+    setScheduledSnapshot(null);
+    if (removeTimerRef.current) {
+      clearTimeout(removeTimerRef.current);
+      removeTimerRef.current = null;
+    }
+    // Re-seed form state only when switching to a different item — not on every refetch
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemIdKey]);
 
   useEffect(() => {
     if (!item) return;
@@ -89,6 +118,8 @@ export function DetailPage() {
           community: detailRelease.community,
           discogsUrl: detailRelease.discogsUrl,
           barcode: detailRelease.barcode,
+          numForSale: detailRelease.numForSale,
+          lowestPrice: detailRelease.lowestPrice,
           videos: detailRelease.videos,
           extraArtists: detailRelease.extraArtists,
         });
@@ -99,6 +130,30 @@ export function DetailPage() {
               title: v.title,
             })),
           );
+        }
+        // persist market data to DB
+        if ((detailRelease.numForSale != null || detailRelease.lowestPrice != null) && !cancelled) {
+          itemRepo
+            .setReleaseMarketData(rel.id, {
+              lowestPrice: detailRelease.lowestPrice ?? null,
+              numForSale: detailRelease.numForSale ?? null,
+            })
+            .catch((err) => {
+              console.warn('[detail] persist market data failed:', err);
+            });
+        }
+        // persist community stats (used for hidden gems on stats page)
+        if (detailRelease.community && !cancelled) {
+          itemRepo
+            .setReleaseCommunityStats(rel.id, {
+              have: detailRelease.community.have ?? null,
+              want: detailRelease.community.want ?? null,
+              ratingAvg: detailRelease.community.rating?.average ?? null,
+              ratingCount: detailRelease.community.rating?.count ?? null,
+            })
+            .catch((err) => {
+              console.warn('[detail] persist community stats failed:', err);
+            });
         }
       }
       const tryTitles = [rel.title, `${rel.title} (album)`, `${rel.title} (music)`];
@@ -139,16 +194,6 @@ export function DetailPage() {
       </section>
     );
   }
-  if (!itemId) {
-    return (
-      <section>
-        <PageHeader title={t('detail:page.no_release')} />
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
-          <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
-        </div>
-      </section>
-    );
-  }
   if (!item && !isFetched) {
     return (
       <section>
@@ -178,11 +223,13 @@ export function DetailPage() {
   }
 
   const onSaveMeta = () => {
+    if (!item) return;
     updateItem.mutate({
       id: item.id,
       patch: {
         notes: notes || null,
         location: location || null,
+        purchasePrice: purchasePrice,
         sleeveCondition: sleeveCondition || null,
         mediaCondition: mediaCondition || null,
         tags,
@@ -195,12 +242,15 @@ export function DetailPage() {
       clearTimeout(removeTimerRef.current);
       removeTimerRef.current = null;
       const prevId = scheduledItemId;
+      const prevSnapshot = scheduledSnapshot;
       if (prevId) {
         setScheduledItemId(null);
+        setScheduledSnapshot(null);
         removeItem.mutate(prevId, {
           onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['items'] });
             void queryClient.invalidateQueries({ queryKey: ['item', prevId] });
+            syncDiscogsDelete(prevSnapshot);
           },
           onError: (err) => {
             showToast(t('collection:item.delete_error', { error: String(err) }));
@@ -208,9 +258,11 @@ export function DetailPage() {
         });
       }
     }
-    const id = item.id;
-    const title = item.release.title;
+    const snapshot = item;
+    const id = snapshot.id;
+    const title = snapshot.release.title;
     setScheduledItemId(id);
+    setScheduledSnapshot(snapshot);
     showToast(t('detail:page.deleted_undo', { title }), {
       label: t('common:button.undo'),
       onClick: () => {
@@ -219,6 +271,7 @@ export function DetailPage() {
           removeTimerRef.current = null;
         }
         setScheduledItemId(null);
+        setScheduledSnapshot(null);
         hideToast();
       },
     });
@@ -228,9 +281,11 @@ export function DetailPage() {
         onSuccess: () => {
           void queryClient.invalidateQueries({ queryKey: ['items'] });
           void queryClient.invalidateQueries({ queryKey: ['item', id] });
+          syncDiscogsDelete(scheduledSnapshot ?? snapshot);
         },
         onError: (err) => {
           setScheduledItemId(null);
+          setScheduledSnapshot(null);
           hideToast();
           showToast(t('collection:item.delete_error', { error: String(err) }));
         },
@@ -274,7 +329,13 @@ export function DetailPage() {
             <h1 className="text-fg-heading text-3xl font-semibold md:text-4xl">
               {item.release.title}
             </h1>
-            <p className="text-fg-body mt-1 text-lg">{item.release.artist}</p>
+            <button
+              type="button"
+              onClick={() => openArtist(item.release.artist)}
+              className="text-fg-body hover:text-fg-heading mt-1 text-left text-lg transition-colors"
+            >
+              {item.release.artist}
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -287,6 +348,16 @@ export function DetailPage() {
                 {g}
               </Badge>
             ))}
+            {extendedMeta?.discogsUrl ? (
+              <ExternalLink
+                href={extendedMeta.discogsUrl}
+                className="rounded-base bg-surface shadow-neu-2xs hover:shadow-neu-xs text-fg-brand hover:text-fg-brand-strong ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs transition-all"
+              >
+                <VinylIcon />
+                <span>{t('detail:about.open_discogs')}</span>
+                <ExternalLinkIcon />
+              </ExternalLink>
+            ) : null}
           </div>
 
           {item.barcode || item.catalogNumber ? (
@@ -386,6 +457,28 @@ export function DetailPage() {
                           </span>
                         </div>
                       ) : null}
+                      {extendedMeta.community?.rating ? (
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.rating')}</span>
+                          <span className="text-fg-heading text-sm font-medium">
+                            ★ {extendedMeta.community.rating.average.toFixed(2)} ({extendedMeta.community.rating.count})
+                          </span>
+                        </div>
+                      ) : null}
+                      {extendedMeta.numForSale != null ? (
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.for_sale')}</span>
+                          <span className="text-fg-heading text-sm font-medium">{extendedMeta.numForSale}</span>
+                        </div>
+                      ) : null}
+                      {extendedMeta.lowestPrice != null ? (
+                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                          <span className="text-fg-body-subtle text-sm">{t('detail:about.lowest_price')}</span>
+                          <span className="text-fg-heading text-sm font-medium">
+                            ${extendedMeta.lowestPrice.toFixed(2)}
+                          </span>
+                        </div>
+                      ) : null}
                       {extendedMeta.extraArtists?.length ? (
                         <div className="border-border-default col-span-full flex flex-col gap-1 border-b pb-2">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.artists')}</span>
@@ -434,6 +527,19 @@ export function DetailPage() {
           </section>
         ) : null}
 
+        {/* ─── Master variants (pressing info) ─── */}
+        {item.release.source === 'discogs' && item.release.masterId ? (
+          <section className="mt-8">
+            <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:variants.title')}</h2>
+            <MasterVariants
+              masterId={item.release.masterId}
+              ownedItems={allItemsQuery.data ?? []}
+              wantedReleases={wantlist}
+              currentSourceId={item.release.sourceId}
+            />
+          </section>
+        ) : null}
+
         {/* Мои заметки */}
         <section>
           <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:my_notes.title')}</h2>
@@ -443,6 +549,15 @@ export function DetailPage() {
                 label={t('detail:my_notes.location')}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+              />
+              <Input
+                label={t('detail:my_notes.purchase_price')}
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={purchasePrice ?? ''}
+                onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : null)}
               />
               <ConditionPicker
                 label={t('detail:my_notes.sleeve')}
@@ -493,25 +608,66 @@ export function DetailPage() {
 
 /* ─── Cover Upload ─── */
 
+async function renderThumbnail(file: File, maxSide: number): Promise<Uint8Array> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('image load failed'));
+      el.src = url;
+    });
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas context unavailable');
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85),
+    );
+    if (!blob) throw new Error('toBlob failed');
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function CoverUploadButton({ releaseId, currentLabel }: { releaseId: string; currentLabel: string }) {
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const showToast = useUi((s) => s.showToast);
 
   const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast(t('detail:cover_upload.too_large'));
+      e.target.value = '';
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      showToast(t('detail:cover_upload.invalid_type'));
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
       const ext = file.name.match(/\.(png|jpg|jpeg|webp)$/i)?.[1] ?? 'jpg';
       const shell = getHostShell();
       const coversDir = shell.paths().coversDir;
       await shell.fs().ensureDir(coversDir);
       const coverPath = shell.fs().join(coversDir, `${releaseId}-custom.${ext}`);
+      const coverBytes = new Uint8Array(await file.arrayBuffer());
+      await shell.fs().writeBinary(coverPath, coverBytes);
+      // Generate a real thumbnail by drawing the original to an off-screen canvas
+      const thumbBytes = await renderThumbnail(file, 400);
       const thumbPath = shell.fs().join(coversDir, `${releaseId}_thumb.jpg`);
-      await shell.fs().writeBinary(coverPath, bytes);
-      await shell.fs().writeBinary(thumbPath, bytes);
+      await shell.fs().writeBinary(thumbPath, thumbBytes);
       await itemRepo.setReleaseCover(releaseId, {
         coverPath,
         thumbPath,
@@ -519,8 +675,9 @@ function CoverUploadButton({ releaseId, currentLabel }: { releaseId: string; cur
         thumbRemote: thumbPath,
       });
       await queryClient.invalidateQueries({ queryKey: ['item', releaseId] });
-    } catch {
-      // silent
+    } catch (err) {
+      console.warn('[cover-upload] failed:', err);
+      showToast(t('detail:cover_upload.error'));
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -577,6 +734,17 @@ function TrashIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function VinylIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5.5" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" />
     </svg>
   );
 }

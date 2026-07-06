@@ -16,18 +16,20 @@ model Collection {
 }
 
 model Item {
-  id              String    @id @default(cuid())
-  type            String
-  barcode         String?
-  catalogNumber   String?
-  sleeveCondition String?
-  mediaCondition  String?
-  notes           String?
-  acquiredAt      DateTime?
-  location        String?
-  tags            String    @default("[]")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  type              String
+  barcode           String?
+  catalogNumber     String?
+  discogsInstanceId Int?
+  purchasePrice     Float?
+  sleeveCondition   String?
+  mediaCondition    String?
+  notes             String?
+  acquiredAt        DateTime?
+  location          String?
+  tags              String    @default("[]")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   collectionId String
   collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
@@ -48,6 +50,15 @@ model Release {
   title         String
   artist        String
   year          Int?
+  lowestPrice   Float?
+  numForSale    Int?
+  trackCount    Int?
+  totalDurationMs Int?
+  masterId      Int?
+  communityHave Int?
+  communityWant Int?
+  communityRatingAvg Float?
+  communityRatingCount Int?
   genres        String   @default("[]")
   styles        String   @default("[]")
   coverPath     String?
@@ -60,10 +71,24 @@ model Release {
 
   items    Item[]
   tracks   Track[]
+  wantlistEntries    WantlistEntry[]
 
   @@unique([source, sourceId])
   @@index([artist])
   @@index([title])
+  @@index([masterId])
+}
+
+model WantlistEntry {
+  id               String   @id @default(cuid())
+  notes            String?
+  addedAt          DateTime @default(now())
+
+  releaseId String
+  release   Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@index([releaseId])
+  @@index([addedAt])
 }
 
 model Track {

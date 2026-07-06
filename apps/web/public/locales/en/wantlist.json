@@ -1,0 +1,16 @@
+{
+  "page.title": "Wantlist",
+  "page.subtitle": "{{count}} items on your wantlist",
+  "page.subtitle_empty": "Track releases you want to find",
+  "page.add_button": "Add",
+  "item.remove_aria": "Remove from wantlist",
+  "empty.title": "Wantlist is empty",
+  "empty.suggestion": "Search for releases and add them to your wantlist.",
+  "empty.add_button": "Find releases",
+  "form.add_to_wantlist": "Wantlist",
+  "form.in_wantlist": "On wantlist",
+  "add.added_toast": "«{{title}}» added to wantlist",
+  "add.removed_toast": "«{{title}}» removed from wantlist",
+  "add.discogs_sync_failed": "Added locally, but failed to sync with Discogs",
+  "add.error": "Failed: {{error}}"
+}

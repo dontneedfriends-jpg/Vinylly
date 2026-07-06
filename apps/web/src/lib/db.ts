@@ -51,10 +51,14 @@ class LocalStoragePrisma {
         const tracks = Array.isArray(obj['tracks'])
           ? (obj['tracks'] as Array<[string, unknown]>)
           : [];
+        const wantlist = Array.isArray(obj['wantlist'])
+          ? (obj['wantlist'] as Array<[string, unknown]>)
+          : [];
         const collection = obj['collection'] as unknown | undefined;
         for (const [k, v] of items) this.kv.set(`item:${k}`, v);
         for (const [k, v] of releases) this.kv.set(`release:${k}`, v);
         for (const [k, v] of tracks) this.kv.set(`track:${k}`, v);
+        for (const [k, v] of wantlist) this.kv.set(`wantlist:${k}`, v);
         if (collection) this.kv.set('__collection', collection);
       } else {
         const raw = localStorage.getItem(`vinylly:${DB_SNAPSHOT_KEY}`);
@@ -79,6 +83,9 @@ class LocalStoragePrisma {
       tracks: Array.from(this.kv.entries())
         .filter(([k]) => k.startsWith('track:'))
         .map(([k, v]) => [k.slice('track:'.length), v]),
+      wantlist: Array.from(this.kv.entries())
+        .filter(([k]) => k.startsWith('wantlist:'))
+        .map(([k, v]) => [k.slice('wantlist:'.length), v]),
     };
     try {
       localStorage.setItem(
@@ -267,6 +274,54 @@ class LocalStoragePrisma {
     findUnique: async () => null,
     upsert: async () => ({}),
   };
+  wantlistEntry = {
+    findMany: async (args?: {
+      include?: { release?: boolean };
+      orderBy?: { addedAt?: 'asc' | 'desc' };
+    }) => {
+      const all = Array.from(this.kv.entries())
+        .filter(([k]) => k.startsWith('wantlist:'))
+        .map(([, v]) => v as Record<string, unknown>);
+      const dir = args?.orderBy?.addedAt === 'asc' ? 1 : -1;
+      all.sort((a, b) => dir * String(a.addedAt).localeCompare(String(b.addedAt)));
+      if (args?.include?.release) {
+        return all.map((r) => {
+          if (r.release) return r;
+          const rel = (this.kv.get(`release:${r.releaseId as string}`) as Record<string, unknown>) ?? null;
+          return rel ? { ...r, release: rel } : r;
+        });
+      }
+      return all;
+    },
+    findFirst: async (args: {
+      where: { release?: { source?: string; sourceId?: string } };
+    }) => {
+      const src = args.where.release;
+      if (!src?.source || !src.sourceId) return null;
+      for (const [k, v] of this.kv) {
+        if (!k.startsWith('wantlist:')) continue;
+        const row = v as Record<string, unknown>;
+        const rel = (this.kv.get(`release:${row.releaseId as string}`) as Record<string, unknown>) ?? null;
+        if (rel && rel.source === src.source && rel.sourceId === src.sourceId) {
+          return { ...row, release: rel };
+        }
+      }
+      return null;
+    },
+    create: async (args: { data: Record<string, unknown> }) => {
+      const id = String(args.data.id);
+      const addedAt = new Date().toISOString();
+      const row: Record<string, unknown> = { ...args.data, addedAt };
+      this.kv.set(`wantlist:${id}`, row);
+      await this.persist();
+      return { ...row, release: this.kv.get(`release:${String(row.releaseId)}`) ?? null };
+    },
+    delete: async (args: { where: { id: string } }) => {
+      this.kv.delete(`wantlist:${args.where.id}`);
+      await this.persist();
+      return { id: args.where.id };
+    },
+  };
   async $disconnect() {
     return undefined;
   }
@@ -318,6 +373,9 @@ export async function restoreFromJsonFile(file: File): Promise<void> {
     if (Array.isArray(obj.tracks)) {
       for (const [k, v] of obj.tracks as Array<[string, unknown]>) entries.push([`track:${k}`, v]);
     }
+    if (Array.isArray(obj.wantlist)) {
+      for (const [k, v] of obj.wantlist as Array<[string, unknown]>) entries.push([`wantlist:${k}`, v]);
+    }
   } else {
     throw new Error('Invalid backup format');
   }
@@ -332,6 +390,7 @@ export async function restoreFromJsonFile(file: File): Promise<void> {
       items: entries.filter(([k]) => k.startsWith('item:')).map(([k, v]) => [k.slice('item:'.length), v]),
       releases: entries.filter(([k]) => k.startsWith('release:')).map(([k, v]) => [k.slice('release:'.length), v]),
       tracks: entries.filter(([k]) => k.startsWith('track:')).map(([k, v]) => [k.slice('track:'.length), v]),
+      wantlist: entries.filter(([k]) => k.startsWith('wantlist:')).map(([k, v]) => [k.slice('wantlist:'.length), v]),
     };
     await tauriSaveSnapshot(snap);
   }

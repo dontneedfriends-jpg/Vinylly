@@ -23,13 +23,13 @@ describe('App', () => {
   it('renders collection page after init', async () => {
     renderApp();
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: /Коллекция/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: /Коллекция/i })).toBeInTheDocument();
     });
   });
 
   it('renders sidebar with all nav items', async () => {
     renderApp();
-    const nav = screen.getByRole('navigation', { name: /Главная навигация/i });
+    const nav = screen.getByRole('navigation', { name: /Навигация/i });
     expect(nav).toBeInTheDocument();
     expect(
       nav.querySelectorAll('button[aria-label], button:not([aria-label])').length,

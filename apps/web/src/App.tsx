@@ -3,9 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
 import { CollectionPage } from './pages/CollectionPage';
+import { ReleasePreviewPage } from './pages/ReleasePreviewPage';
 import { AddPage } from './pages/AddPage';
 import { DetailPage } from './pages/DetailPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { StatsPage } from './pages/StatsPage';
+import { WantlistPage } from './pages/WantlistPage';
+import { ArtistPage } from './pages/ArtistPage';
 import { useUi } from './lib/ui-store';
 import { useVinylDbInit } from './lib/db';
 import { initSettings, useSettings } from './lib/settings-store';
@@ -20,6 +24,7 @@ import {
 export function App() {
   const { t } = useTranslation();
   const page = useUi((s) => s.page);
+  const releasePreviewId = useUi((s) => s.releasePreviewId);
   const ready = useVinylDbInit();
   const [settingsReady, setSettingsReady] = useState(false);
   const discogsToken = useSettings((s) => s.discogsToken);
@@ -59,8 +64,11 @@ export function App() {
       <Layout>
         {page === 'collection' ? <CollectionPage /> : null}
         {page === 'add' ? <AddPage /> : null}
-        {page === 'detail' ? <DetailPage /> : null}
+        {page === 'detail' ? (releasePreviewId ? <ReleasePreviewPage /> : <DetailPage />) : null}
         {page === 'settings' ? <SettingsPage /> : null}
+        {page === 'stats' ? <StatsPage /> : null}
+        {page === 'wantlist' ? <WantlistPage /> : null}
+        {page === 'artist' ? <ArtistPage /> : null}
         <Toast />
       </Layout>
     </>
@@ -72,6 +80,8 @@ function KeyboardShortcuts() {
   const openCollection = useUi((s) => s.openCollection);
   const openAdd = useUi((s) => s.openAdd);
   const openSettings = useUi((s) => s.openSettings);
+  const openWantlist = useUi((s) => s.openWantlist);
+  const openStats = useUi((s) => s.openStats);
   const showToast = useUi((s) => s.showToast);
   const hideToast = useUi((s) => s.hideToast);
   const toast = useUi((s) => s.toast);
@@ -79,6 +89,8 @@ function KeyboardShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // Don't fire shortcuts when modifier keys are held (Ctrl/Cmd/Alt)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       switch (e.key) {
         case '1':
@@ -88,12 +100,18 @@ function KeyboardShortcuts() {
           openAdd();
           break;
         case '3':
+          openWantlist();
+          break;
+        case '4':
+          openStats();
+          break;
+        case '5':
           openSettings();
           break;
         case '?': {
           e.preventDefault();
           if (toast) { hideToast(); return; }
-          showToast('1 Коллекция · 2 Добавить · 3 Настройки · / Поиск · ? Помощь');
+          showToast('1 Коллекция · 2 Добавить · 3 Хочется · 4 Статистика · 5 Настройки · / Поиск · ? Помощь');
           break;
         }
         case '/': {
@@ -109,7 +127,7 @@ function KeyboardShortcuts() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [page, openCollection, openAdd, openSettings, showToast, hideToast, toast]);
+  }, [page, openCollection, openAdd, openSettings, openWantlist, openStats, showToast, hideToast, toast]);
 
   return null;
 }

@@ -3,7 +3,9 @@ import {
   collectionRepo,
   itemRepo,
   trackRepo,
+  wantlistRepo,
   type CreateItemInput,
+  type CreateWantlistInput,
   type ItemListFilter,
 } from '@vinylly/db';
 
@@ -12,6 +14,7 @@ const qk = {
   items: (filter: ItemListFilter) => ['items', filter] as const,
   item: (id: string) => ['item', id] as const,
   tracks: (releaseId: string) => ['tracks', releaseId] as const,
+  wantlist: ['wantlist'] as const,
 };
 
 export function useDefaultCollection() {
@@ -74,6 +77,33 @@ export function useRemoveItem() {
     onSuccess: (_data, id) => {
       void qc.invalidateQueries({ queryKey: ['items'] });
       void qc.invalidateQueries({ queryKey: ['item', id] });
+    },
+  });
+}
+
+export function useWantlist() {
+  return useQuery({
+    queryKey: qk.wantlist,
+    queryFn: () => wantlistRepo.list(),
+  });
+}
+
+export function useAddToWantlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateWantlistInput) => wantlistRepo.add(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.wantlist });
+    },
+  });
+}
+
+export function useRemoveFromWantlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => wantlistRepo.remove(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.wantlist });
     },
   });
 }

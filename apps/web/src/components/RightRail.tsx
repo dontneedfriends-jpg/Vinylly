@@ -205,30 +205,6 @@ function CollectionRail() {
     { value: 'yearDesc', label: t('collection:sort.year_desc') },
   ];
 
-  const stats = useMemo(() => {
-    const total = items.length;
-    const byType: Record<string, number> = {};
-    for (const it of items) {
-      byType[it.type] = (byType[it.type] ?? 0) + 1;
-    }
-    return { total, byType };
-  }, [items]);
-
-  const charts = useMemo(() => {
-    const yearMap: Record<string, number> = {};
-    const genreMap: Record<string, number> = {};
-    for (const it of items) {
-      const y = it.release.year ? String(it.release.year) : '?';
-      yearMap[y] = (yearMap[y] ?? 0) + 1;
-      for (const g of it.release.genres) {
-        genreMap[g] = (genreMap[g] ?? 0) + 1;
-      }
-    }
-    const yearEntries = Object.entries(yearMap).sort(([a], [b]) => (a === '?' ? 1 : b === '?' ? -1 : Number(a) - Number(b)));
-    const genreEntries = Object.entries(genreMap).sort(([, a], [, b]) => b - a);
-    return { yearEntries, genreEntries };
-  }, [items]);
-
   const allTags = useMemo(() => {
     const set = new Set<string>();
     for (const it of items) {
@@ -243,7 +219,7 @@ function CollectionRail() {
     <div className="flex flex-col gap-5">
       {/* Search */}
       <div>
-        <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.collection.stats')}</h3>
+        <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.collection.filters')}</h3>
         <Input
           placeholder={t('collection:search.placeholder')}
           value={localSearch}
@@ -254,51 +230,6 @@ function CollectionRail() {
           data-search-input
         />
       </div>
-
-      {/* Stats */}
-      <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-5 py-4">
-        <div className="text-fg-heading text-2xl font-semibold">{stats.total}</div>
-        <div className="text-fg-body-subtle text-xs">{t('layout:rail.collection.total_releases')}</div>
-        <div className="mt-3 flex flex-col gap-1">
-          {(Object.keys(stats.byType) as MediaType[]).map((k) => (
-            <div key={k} className="flex items-center justify-between text-sm">
-              <span className="text-fg-body">{typeLabels[k] ?? k}</span>
-              <span className="text-fg-heading font-medium">{stats.byType[k]}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Charts */}
-      {items.length > 0 ? (
-        <div>
-          <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.collection.charts')}</h3>
-
-          {/* By year */}
-          {charts.yearEntries.length > 0 ? (
-            <div className="mb-4">
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('layout:rail.collection.by_year')}
-              </h4>
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
-                <BarChart data={charts.yearEntries} maxBars={15} />
-              </div>
-            </div>
-          ) : null}
-
-          {/* By genre */}
-          {charts.genreEntries.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('layout:rail.collection.by_genre')}
-              </h4>
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
-                <BarChart data={charts.genreEntries} maxBars={10} />
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       {/* Tag filter */}
       {allTags.length > 0 ? (
@@ -559,6 +490,8 @@ export function RightRail() {
         return <AddRail />;
       case 'settings':
         return null;
+      case 'stats':
+        return <CollectionRail />;
     }
   };
 
@@ -572,39 +505,6 @@ export function RightRail() {
     >
       <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto p-4">{rendered}</div>
     </aside>
-  );
-}
-
-/* ─────────── BAR CHART (neumorphic) ─────────── */
-
-function BarChart({ data, maxBars }: { data: Array<[string, number]>; maxBars: number }) {
-  const sliced = data.slice(-maxBars);
-  const maxVal = Math.max(...sliced.map(([, v]) => v), 1);
-
-  return (
-    <div className="flex flex-col gap-2" role="img" aria-label="Bar chart">
-      {sliced.map(([label, val]) => {
-        const pct = (val / maxVal) * 100;
-        return (
-          <div key={label} className="flex items-center gap-2">
-            <span className="text-fg-body-subtle w-10 shrink-0 text-right text-[10px] font-medium leading-none">
-              {label}
-            </span>
-            <div
-              className="rounded-base bg-surface border-border-default shadow-neu-2xs relative h-5 flex-1 overflow-hidden border"
-            >
-              <div
-                className="bg-surface border-border-default-medium shadow-neu-xs h-full rounded-DEFAULT border"
-                style={{ width: `${Math.max(pct, 4)}%` }}
-              />
-            </div>
-            <span className="text-fg-heading w-5 shrink-0 text-[10px] font-semibold leading-none">
-              {val}
-            </span>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 

@@ -14,6 +14,8 @@ pub struct DbSnapshot {
     pub releases: Vec<Value>,
     #[serde(default)]
     pub tracks: Vec<Value>,
+    #[serde(default)]
+    pub wantlist: Vec<Value>,
 }
 
 pub struct DbState {

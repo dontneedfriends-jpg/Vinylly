@@ -1,6 +1,74 @@
-import type { ItemRecord, TrackRecord, MediaType, ReleaseSource } from '@vinylly/db';
+import type {
+  ItemRecord,
+  MediaType,
+  ReleaseRecord,
+  ReleaseSource,
+  TrackRecord,
+  WantlistEntry,
+} from '@vinylly/db';
 
-export interface ExportBundleV1 {
+export interface ExportBundleV2 {
+  format: 'vinylly.v2';
+  exportedAt: string;
+  items: Array<{
+    type: MediaType;
+    barcode: string | null;
+    catalogNumber: string | null;
+    discogsInstanceId: number | null;
+    purchasePrice: number | null;
+    sleeveCondition: string | null;
+    mediaCondition: string | null;
+    notes: string | null;
+    location: string | null;
+    tags: string[];
+    acquiredAt: string | null;
+    release: {
+      source: ReleaseSource;
+      sourceId: string;
+      title: string;
+      artist: string;
+      year: number | null;
+      masterId: number | null;
+      lowestPrice: number | null;
+      numForSale: number | null;
+      communityHave: number | null;
+      communityWant: number | null;
+      communityRatingAvg: number | null;
+      communityRatingCount: number | null;
+      genres: string[];
+      styles: string[];
+      coverPath: string | null;
+      thumbPath: string | null;
+      coverRemote: string | null;
+      thumbRemote: string | null;
+    };
+    tracklist: Array<{
+      position: string;
+      title: string;
+      duration: number | null;
+      lyrics: string | null;
+    }>;
+  }>;
+  wantlist: Array<{
+    notes: string | null;
+    addedAt: string;
+    release: {
+      source: ReleaseSource;
+      sourceId: string;
+      title: string;
+      artist: string;
+      year: number | null;
+      masterId: number | null;
+      genres: string[];
+      styles: string[];
+      coverRemote: string | null;
+      thumbRemote: string | null;
+    };
+  }>;
+}
+
+// Legacy v1 — kept for parsing old exports
+interface ExportBundleV1 {
   format: 'vinylly.v1';
   exportedAt: string;
   items: Array<{
@@ -38,33 +106,24 @@ export interface ExportBundleV1 {
 export function buildBundle(
   items: ItemRecord[],
   tracksByRelease: Map<string, TrackRecord[]>,
-): ExportBundleV1 {
+  wantlist: WantlistEntry[] = [],
+): ExportBundleV2 {
   return {
-    format: 'vinylly.v1',
+    format: 'vinylly.v2',
     exportedAt: new Date().toISOString(),
     items: items.map((it) => ({
       type: it.type,
       barcode: it.barcode,
       catalogNumber: it.catalogNumber,
+      discogsInstanceId: it.discogsInstanceId,
+      purchasePrice: it.purchasePrice,
       sleeveCondition: it.sleeveCondition,
       mediaCondition: it.mediaCondition,
       notes: it.notes,
       location: it.location,
       tags: it.tags,
       acquiredAt: it.acquiredAt,
-      release: {
-        source: it.release.source,
-        sourceId: it.release.sourceId,
-        title: it.release.title,
-        artist: it.release.artist,
-        year: it.release.year,
-        genres: it.release.genres,
-        styles: it.release.styles,
-        coverPath: it.release.coverPath,
-        thumbPath: it.release.thumbPath,
-        coverRemote: it.release.coverRemote,
-        thumbRemote: it.release.thumbRemote,
-      },
+      release: serializeRelease(it.release),
       tracklist: (tracksByRelease.get(it.release.id) ?? []).map((t) => ({
         position: t.position,
         title: t.title,
@@ -72,30 +131,88 @@ export function buildBundle(
         lyrics: t.lyrics,
       })),
     })),
+    wantlist: wantlist.map((w) => ({
+      notes: w.notes,
+      addedAt: w.addedAt,
+      release: {
+        source: w.release.source,
+        sourceId: w.release.sourceId,
+        title: w.release.title,
+        artist: w.release.artist,
+        year: w.release.year,
+        masterId: w.release.masterId,
+        genres: w.release.genres,
+        styles: w.release.styles,
+        coverRemote: w.release.coverRemote,
+        thumbRemote: w.release.thumbRemote,
+      },
+    })),
   };
 }
 
-export function bundleToJson(b: ExportBundleV1): string {
+function serializeRelease(r: ReleaseRecord) {
+  return {
+    source: r.source,
+    sourceId: r.sourceId,
+    title: r.title,
+    artist: r.artist,
+    year: r.year,
+    masterId: r.masterId,
+    lowestPrice: r.lowestPrice,
+    numForSale: r.numForSale,
+    communityHave: r.communityHave,
+    communityWant: r.communityWant,
+    communityRatingAvg: r.communityRatingAvg,
+    communityRatingCount: r.communityRatingCount,
+    genres: r.genres,
+    styles: r.styles,
+    coverPath: r.coverPath,
+    thumbPath: r.thumbPath,
+    coverRemote: r.coverRemote,
+    thumbRemote: r.thumbRemote,
+  };
+}
+
+export function bundleToJson(b: ExportBundleV2): string {
   return JSON.stringify(b, null, 2);
 }
 
-export function parseBundle(raw: string): ExportBundleV1 {
-  const parsed = JSON.parse(raw) as unknown;
-  if (
-    !parsed ||
-    typeof parsed !== 'object' ||
-    (parsed as { format?: string }).format !== 'vinylly.v1'
-  ) {
-    throw new Error('Неверный формат файла. Ожидается Vinylly v1.');
+export function parseBundle(raw: string): ExportBundleV2 {
+  const parsed = JSON.parse(raw) as { format?: string };
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Invalid bundle file');
   }
-  const items = (parsed as { items?: unknown }).items;
-  if (!Array.isArray(items)) {
-    throw new Error('Поле "items" должно быть массивом.');
+  if (parsed.format !== 'vinylly.v2' && parsed.format !== 'vinylly.v1') {
+    throw new Error('Unsupported bundle format: ' + String(parsed.format));
   }
-  return parsed as ExportBundleV1;
+  // Forward v1 → v2 in-memory shape by filling missing fields with null/defaults.
+  if (parsed.format === 'vinylly.v1') {
+    const v1 = parsed as unknown as ExportBundleV1;
+    return {
+      format: 'vinylly.v2',
+      exportedAt: v1.exportedAt,
+      items: v1.items.map((it) => ({
+        ...it,
+        discogsInstanceId: null,
+        purchasePrice: null,
+        release: {
+          ...it.release,
+          masterId: null,
+          lowestPrice: null,
+          numForSale: null,
+          communityHave: null,
+          communityWant: null,
+          communityRatingAvg: null,
+          communityRatingCount: null,
+        },
+      })),
+      wantlist: [],
+    };
+  }
+  return parsed as ExportBundleV2;
 }
 
-export function bundleToCsv(b: ExportBundleV1): string {
+export function bundleToCsv(b: ExportBundleV2): string {
   const headers = [
     'title',
     'artist',
@@ -111,6 +228,9 @@ export function bundleToCsv(b: ExportBundleV1): string {
     'styles',
     'notes',
     'acquiredAt',
+    'purchasePrice',
+    'lowestPrice',
+    'communityRatingAvg',
     'source',
   ];
   const escape = (s: unknown): string => {
@@ -135,6 +255,9 @@ export function bundleToCsv(b: ExportBundleV1): string {
       it.release.styles.join('|'),
       it.notes ?? '',
       it.acquiredAt ?? '',
+      it.purchasePrice ?? '',
+      it.release.lowestPrice ?? '',
+      it.release.communityRatingAvg ?? '',
       it.release.source,
     ]
       .map(escape)

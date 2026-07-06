@@ -8,10 +8,12 @@ import {
   PageHeader,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
+import { useSettings } from '../lib/settings-store';
 import { useItems, useRemoveItem } from '../lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import type { MediaType, ItemRecord } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
+import { getProvidersRegistry } from '../lib/providers';
 
 export function CollectionPage() {
   const { t } = useTranslation();
@@ -33,6 +35,8 @@ export function CollectionPage() {
   };
 
   const filterTags = useUi((s) => s.filterTags);
+  const discogsUsername = useSettings((s) => s.discogsUsername);
+  const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
 
   const filter = useMemo(
     () => ({
@@ -45,37 +49,68 @@ export function CollectionPage() {
   );
 
   const { data: items = [], isLoading } = useItems(filter);
+  // Unfiltered pool — used to detect when a scheduled item is actually gone from the DB
+  const { data: allItems = [] } = useItems({});
   const removeItem = useRemoveItem();
   const queryClient = useQueryClient();
 
   const [scheduledId, setScheduledId] = useState<string | null>(null);
+  const [scheduledSnapshot, setScheduledSnapshot] = useState<ItemRecord | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Token incremented on every onDelete call; closures check their token to bail out
+  const deleteTokenRef = useRef(0);
 
   const displayedItems = useMemo(
     () => (scheduledId ? items.filter((it) => it.id !== scheduledId) : items),
     [items, scheduledId],
   );
 
-  // Clear scheduledId only after refetch confirms item is gone (no flash)
+  // Clear scheduledId only after the unfiltered list confirms item is gone (no flash)
   useEffect(() => {
-    if (scheduledId && !items.some((it) => it.id === scheduledId)) {
+    if (scheduledId && !allItems.some((it) => it.id === scheduledId)) {
       setScheduledId(null);
+      setScheduledSnapshot(null);
     }
-  }, [items, scheduledId]);
+  }, [allItems, scheduledId]);
+
+  // Cleanup timer on unmount
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  const syncDiscogsDelete = useCallback(
+    (snapshot: ItemRecord | null | undefined) => {
+      if (!discogsUsername || !discogsSyncEnabled || !snapshot) return;
+      if (snapshot.release.source !== 'discogs' || snapshot.discogsInstanceId == null) return;
+      const registry = getProvidersRegistry();
+      void registry.removeFromDiscogsCollection(
+        discogsUsername,
+        Number(snapshot.release.sourceId),
+        snapshot.discogsInstanceId,
+      );
+    },
+    [discogsUsername, discogsSyncEnabled],
+  );
 
   const onDelete = useCallback(
     (item: ItemRecord) => {
-      // Flush any pending deletion immediately instead of silently cancelling
+      // Flush any pending deletion immediately
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
-          const prevId = scheduledId;
+        const prevId = scheduledId;
+        const prevSnapshot = scheduledSnapshot;
         if (prevId) {
           setScheduledId(null);
+          setScheduledSnapshot(null);
           removeItem.mutate(prevId, {
             onSuccess: () => {
               void queryClient.invalidateQueries({ queryKey: ['items'] });
               void queryClient.invalidateQueries({ queryKey: ['item', prevId] });
+              syncDiscogsDelete(prevSnapshot);
             },
             onError: (err) => {
               showToast(t('collection:item.delete_error', { error: String(err) }));
@@ -83,34 +118,44 @@ export function CollectionPage() {
           });
         }
       }
+      const myToken = ++deleteTokenRef.current;
       setScheduledId(item.id);
+      setScheduledSnapshot(item);
       const msg = t('collection:item.deleted_undo', { title: item.release.title });
       showToast(msg, {
         label: t('common:button.undo'),
         onClick: () => {
           if (timerRef.current) clearTimeout(timerRef.current);
           timerRef.current = null;
+          deleteTokenRef.current++;
           setScheduledId(null);
+          setScheduledSnapshot(null);
           hideToast();
         },
       });
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
+        // Bail if another onDelete (flush path) overtook us
+        if (deleteTokenRef.current !== myToken) return;
         removeItem.mutate(item.id, {
           onSuccess: () => {
             hideToast();
             void queryClient.invalidateQueries({ queryKey: ['items'] });
             void queryClient.invalidateQueries({ queryKey: ['item', item.id] });
+            if (deleteTokenRef.current === myToken) syncDiscogsDelete(item);
           },
           onError: (err) => {
-            setScheduledId(null);
+            if (deleteTokenRef.current === myToken) {
+              setScheduledId(null);
+              setScheduledSnapshot(null);
+            }
             hideToast();
             showToast(t('collection:item.delete_error', { error: String(err) }));
           },
         });
       }, 4000);
     },
-    [t, showToast, hideToast, removeItem, scheduledId],
+    [t, showToast, hideToast, removeItem, scheduledId, scheduledSnapshot, queryClient, syncDiscogsDelete],
   );
 
   return (

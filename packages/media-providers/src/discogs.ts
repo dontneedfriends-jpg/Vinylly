@@ -43,6 +43,93 @@ interface DiscogsSearchResponse {
   }>;
 }
 
+interface DiscogsCollectionResponse {
+  pagination: { page: number; pages: number; per_page: number; items: number };
+  releases: Array<{
+    instance_id: number;
+    id: number;
+    rating: number;
+    basic_information: {
+      id: number;
+      master_id: number;
+      title: string;
+      artists: Array<{ name: string; anv?: string }>;
+      year?: number;
+      genres?: string[];
+      styles?: string[];
+      cover_image?: string;
+      thumb?: string;
+      format?: string[];
+    };
+  }>;
+}
+
+interface DiscogsAddResponse {
+  instance_id: number;
+  resource_url: string;
+}
+
+interface DiscogsWantlistResponse {
+  pagination: { page: number; pages: number; per_page: number; items: number };
+  wants: Array<{
+    id: number;
+    instance_id?: number;
+    rating: number;
+    notes?: string;
+    date_added?: string;
+    basic_information: {
+      id: number;
+      master_id: number;
+      title: string;
+      artists: Array<{ name: string; anv?: string }>;
+      year?: number;
+      genres?: string[];
+      styles?: string[];
+      cover_image?: string;
+      thumb?: string;
+      format?: string[];
+    };
+  }>;
+}
+
+interface DiscogsMasterResponse {
+  id: number;
+  title: string;
+  artists: Array<{ name: string }>;
+  year?: number;
+  genres?: string[];
+  styles?: string[];
+  images?: Array<{ uri: string; type: string; uri150?: string }>;
+  tracklist?: Array<{ position: string; title: string; duration?: string }>;
+  notes?: string;
+}
+
+interface DiscogsMasterVersionsResponse {
+  pagination: { page: number; pages: number; per_page: number; items: number };
+  versions: Array<{
+    id: number;
+    label?: string[];
+    catno?: string | null;
+    country?: string | null;
+    year?: number;
+    format?: string[];
+    released?: string;
+    thumb?: string;
+    cover_image?: string;
+    major_formats?: string[];
+  }>;
+}
+
+interface DiscogsArtistResponse {
+  id: number;
+  name: string;
+  namevariations?: string[];
+  profile?: string;
+  members?: Array<{ id: number; name: string; active?: boolean }>;
+  urls?: string[];
+  images?: Array<{ uri: string; type: string; uri150?: string }>;
+}
+
 interface DiscogsReleaseResponse {
   id: number;
   title: string;
@@ -159,9 +246,15 @@ export class DiscogsProvider implements MediaProvider {
           headers: this.headers(),
         });
         return normalizeDiscogsRelease(r, this.name);
-      } catch {
-        return null;
+      } catch (err) {
+        console.warn(`[discogs] getRelease(${sourceId}) failed:`, err);
+        throw err;
       }
+    }).catch((err): null => {
+      // Cache layer wraps errors — already logged above on first try. Return null
+      // so existing callers that pattern-match `if (fresh)` keep working.
+      void err;
+      return null;
     });
   }
 
@@ -172,6 +265,210 @@ export class DiscogsProvider implements MediaProvider {
 
   async getLyrics(_artist: string, _title: string): Promise<LyricsResult | null> {
     return null;
+  }
+
+  async fetchCollection(username: string): Promise<DiscogsCollectionResponse['releases']> {
+    if (!this.isEnabled() || !username) return [];
+    const perPage = 100;
+    let page = 1;
+    let all: DiscogsCollectionResponse['releases'] = [];
+    let totalPages: number | null = null;
+    const MAX_PAGES = 100; // Discogs collection shouldn't exceed this; protects against bad response
+    while (totalPages === null || page <= totalPages) {
+      if (page > MAX_PAGES) break;
+      const url = `${BASE}/users/${encodeURIComponent(username)}/collection/folders/0/releases?page=${page}&per_page=${perPage}`;
+      const data = await withCache(`discogs:collection:${username}:${page}`, TTL_SEARCH, async () => {
+        return getHostShell().net().fetchJson<DiscogsCollectionResponse>(this.wrap(url), {
+          headers: this.headers(),
+        });
+      });
+      all = all.concat(data.releases ?? []);
+      const reported = data.pagination?.pages;
+      totalPages = typeof reported === 'number' && reported > 0 ? reported : page;
+      page++;
+    }
+    return all;
+  }
+
+  async addToCollection(username: string, releaseId: number): Promise<number | null> {
+    if (!this.isEnabled() || !username) return null;
+    const url = `${BASE}/users/${encodeURIComponent(username)}/collection/folders/0/releases/${releaseId}`;
+    try {
+      const data = await getHostShell().net().fetchJson<DiscogsAddResponse>(this.wrap(url), {
+        method: 'POST',
+        headers: this.headers(),
+      });
+      return data.instance_id ?? null;
+    } catch (err) {
+      console.warn(`[discogs] addToCollection(${username}, ${releaseId}) failed:`, err);
+      return null;
+    }
+  }
+
+  async removeFromCollection(username: string, releaseId: number, instanceId: number): Promise<boolean> {
+    if (!this.isEnabled() || !username) return false;
+    const url = `${BASE}/users/${encodeURIComponent(username)}/collection/folders/0/releases/${releaseId}/${instanceId}`;
+    try {
+      await getHostShell().net().fetchBinary(this.wrap(url), {
+        method: 'DELETE',
+        headers: this.headers(),
+      });
+      return true;
+    } catch (err) {
+      console.warn(`[discogs] removeFromCollection(${username}, ${releaseId}, ${instanceId}) failed:`, err);
+      return false;
+    }
+  }
+
+  async fetchWantlist(username: string): Promise<DiscogsWantlistResponse['wants']> {
+    if (!this.isEnabled() || !username) return [];
+    const perPage = 100;
+    let page = 1;
+    let all: DiscogsWantlistResponse['wants'] = [];
+    let totalPages: number | null = null;
+    const MAX_PAGES = 100;
+    while (totalPages === null || page <= totalPages) {
+      if (page > MAX_PAGES) break;
+      const url = `${BASE}/users/${encodeURIComponent(username)}/wants?page=${page}&per_page=${perPage}`;
+      const data = await withCache(`discogs:wantlist:${username}:${page}`, TTL_SEARCH, async () => {
+        return getHostShell().net().fetchJson<DiscogsWantlistResponse>(this.wrap(url), {
+          headers: this.headers(),
+        });
+      });
+      all = all.concat(data.wants ?? []);
+      const reported = data.pagination?.pages;
+      totalPages = typeof reported === 'number' && reported > 0 ? reported : page;
+      page++;
+    }
+    return all;
+  }
+
+  async addToWantlist(username: string, releaseId: number): Promise<boolean> {
+    if (!this.isEnabled() || !username) return false;
+    const url = `${BASE}/users/${encodeURIComponent(username)}/wants/${releaseId}`;
+    try {
+      await getHostShell().net().fetchJson<unknown>(this.wrap(url), {
+        method: 'PUT',
+        headers: this.headers(),
+      });
+      return true;
+    } catch (err) {
+      console.warn(`[discogs] addToWantlist(${username}, ${releaseId}) failed:`, err);
+      return false;
+    }
+  }
+
+  async removeFromWantlist(username: string, releaseId: number): Promise<boolean> {
+    if (!this.isEnabled() || !username) return false;
+    const url = `${BASE}/users/${encodeURIComponent(username)}/wants/${releaseId}`;
+    try {
+      await getHostShell().net().fetchBinary(this.wrap(url), {
+        method: 'DELETE',
+        headers: this.headers(),
+      });
+      return true;
+    } catch (err) {
+      console.warn(`[discogs] removeFromWantlist(${username}, ${releaseId}) failed:`, err);
+      return false;
+    }
+  }
+
+  async getMaster(masterId: number): Promise<DiscogsMasterResponse | null> {
+    if (!this.isEnabled()) return null;
+    const url = `${BASE}/masters/${masterId}`;
+    return withCache(`discogs:master:${masterId}`, TTL_RELEASE, async () => {
+      try {
+        return await getHostShell().net().fetchJson<DiscogsMasterResponse>(this.wrap(url), {
+          headers: this.headers(),
+        });
+      } catch (err) {
+        console.warn(`[discogs] getMaster(${masterId}) failed:`, err);
+        return null;
+      }
+    });
+  }
+
+  async getMasterVersions(masterId: number): Promise<DiscogsMasterVersionsResponse['versions']> {
+    if (!this.isEnabled()) return [];
+    const perPage = 100;
+    let page = 1;
+    let all: DiscogsMasterVersionsResponse['versions'] = [];
+    let totalPages: number | null = null;
+    const MAX_PAGES = 50;
+    while (totalPages === null || page <= totalPages) {
+      if (page > MAX_PAGES) break;
+      const url = `${BASE}/masters/${masterId}/versions?page=${page}&per_page=${perPage}`;
+      const data = await withCache(`discogs:master-versions:${masterId}:${page}`, TTL_RELEASE, async () => {
+        return getHostShell().net().fetchJson<DiscogsMasterVersionsResponse>(this.wrap(url), {
+          headers: this.headers(),
+        });
+      });
+      all = all.concat(data.versions ?? []);
+      const reported = data.pagination?.pages;
+      totalPages = typeof reported === 'number' && reported > 0 ? reported : page;
+      page++;
+    }
+    return all;
+  }
+
+  async getArtist(artistId: number): Promise<DiscogsArtistResponse | null> {
+    if (!this.isEnabled()) return null;
+    const url = `${BASE}/artists/${artistId}`;
+    return withCache(`discogs:artist:${artistId}`, TTL_RELEASE, async () => {
+      try {
+        return await getHostShell().net().fetchJson<DiscogsArtistResponse>(this.wrap(url), {
+          headers: this.headers(),
+        });
+      } catch (err) {
+        console.warn(`[discogs] getArtist(${artistId}) failed:`, err);
+        return null;
+      }
+    });
+  }
+
+  async searchArtist(name: string): Promise<number | null> {
+    if (!this.isEnabled() || !name) return null;
+    try {
+      const url = `${BASE}/database/search?q=${encodeURIComponent(name)}&type=artist`;
+      const data = await withCache(
+        `discogs:artist-search:${name.toLowerCase()}`,
+        TTL_SEARCH,
+        async () =>
+          getHostShell().net().fetchJson<{ results: Array<{ id: number; title: string }> }>(
+            this.wrap(url),
+            { headers: this.headers() },
+          ),
+      );
+      const first = data.results?.[0];
+      return first?.id ?? null;
+    } catch (err) {
+      console.warn(`[discogs] searchArtist(${name}) failed:`, err);
+      return null;
+    }
+  }
+
+  async getArtistReleaseCount(artistId: number): Promise<{ total: number; ownedIds: Set<number> } | null> {
+    if (!this.isEnabled()) return null;
+    try {
+      // Fetch first page only — Discogs caps releases per page at 50/100 depending on auth.
+      // We use 100 to get a wider sample and trust the local count for owned IDs.
+      const url = `${BASE}/artists/${artistId}/releases?per_page=100&page=1`;
+      const data = await withCache(`discogs:artist-releases:${artistId}`, TTL_RELEASE, async () => {
+        return getHostShell().net().fetchJson<{
+          pagination: { items: number; pages: number };
+          releases: Array<{ id: number; type: string }>;
+        }>(this.wrap(url), { headers: this.headers() });
+      });
+      const ownedIds = new Set<number>();
+      for (const r of data.releases ?? []) {
+        if (r.type === 'master' || r.type === 'release') ownedIds.add(r.id);
+      }
+      // `pagination.items` is total across all pages
+      return { total: data.pagination?.items ?? ownedIds.size, ownedIds };
+    } catch (err) {
+      console.warn(`[discogs] getArtistReleaseCount(${artistId}) failed:`, err);
+      return null;
+    }
   }
 
   private headers(): Record<string, string> {
@@ -232,10 +529,19 @@ export function normalizeDiscogsRelease(
     format: fmt ? [fmt.name, ...(fmt.descriptions ?? [])].filter(Boolean).join(', ') : undefined,
     community:
       r.community?.have != null
-        ? { have: r.community.have, want: r.community.want ?? 0 }
+        ? {
+            have: r.community.have,
+            want: r.community.want ?? 0,
+            rating: r.community.rating?.average != null
+              ? { average: r.community.rating.average, count: r.community.rating.count ?? 0 }
+              : undefined,
+          }
         : undefined,
+    numForSale: r.num_for_sale,
+    lowestPrice: r.lowest_price,
     discogsUrl: r.uri ?? undefined,
     masterUrl: r.master_url ?? null,
+    masterId: r.master_id ?? null,
     barcode: barcodeArr?.length ? barcodeArr : undefined,
     videos: r.videos?.map((v) => ({ uri: v.uri, title: v.title })),
     extraArtists: r.extraartists?.map((a) => ({ name: a.name, role: a.role ?? '' })),

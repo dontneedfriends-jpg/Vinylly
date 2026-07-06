@@ -1,0 +1,11 @@
+{
+  "page.no_artist": "Исполнитель не выбран",
+  "page.subtitle": "Есть: {{owned}} · Хочу: {{wanted}}",
+  "page.on_discogs": "Профиль на Discogs",
+  "section.owned": "В коллекции",
+  "section.wanted": "Хочется",
+  "section.open_wantlist": "Открыть список желаемого",
+  "empty.owned": "Нет релизов этого исполнителя в коллекции.",
+  "empty.wanted": "Не ищете ничего у этого исполнителя.",
+  "more": "+ ещё {{count}}"
+}

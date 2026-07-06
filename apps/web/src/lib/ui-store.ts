@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Page = 'collection' | 'add' | 'detail' | 'settings';
+export type Page = 'collection' | 'add' | 'detail' | 'settings' | 'stats' | 'wantlist' | 'artist';
 
 export interface VideoLink {
   uri: string;
@@ -35,6 +35,8 @@ export interface ToastState {
 export interface UiState {
   page: Page;
   detailItemId: string | null;
+  releasePreviewId: string | null;
+  artistName: string | null;
   detailTrackId: string | null;
   releaseVideos: VideoLink[];
   addTracklist: TrackItem[];
@@ -50,6 +52,10 @@ export interface UiState {
   openAdd(query?: string): void;
   openDetail(itemId: string): void;
   openSettings(): void;
+  openStats(): void;
+  openWantlist(): void;
+  openArtist(name: string): void;
+  openReleasePreview(releaseId: string): void;
   setSearch(q: string): void;
   setFilterType(t: UiState['filterType']): void;
   setFilterTags(tags: string[]): void;
@@ -66,6 +72,8 @@ export interface UiState {
 export const useUi = create<UiState>((set) => ({
   page: 'collection',
   detailItemId: null,
+  releasePreviewId: null,
+  artistName: null,
   detailTrackId: null,
   releaseVideos: [],
   addTracklist: [],
@@ -77,7 +85,7 @@ export const useUi = create<UiState>((set) => ({
   sort: 'addedDesc',
   viewMode: 'grid',
   toast: null,
-  openCollection: () => set({ page: 'collection', detailItemId: null, releaseVideos: [] }),
+  openCollection: () => set({ page: 'collection', detailItemId: null, releasePreviewId: null, releaseVideos: [] }),
   openAdd: (query) =>
     set({
       page: 'add',
@@ -86,8 +94,13 @@ export const useUi = create<UiState>((set) => ({
       addTracklistLoading: false,
       addReleaseMeta: null,
     }),
-  openDetail: (itemId) => set({ page: 'detail', detailItemId: itemId, releaseVideos: [] }),
+  openDetail: (itemId) => set({ page: 'detail', detailItemId: itemId, releasePreviewId: null, releaseVideos: [] }),
+  openReleasePreview: (releaseId: string) =>
+    set({ page: 'detail', detailItemId: null, releasePreviewId: releaseId, releaseVideos: [] }),
   openSettings: () => set({ page: 'settings' }),
+  openArtist: (name: string) => set({ page: 'artist', artistName: name }),
+  openStats: () => set({ page: 'stats' }),
+  openWantlist: () => set({ page: 'wantlist' }),
   setSearch: (q) => set({ search: q }),
   setFilterType: (t) => set({ filterType: t }),
   setFilterTags: (tags) => set({ filterTags: tags }),

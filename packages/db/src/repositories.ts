@@ -5,7 +5,140 @@ import {
   type ReleaseRecord,
   type ReleaseImage,
   type TrackRecord,
+  type WantlistEntry,
 } from './index';
+
+export interface CreateWantlistInput {
+  release: {
+    source: ReleaseRecord['source'];
+    sourceId: string;
+    title: string;
+    artist: string;
+    year: number | null;
+    masterId?: number | null;
+    genres?: string[];
+    styles?: string[];
+    coverPath?: string | null;
+    thumbPath?: string | null;
+    coverRemote?: string | null;
+    thumbRemote?: string | null;
+  };
+  notes?: string | null;
+}
+
+export interface WantlistRepository {
+  list(): Promise<WantlistEntry[]>;
+  contains(source: string, sourceId: string): Promise<boolean>;
+  add(input: CreateWantlistInput): Promise<WantlistEntry>;
+  remove(id: string): Promise<void>;
+}
+
+export const wantlistRepo: WantlistRepository = {
+  async list() {
+    const prisma = getPrismaClient() as unknown as {
+      wantlistEntry: {
+        findMany: (a: unknown) => Promise<Array<Record<string, unknown>>>;
+      };
+    };
+    const rows = await prisma.wantlistEntry.findMany({
+      include: { release: true },
+      orderBy: { addedAt: 'desc' },
+    });
+    return rows.map((r) => {
+      const release = (r.release as Record<string, unknown>) ?? {};
+      return {
+        id: String(r.id),
+        notes: (r.notes as string | null) ?? null,
+        addedAt: new Date(r.addedAt as string).toISOString(),
+        release: releaseFromRow(release),
+      };
+    });
+  },
+
+  async contains(source, sourceId) {
+    const prisma = getPrismaClient() as unknown as {
+      wantlistEntry: {
+        findFirst: (a: unknown) => Promise<{ id: string } | null>;
+      };
+    };
+    const row = await prisma.wantlistEntry.findFirst({
+      where: { release: { source, sourceId } },
+    });
+    return Boolean(row);
+  },
+
+  async add(input) {
+    const prisma = getPrismaClient() as unknown as {
+      release: {
+        upsert: (a: unknown) => Promise<{ id: string }>;
+        findUnique: (a: unknown) => Promise<{ id: string } | null>;
+      };
+      wantlistEntry: {
+        create: (a: unknown) => Promise<Record<string, unknown>>;
+      };
+    };
+    const candidateId = genId('rel');
+    await prisma.release.upsert({
+      where: {
+        source_sourceId: { source: input.release.source, sourceId: input.release.sourceId },
+      },
+      create: {
+        id: candidateId,
+        source: input.release.source,
+        sourceId: input.release.sourceId,
+        title: input.release.title,
+        artist: input.release.artist,
+        year: input.release.year,
+        masterId: input.release.masterId ?? null,
+        genres: JSON.stringify(input.release.genres ?? []),
+        styles: JSON.stringify(input.release.styles ?? []),
+        coverPath: input.release.coverPath ?? null,
+        thumbPath: input.release.thumbPath ?? null,
+        coverRemote: input.release.coverRemote ?? null,
+        thumbRemote: input.release.thumbRemote ?? null,
+        images: '[]',
+        createdAt: new Date(nowIso()),
+        updatedAt: new Date(nowIso()),
+      },
+      update: {
+        title: input.release.title,
+        artist: input.release.artist,
+        year: input.release.year,
+        masterId: input.release.masterId ?? null,
+        coverPath: input.release.coverPath ?? null,
+        thumbPath: input.release.thumbPath ?? null,
+        coverRemote: input.release.coverRemote ?? null,
+        thumbRemote: input.release.thumbRemote ?? null,
+      },
+    });
+    const existing = await prisma.release.findUnique({
+      where: { source_sourceId: { source: input.release.source, sourceId: input.release.sourceId } },
+    });
+    const releaseId = existing?.id ?? candidateId;
+    const created = await prisma.wantlistEntry.create({
+      data: {
+        id: genId('want'),
+        releaseId,
+        notes: input.notes ?? null,
+      },
+      include: { release: true },
+    });
+    const release = (created.release as Record<string, unknown>) ?? {};
+    return {
+      id: String(created.id),
+      notes: (created.notes as string | null) ?? null,
+      addedAt: new Date(created.addedAt as string).toISOString(),
+      release: releaseFromRow(release),
+    };
+  },
+
+  async remove(id) {
+    const prisma = getPrismaClient() as unknown as {
+      wantlistEntry: { delete: (a: unknown) => Promise<unknown> };
+    };
+    await prisma.wantlistEntry.delete({ where: { id } });
+  },
+};
 
 export interface CreateItemInput {
   collectionId: string;
@@ -16,6 +149,7 @@ export interface CreateItemInput {
     title: string;
     artist: string;
     year: number | null;
+    masterId?: number | null;
     genres?: string[];
     styles?: string[];
     coverPath?: string | null;
@@ -27,6 +161,8 @@ export interface CreateItemInput {
   tracklist?: Array<{ position: string; title: string; duration?: number | null }>;
   barcode?: string | null;
   catalogNumber?: string | null;
+  discogsInstanceId?: number | null;
+  purchasePrice?: number | null;
   sleeveCondition?: string | null;
   mediaCondition?: string | null;
   notes?: string | null;
@@ -78,6 +214,11 @@ export interface ItemRepository {
     cover: { coverPath: string | null; thumbPath: string | null; coverRemote: string; thumbRemote: string | null },
   ): Promise<void>;
   setReleaseImages(releaseId: string, images: ReleaseImage[]): Promise<void>;
+  setReleaseMarketData(releaseId: string, data: { lowestPrice: number | null; numForSale: number | null }): Promise<void>;
+  setReleaseCommunityStats(
+    releaseId: string,
+    data: { have: number | null; want: number | null; ratingAvg: number | null; ratingCount: number | null },
+  ): Promise<void>;
 }
 
 function parseJsonArray<T>(value: string | null | undefined, fallback: T[] = []): T[] {
@@ -148,6 +289,7 @@ export const itemRepo: ItemRepository = {
       release: {
         upsert: (a: unknown) => Promise<{ id: string }>;
         findUnique: (a: unknown) => Promise<{ id: string } | null>;
+        update: (a: unknown) => Promise<unknown>;
       };
       track: { createMany: (a: unknown) => Promise<unknown> };
       item: { create: (a: unknown) => Promise<Record<string, unknown>> };
@@ -160,6 +302,7 @@ export const itemRepo: ItemRepository = {
       title: input.release.title,
       artist: input.release.artist,
       year: input.release.year,
+      masterId: input.release.masterId ?? null,
       genres: JSON.stringify(input.release.genres ?? []),
       styles: JSON.stringify(input.release.styles ?? []),
       coverPath: input.release.coverPath ?? null,
@@ -177,6 +320,7 @@ export const itemRepo: ItemRepository = {
         title: releaseRow.title,
         artist: releaseRow.artist,
         year: releaseRow.year,
+        masterId: releaseRow.masterId,
         coverPath: releaseRow.coverPath,
         thumbPath: releaseRow.thumbPath,
         coverRemote: releaseRow.coverRemote,
@@ -191,6 +335,11 @@ export const itemRepo: ItemRepository = {
     const tracklist = input.tracklist ?? [];
     if (tracklist.length) {
       await prisma.track.createMany({ data: serializeTracks(releaseId, tracklist) });
+      const totalDurationMs = tracklist.reduce((acc, t) => acc + (t.duration ?? 0), 0);
+      await prisma.release.update({
+        where: { id: releaseId },
+        data: { trackCount: tracklist.length, totalDurationMs: totalDurationMs > 0 ? totalDurationMs : null },
+      });
     }
     const itemId = genId('itm');
     const created = await prisma.item.create({
@@ -199,6 +348,8 @@ export const itemRepo: ItemRepository = {
         type: input.type,
         barcode: input.barcode ?? null,
         catalogNumber: input.catalogNumber ?? null,
+        discogsInstanceId: input.discogsInstanceId ?? null,
+        purchasePrice: input.purchasePrice ?? null,
         sleeveCondition: input.sleeveCondition ?? null,
         mediaCondition: input.mediaCondition ?? null,
         notes: input.notes ?? null,
@@ -226,6 +377,8 @@ export const itemRepo: ItemRepository = {
     if (patch.type !== undefined) data.type = patch.type;
     if (patch.barcode !== undefined) data.barcode = patch.barcode;
     if (patch.catalogNumber !== undefined) data.catalogNumber = patch.catalogNumber;
+    if (patch.discogsInstanceId !== undefined) data.discogsInstanceId = patch.discogsInstanceId;
+    if (patch.purchasePrice !== undefined) data.purchasePrice = patch.purchasePrice;
     if (patch.sleeveCondition !== undefined) data.sleeveCondition = patch.sleeveCondition;
     if (patch.mediaCondition !== undefined) data.mediaCondition = patch.mediaCondition;
     if (patch.notes !== undefined) data.notes = patch.notes;
@@ -281,6 +434,31 @@ export const itemRepo: ItemRepository = {
       data: { images: JSON.stringify(images) },
     });
   },
+
+  async setReleaseMarketData(releaseId, data) {
+    const prisma = getPrismaClient() as unknown as {
+      release: { update: (a: unknown) => Promise<unknown> };
+    };
+    await prisma.release.update({
+      where: { id: releaseId },
+      data: { lowestPrice: data.lowestPrice, numForSale: data.numForSale },
+    });
+  },
+
+  async setReleaseCommunityStats(releaseId, data) {
+    const prisma = getPrismaClient() as unknown as {
+      release: { update: (a: unknown) => Promise<unknown> };
+    };
+    await prisma.release.update({
+      where: { id: releaseId },
+      data: {
+        communityHave: data.have,
+        communityWant: data.want,
+        communityRatingAvg: data.ratingAvg,
+        communityRatingCount: data.ratingCount,
+      },
+    });
+  },
 };
 
 function sortItems(items: ItemRecord[], sort: NonNullable<ItemListFilter['sort']>): ItemRecord[] {
@@ -309,6 +487,8 @@ function itemFromRow(row: Record<string, unknown>): ItemRecord {
     type: row.type as MediaType,
     barcode: (row.barcode as string | null) ?? null,
     catalogNumber: (row.catalogNumber as string | null) ?? null,
+    discogsInstanceId: (row.discogsInstanceId as number | null) ?? null,
+    purchasePrice: (row.purchasePrice as number | null) ?? null,
     sleeveCondition: (row.sleeveCondition as string | null) ?? null,
     mediaCondition: (row.mediaCondition as string | null) ?? null,
     notes: (row.notes as string | null) ?? null,
@@ -322,6 +502,15 @@ function itemFromRow(row: Record<string, unknown>): ItemRecord {
       title: String(release.title ?? '—'),
       artist: String(release.artist ?? '—'),
       year: (release.year as number | null) ?? null,
+      lowestPrice: (release.lowestPrice as number | null) ?? null,
+      numForSale: (release.numForSale as number | null) ?? null,
+      trackCount: (release.trackCount as number | null) ?? null,
+      totalDurationMs: (release.totalDurationMs as number | null) ?? null,
+      masterId: (release.masterId as number | null) ?? null,
+      communityHave: (release.communityHave as number | null) ?? null,
+      communityWant: (release.communityWant as number | null) ?? null,
+      communityRatingAvg: (release.communityRatingAvg as number | null) ?? null,
+      communityRatingCount: (release.communityRatingCount as number | null) ?? null,
       genres: parseJsonArray<string>(release.genres as string | undefined, []),
       styles: parseJsonArray<string>(release.styles as string | undefined, []),
       coverPath: (release.coverPath as string | null) ?? null,
@@ -330,6 +519,33 @@ function itemFromRow(row: Record<string, unknown>): ItemRecord {
       thumbRemote: (release.thumbRemote as string | null) ?? null,
       images: parseJsonArray<ReleaseImage>(release.images as string | undefined, []),
     },
+  };
+}
+
+function releaseFromRow(row: Record<string, unknown>): ReleaseRecord {
+  return {
+    id: String(row.id),
+    source: (row.source as ReleaseRecord['source']) ?? 'manual',
+    sourceId: String(row.sourceId ?? ''),
+    title: String(row.title ?? '—'),
+    artist: String(row.artist ?? '—'),
+    year: (row.year as number | null) ?? null,
+    lowestPrice: (row.lowestPrice as number | null) ?? null,
+    numForSale: (row.numForSale as number | null) ?? null,
+    trackCount: (row.trackCount as number | null) ?? null,
+    totalDurationMs: (row.totalDurationMs as number | null) ?? null,
+    masterId: (row.masterId as number | null) ?? null,
+    communityHave: (row.communityHave as number | null) ?? null,
+    communityWant: (row.communityWant as number | null) ?? null,
+    communityRatingAvg: (row.communityRatingAvg as number | null) ?? null,
+    communityRatingCount: (row.communityRatingCount as number | null) ?? null,
+    genres: parseJsonArray<string>(row.genres as string | undefined, []),
+    styles: parseJsonArray<string>(row.styles as string | undefined, []),
+    coverPath: (row.coverPath as string | null) ?? null,
+    thumbPath: (row.thumbPath as string | null) ?? null,
+    coverRemote: (row.coverRemote as string | null) ?? null,
+    thumbRemote: (row.thumbRemote as string | null) ?? null,
+    images: parseJsonArray<ReleaseImage>(row.images as string | undefined, []),
   };
 }
 
