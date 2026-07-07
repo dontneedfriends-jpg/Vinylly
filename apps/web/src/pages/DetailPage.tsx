@@ -14,6 +14,7 @@ import { getProvidersRegistry } from '../lib/providers';
 import type { MediaType, ItemRecord } from '@vinylly/db';
 import { itemRepo } from '../lib/db';
 import { getHostShell } from '@vinylly/host';
+import { stripMarkup } from '../lib/text';
 
 export function DetailPage() {
   const { t } = useTranslation();
@@ -63,6 +64,7 @@ export function DetailPage() {
   const discogsUsername = useSettings((s) => s.discogsUsername);
   const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
   const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const [scheduledItemId, setScheduledItemId] = useState<string | null>(null);
   const [scheduledSnapshot, setScheduledSnapshot] = useState<ItemRecord | null>(null);
 
@@ -90,6 +92,12 @@ export function DetailPage() {
     if (removeTimerRef.current) {
       clearTimeout(removeTimerRef.current);
       removeTimerRef.current = null;
+    }
+    // Reset scroll to top on item change so the user sees the cover/hero, not
+    // a mid-page section carried over from the previous item.
+    if (itemIdKey) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      sectionRef.current?.scrollIntoView?.({ block: 'start' });
     }
     // Re-seed form state only when switching to a different item — not on every refetch
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -295,7 +303,7 @@ export function DetailPage() {
 
 
   return (
-    <section className="animate-rise">
+    <section ref={sectionRef} className="animate-rise">
       {/* ─── Hero: Cover + Key Info ─── */}
       <div className="flex flex-col gap-8 md:flex-row">
         {/* Cover */}
@@ -509,7 +517,7 @@ export function DetailPage() {
                         {t('detail:about.notes_discogs')}
                       </span>
                       <p className="text-fg-body mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-                        {albumNotes}
+                        {stripMarkup(albumNotes)}
                       </p>
                     </div>
                   ) : null}
@@ -524,19 +532,6 @@ export function DetailPage() {
                 </div>
               </div>
             )}
-          </section>
-        ) : null}
-
-        {/* ─── Master variants (pressing info) ─── */}
-        {item.release.source === 'discogs' && item.release.masterId ? (
-          <section className="mt-8">
-            <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:variants.title')}</h2>
-            <MasterVariants
-              masterId={item.release.masterId}
-              ownedItems={allItemsQuery.data ?? []}
-              wantedReleases={wantlist}
-              currentSourceId={item.release.sourceId}
-            />
           </section>
         ) : null}
 
@@ -593,6 +588,24 @@ export function DetailPage() {
             </div>
           </div>
         </section>
+
+        {/* ─── Master variants (collapsible, default closed) ─── */}
+        {item.release.source === 'discogs' && item.release.masterId ? (
+          <details className="rounded-base border-border-default bg-surface shadow-neu-md group mt-8 border">
+            <summary className="text-fg-heading hover:text-fg-heading/90 flex cursor-pointer list-none items-center gap-3 px-6 py-4 text-lg font-semibold [&::-webkit-details-marker]:hidden">
+              <span className="text-fg-body-subtle text-sm transition-transform duration-200 group-open:rotate-90">▸</span>
+              {t('detail:variants.title')}
+            </summary>
+            <div className="px-6 pb-6">
+              <MasterVariants
+                masterId={item.release.masterId}
+                ownedItems={allItemsQuery.data ?? []}
+                wantedReleases={wantlist}
+                currentSourceId={item.release.sourceId}
+              />
+            </div>
+          </details>
+        ) : null}
 
         {/* Треклист и видео — показываем под заметками, когда правый рейл свёрнут */}
         <section className="mt-8 block lg:hidden">

@@ -1,14 +1,11 @@
 {
   "button.back": "Назад",
   "button.cancel": "Отмена",
-  "button.delete": "Удалить",
-  "button.retry": "Повторить",
   "button.save": "Сохранить",
   "button.undo": "Отменить",
   "button.saving": "Сохраняю…",
   "cover.no_cover": "Нет обложки",
   "cover.zoom_aria": "Открыть изображение",
-  "duration.format": "{{minutes}}:{{seconds}}",
   "filter.all": "Все",
   "image_type.primary": "Обложка",
   "image_type.secondary": "Оборот / вкладыш",
@@ -21,10 +18,5 @@
   "media.label_cd": "CD",
   "media.label_vinyl": "Винил",
   "media.other": "Другое",
-  "media.vinyl": "Винил",
-  "sort.added_asc": "Сначала старые",
-  "sort.added_desc": "Сначала новые",
-  "sort.artist_asc": "По артисту",
-  "sort.title_asc": "По названию",
-  "sort.year_desc": "По году"
+  "media.vinyl": "Винил"
 }

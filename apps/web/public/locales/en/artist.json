@@ -4,8 +4,11 @@
   "page.on_discogs": "Discogs profile",
   "section.owned": "Owned",
   "section.wanted": "Wanted",
+  "format.all": "All",
+  "completion.estimate": "estimated",
   "section.open_wantlist": "Open wantlist",
   "empty.owned": "No releases by this artist in your collection.",
+  "empty.owned_filtered": "No {{format}} releases yet.",
   "empty.wanted": "Not hunting anything by this artist.",
   "more": "+ {{count}} more"
 }

@@ -6,6 +6,7 @@ import { useItem, useItems, useTracks } from '../lib/queries';
 import { getProvidersRegistry } from '../lib/providers';
 import type { MediaType } from '@vinylly/db';
 import { ExternalLink } from './ExternalLink';
+import { stripMarkup } from '../lib/text';
 
 /* ─────────── DETAIL RAIL — Tracklist ─────────── */
 
@@ -122,7 +123,7 @@ export function DetailRail() {
               {isExpanded && lyricsText ? (
                 <div className="border-border-default bg-surface shadow-neu-inset rounded-base mt-0.5 border px-4 py-4">
                   <pre className="text-fg-body whitespace-pre-wrap font-sans text-xs leading-relaxed">
-                    {lyricsText}
+                    {stripMarkup(lyricsText)}
                   </pre>
                 </div>
               ) : null}

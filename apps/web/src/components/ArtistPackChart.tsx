@@ -169,9 +169,15 @@ export function ArtistPackChart() {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex gap-1 rounded-base border-border-default bg-surface shadow-neu-inset border p-0.5">
+        <div
+          role="radiogroup"
+          aria-label={t('layout:rail.collection.by_artist')}
+          className="flex gap-1 rounded-base border-border-default bg-surface shadow-neu-inset border p-0.5"
+        >
           <button
             type="button"
+            role="radio"
+            aria-checked={mode === 'artist'}
             onClick={() => setMode('artist')}
             className={`rounded-sm px-2.5 py-0.5 text-xs font-medium transition-all ${
               mode === 'artist'
@@ -183,6 +189,8 @@ export function ArtistPackChart() {
           </button>
           <button
             type="button"
+            role="radio"
+            aria-checked={mode === 'genre'}
             onClick={() => setMode('genre')}
             className={`rounded-sm px-2.5 py-0.5 text-xs font-medium transition-all ${
               mode === 'genre'
@@ -194,6 +202,7 @@ export function ArtistPackChart() {
           </button>
         </div>
         <select
+          aria-label={t('layout:rail.collection.by_artist')}
           value={limit}
           onChange={(e) => setLimit(Number(e.target.value))}
           className="rounded-base border-border-default bg-surface text-fg-body-subtle px-2 py-0.5 text-xs"

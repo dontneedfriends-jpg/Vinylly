@@ -4,8 +4,11 @@
   "page.on_discogs": "Профиль на Discogs",
   "section.owned": "В коллекции",
   "section.wanted": "Хочется",
+  "format.all": "Все",
+  "completion.estimate": "оценочно",
   "section.open_wantlist": "Открыть список желаемого",
   "empty.owned": "Нет релизов этого исполнителя в коллекции.",
+  "empty.owned_filtered": "Нет релизов в формате «{{format}}».",
   "empty.wanted": "Не ищете ничего у этого исполнителя.",
   "more": "+ ещё {{count}}"
 }

@@ -11,20 +11,21 @@ describe('ThemeToggle', () => {
     localStorage.clear();
   });
 
-  it('renders two theme options', async () => {
+  it('renders all three theme options as a radiogroup', async () => {
     const { useTheme } = await import('../lib/theme');
     useTheme.getState().setMode('light');
     render(<ThemeToggle />);
-    expect(screen.getByRole('button', { name: /Светлая/, pressed: true })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Тёмная/, pressed: false })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Сист/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: /Тема/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Светлая/, checked: true })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Тёмная/, checked: false })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Авто/, checked: false })).toBeInTheDocument();
   });
 
-  it('marks the active theme as pressed', async () => {
+  it('marks the active theme as checked', async () => {
     const { useTheme } = await import('../lib/theme');
     useTheme.getState().setMode('dark');
     render(<ThemeToggle />);
-    const darkBtn = screen.getByRole('button', { name: /Тёмная/, pressed: true });
-    expect(darkBtn.getAttribute('aria-pressed')).toBe('true');
+    const darkBtn = screen.getByRole('radio', { name: /Тёмная/, checked: true });
+    expect(darkBtn.getAttribute('aria-checked')).toBe('true');
   });
 });

@@ -32,7 +32,7 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         {/* Appearance */}
         <AppearanceCard />
 
@@ -379,7 +379,7 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
             ) : null}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             {dirty || !hasToken ? (
               <Button type="submit" size="sm" disabled={busy === 'save'} leftIcon={busy === 'save' ? undefined : <SaveIcon />}>
                 {busy === 'save' ? t('settings:discogs.save_progress') : hasToken ? t('settings:discogs.save_change') : t('settings:discogs.save_new')}
@@ -535,7 +535,7 @@ function DataCard() {
 
   return (
     <CardShell icon={<ShieldIcon />} title={t('settings:backup.title')} subtitle={t('settings:backup.description')}>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Button onClick={onBackup} size="sm" disabled={busy} leftIcon={busy ? undefined : <DownloadIcon />}>
           {busy ? t('common:loading.generic') : t('settings:backup.button')}
         </Button>
@@ -570,9 +570,9 @@ function SupportCard() {
             <span className="ml-auto text-fg-body-subtle text-xs group-open:rotate-180 transition-transform">▾</span>
           </summary>
           <div className="mt-3 space-y-2 border-t border-border-default pt-3">
-            <CryptoRow label="Bitcoin" addr="bc1qvuhvewu3rjth80wnpdxkrl6vwtgjtspszkcqap" />
-            <CryptoRow label="Ethereum" addr="0xc126080ffD216827A37850a5511cf1273E303E73" />
-            <CryptoRow label="Solana" addr="516jeJxi1gwaRH7aEEiopAUAGNHKMrUxWv4cfGm32GhB" />
+            <CryptoRow label={t('settings:support.bitcoin')} addr="bc1qvuhvewu3rjth80wnpdxkrl6vwtgjtspszkcqap" />
+            <CryptoRow label={t('settings:support.ethereum')} addr="0xc126080ffD216827A37850a5511cf1273E303E73" />
+            <CryptoRow label={t('settings:support.solana')} addr="516jeJxi1gwaRH7aEEiopAUAGNHKMrUxWv4cfGm32GhB" />
           </div>
         </details>
       </div>
@@ -688,12 +688,12 @@ function Badge({ ok, okLabel, failLabel }: { ok: boolean; okLabel: string; failL
 
 function Row({ label, children, value }: { label: string; children: React.ReactNode; value?: string }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="text-fg-body-subtle text-xs uppercase tracking-wide">{label}</div>
         {value ? <div className="text-fg-heading mt-0.5 text-sm">{value}</div> : null}
       </div>
-      <div>{children}</div>
+      <div className="shrink-0">{children}</div>
     </div>
   );
 }

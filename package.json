@@ -8,6 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "i18n:audit": "node scripts/audit-i18n.mjs",
     "lint": "pnpm -r --parallel run lint",
     "typecheck": "pnpm -r --parallel run typecheck",
     "test": "pnpm -r --parallel run test",

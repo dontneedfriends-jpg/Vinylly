@@ -1,14 +1,11 @@
 {
   "button.back": "Back",
   "button.cancel": "Cancel",
-  "button.delete": "Delete",
-  "button.retry": "Retry",
   "button.save": "Save",
   "button.undo": "Undo",
   "button.saving": "Saving…",
   "cover.no_cover": "No cover",
   "cover.zoom_aria": "Open image",
-  "duration.format": "{{minutes}}:{{seconds}}",
   "filter.all": "All",
   "image_type.primary": "Front cover",
   "image_type.secondary": "Back / insert",
@@ -21,10 +18,5 @@
   "media.label_cd": "CD",
   "media.label_vinyl": "Vinyl",
   "media.other": "Other",
-  "media.vinyl": "Vinyl",
-  "sort.added_asc": "Oldest first",
-  "sort.added_desc": "Newest first",
-  "sort.artist_asc": "By artist",
-  "sort.title_asc": "By title",
-  "sort.year_desc": "By year"
+  "media.vinyl": "Vinyl"
 }

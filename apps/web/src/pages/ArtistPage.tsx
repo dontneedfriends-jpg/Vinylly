@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { Button, PageHeader } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItems, useWantlist } from '../lib/queries';
-import type { ItemRecord, WantlistEntry } from '@vinylly/db';
+import type { ItemRecord, MediaType, WantlistEntry } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
 import { getProvidersRegistry } from '../lib/providers';
+import { stripMarkup } from '../lib/text';
 
 interface ArtistInfo {
   id: number;
@@ -13,6 +14,8 @@ interface ArtistInfo {
   imageUrl: string | null;
   profile: string | null;
 }
+
+type FormatFilter = 'all' | MediaType;
 
 export function ArtistPage() {
   const { t } = useTranslation();
@@ -27,6 +30,8 @@ export function ArtistPage() {
   const [info, setInfo] = useState<ArtistInfo | null>(null);
   const [infoLoading, setInfoLoading] = useState(false);
   const [catalogTotal, setCatalogTotal] = useState<number | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [formatFilter, setFormatFilter] = useState<FormatFilter>('all');
 
   useEffect(() => {
     if (!artistName) return;
@@ -55,7 +60,6 @@ export function ArtistPage() {
           imageUrl: img?.uri ?? null,
           profile: a.profile ?? null,
         });
-        // Kick off catalog-size fetch (non-blocking)
         const count = await registry.getArtistReleaseCount(id);
         if (!cancelled && count) setCatalogTotal(count.total);
       } catch (err) {
@@ -83,6 +87,19 @@ export function ArtistPage() {
     return { owned, wanted, ownedByYear };
   }, [items, wantlist, artistName]);
 
+  const filteredOwned = useMemo(() => {
+    if (formatFilter === 'all') return owned;
+    return owned.filter((it) => it.type === formatFilter);
+  }, [owned, formatFilter]);
+
+  const formatOptions: Array<{ value: FormatFilter; label: string }> = [
+    { value: 'all', label: t('artist:format.all') },
+    { value: 'vinyl', label: t('common:media.vinyl') },
+    { value: 'cd', label: t('common:media.cd') },
+    { value: 'cassette', label: t('common:media.cassette') },
+    { value: 'other', label: t('common:media.other') },
+  ];
+
   if (!artistName) {
     return (
       <section className="animate-rise">
@@ -95,7 +112,10 @@ export function ArtistPage() {
   }
 
   return (
-    <section className="animate-rise">
+    <section
+      key={artistName ?? 'empty'}
+      className="animate-rise"
+    >
       <PageHeader
         level="h1"
         title={info?.name ?? artistName}
@@ -107,51 +127,115 @@ export function ArtistPage() {
         }
       />
 
-      {infoLoading ? (
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md mb-6 flex items-center gap-5 border p-6">
-          <div className="rounded-base shadow-neu-2xs bg-surface h-20 w-20 animate-pulse" />
-          <div className="flex-1 space-y-2">
-            <div className="bg-surface shadow-neu-2xs h-4 w-2/3 animate-pulse rounded" />
-            <div className="bg-surface shadow-neu-2xs h-3 w-1/2 animate-pulse rounded" />
-          </div>
-        </div>
-      ) : info ? (
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md mb-6 flex items-start gap-5 border p-6">
-          {info.imageUrl ? (
-            <img
-              src={info.imageUrl}
-              alt={info.name}
-              className="rounded-base shadow-neu-inset h-20 w-20 object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="rounded-base bg-surface shadow-neu-inset text-fg-body-subtle flex h-20 w-20 items-center justify-center text-2xl">
-              {info.name.slice(0, 1).toUpperCase()}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="text-fg-body-subtle text-xs">{t('artist:page.on_discogs')}</div>
-            {info.profile ? (
-              <p className="text-fg-body mt-2 line-clamp-3 text-sm leading-relaxed">{info.profile}</p>
+      {/* Collapsible About card */}
+      {(infoLoading || info) && (
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md mb-6 border">
+          <button
+            type="button"
+            onClick={() => setAboutOpen((v) => !v)}
+            aria-expanded={aboutOpen}
+            className="hover:text-fg-heading text-fg-body flex w-full items-center gap-5 px-6 py-5 text-left transition-colors"
+          >
+            {infoLoading ? (
+              <>
+                <div className="rounded-base shadow-neu-2xs bg-surface h-14 w-14 shrink-0 animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="bg-surface shadow-neu-2xs h-4 w-2/3 animate-pulse rounded" />
+                  <div className="bg-surface shadow-neu-2xs h-3 w-1/2 animate-pulse rounded" />
+                </div>
+              </>
+            ) : info ? (
+              <>
+                {info.imageUrl ? (
+                  <img
+                    src={info.imageUrl}
+                    alt={info.name}
+                    className="rounded-base shadow-neu-inset h-14 w-14 shrink-0 object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="rounded-base bg-surface shadow-neu-inset text-fg-body-subtle flex h-14 w-14 shrink-0 items-center justify-center text-xl">
+                    {info.name.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-fg-body-subtle text-xs">{t('artist:page.on_discogs')}</div>
+                  {info.profile ? (
+                    <p
+                      className={`text-fg-body mt-1 whitespace-pre-wrap text-sm leading-relaxed ${
+                        aboutOpen ? '' : 'line-clamp-1'
+                      }`}
+                    >
+                      {stripMarkup(info.profile)}
+                    </p>
+                  ) : null}
+                </div>
+                <span
+                  className={`text-fg-body-subtle text-sm transition-transform duration-200 ${
+                    aboutOpen ? 'rotate-180' : ''
+                  }`}
+                  aria-hidden
+                >
+                  ▾
+                </span>
+              </>
             ) : null}
-          </div>
+          </button>
         </div>
-      ) : null}
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Owned */}
         <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-fg-heading text-lg font-semibold">
-              {t('artist:section.owned')}
-            </h2>
-            <CompletionBadge owned={owned.length} total={catalogTotal} />
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-fg-heading text-lg font-semibold">{t('artist:section.owned')}</h2>
+            <CompletionBadge
+              owned={filteredOwned.length}
+              total={catalogTotal}
+              filter={formatFilter}
+              estimateLabel={t('artist:completion.estimate')}
+              ownedByType={formatOptions.slice(1).map((opt) => ({
+                value: opt.value as MediaType,
+                label: opt.label,
+                count: owned.filter((it) => it.type === opt.value).length,
+              }))}
+            />
           </div>
-          {owned.length === 0 ? (
-            <p className="text-fg-body-subtle text-sm">{t('artist:empty.owned')}</p>
+
+          {/* Format filter chips */}
+          {owned.length > 0 ? (
+            <div className="rounded-base bg-surface shadow-neu-inset mb-4 flex flex-wrap gap-1 p-1">
+              {formatOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFormatFilter(opt.value)}
+                  className={`rounded-base px-3 py-1 text-xs transition-all ${
+                    formatFilter === opt.value
+                      ? 'bg-surface text-fg-heading shadow-neu-2xs font-medium'
+                      : 'text-fg-body-subtle hover:text-fg-body'
+                  }`}
+                >
+                  {opt.label}
+                  {opt.value !== 'all' && (
+                    <span className="text-fg-body-subtle ml-1">
+                      ({owned.filter((it) => it.type === opt.value).length})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {filteredOwned.length === 0 ? (
+            <p className="text-fg-body-subtle text-sm">
+              {formatFilter === 'all'
+                ? t('artist:empty.owned')
+                : t('artist:empty.owned_filtered', { format: formatOptions.find((o) => o.value === formatFilter)?.label })}
+            </p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
-              {owned.slice(0, 12).map((it) => (
+              {filteredOwned.slice(0, 12).map((it) => (
                 <button
                   key={it.id}
                   type="button"
@@ -170,9 +254,9 @@ export function ArtistPage() {
               ))}
             </div>
           )}
-          {owned.length > 12 ? (
+          {filteredOwned.length > 12 ? (
             <div className="text-fg-body-subtle mt-3 text-xs">
-              {t('artist:more', { count: owned.length - 12 })}
+              {t('artist:more', { count: filteredOwned.length - 12 })}
             </div>
           ) : null}
           {ownedByYear.length > 0 ? (
@@ -224,7 +308,19 @@ export function ArtistPage() {
   );
 }
 
-function CompletionBadge({ owned, total }: { owned: number; total: number | null }) {
+function CompletionBadge({
+  owned,
+  total,
+  filter,
+  estimateLabel,
+  ownedByType,
+}: {
+  owned: number;
+  total: number | null;
+  filter: FormatFilter;
+  estimateLabel: string;
+  ownedByType: Array<{ value: MediaType; label: string; count: number }>;
+}) {
   if (total == null || total <= 0) {
     return <span className="text-fg-body-subtle text-xs">{owned}</span>;
   }
@@ -234,11 +330,29 @@ function CompletionBadge({ owned, total }: { owned: number; total: number | null
     : pct >= 40 ? 'text-fg-brand'
     : pct >= 15 ? 'text-fg-warning'
     : 'text-fg-body-subtle';
+  // When a single format is selected, estimate that format's share of the catalog.
+  // Discogs doesn't break down by format, so we apply a heuristic: assume the
+  // format distribution in the catalog matches the local collection. This is
+  // intentionally rough — the All view is the source of truth.
+  let displayTotal = total;
+  if (filter !== 'all') {
+    const typeOwned = ownedByType.reduce((s, t) => s + t.count, 0);
+    if (typeOwned > 0) {
+      const ratio = ownedByType.find((t) => t.value === filter)!.count / typeOwned;
+      displayTotal = Math.max(1, Math.round(total * ratio));
+    }
+  }
+  const finalPct = Math.min(100, Math.round((owned / displayTotal) * 100));
   return (
-    <span className={`text-xs font-medium ${tier}`}>
-      {owned} / {total}
-      <span className="text-fg-body-subtle ml-1 font-normal">({pct}%)</span>
-    </span>
+    <div className="flex flex-col items-end gap-0.5">
+      <span className={`text-xs font-medium ${tier}`}>
+        {owned} / {displayTotal}
+        <span className="text-fg-body-subtle ml-1 font-normal">({finalPct}%)</span>
+      </span>
+      {filter !== 'all' ? (
+        <span className="text-fg-body-subtle text-[10px]">{estimateLabel}</span>
+      ) : null}
+    </div>
   );
 }
 

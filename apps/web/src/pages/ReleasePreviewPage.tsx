@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CoverImage } from '../components/CoverImage';
 import { Gallery } from '../components/Gallery';
 import { tryGetHostShell } from '@vinylly/host';
+import { stripMarkup } from '../lib/text';
 
 type ExtendedRelease = ReleaseRecord & {
   community?: { have: number; want: number; rating?: { average: number; count: number } };
@@ -450,7 +451,7 @@ export function ReleasePreviewPage() {
                   {t('detail:about.notes_discogs')}
                 </h3>
                 <p className="text-fg-body whitespace-pre-wrap text-sm leading-relaxed">
-                  {release.notes}
+                  {stripMarkup(release.notes)}
                 </p>
               </CardBody>
             </Card>
