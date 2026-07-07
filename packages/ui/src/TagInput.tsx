@@ -58,7 +58,7 @@ export function TagInput({ label, tags, onChange, placeholder, disabled, id }: T
           {label}
         </label>
       ) : null}
-      <div className="bg-surface border-border-default-medium focus-within:border-border-brand rounded-base shadow-neu-inset flex min-h-[42px] flex-wrap items-center gap-1.5 border px-2.5 py-1.5 transition-all duration-200 focus-within:ring-1 focus-within:ring-fg-brand/30">
+      <div className="bg-surface border-border-default-medium focus-within:border-border-brand rounded-base shadow-neu-inset flex min-h-[42px] flex-wrap items-center gap-1.5 border px-2.5 py-1.5 transition-neu focus-within:ring-1 focus-within:ring-fg-brand/30">
         {tags.map((tag) => (
           <span
             key={tag}

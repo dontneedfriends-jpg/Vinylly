@@ -6,14 +6,12 @@ import { ArtistPackChart } from './ArtistPackChart';
 import { CoverImage } from './CoverImage';
 import { useUi } from '../lib/ui-store';
 import {
-  computeAcquisitionRange,
   computeAnniversaries,
   computeDecadeBreakdown,
   computeFormatBreakdown,
   computeHiddenGems,
   computeMostValuable,
   computeRoiLeaders,
-  computeYearStats,
 } from '../lib/stats';
 
 export function StatsPanel() {
@@ -26,46 +24,6 @@ export function StatsPanel() {
     cassette: t('common:media.cassette'),
     other: t('common:media.other'),
   };
-
-  const stats = useMemo(() => {
-    const total = items.length;
-    const byType: Record<string, number> = {};
-    let totalPurchaseCost = 0;
-    let itemsWithPrice = 0;
-    let totalMarketValue = 0;
-    let itemsWithMarket = 0;
-    let totalDurationMs = 0;
-    let totalTrackCount = 0;
-    for (const it of items) {
-      byType[it.type] = (byType[it.type] ?? 0) + 1;
-      if (it.purchasePrice != null) {
-        totalPurchaseCost += it.purchasePrice;
-        itemsWithPrice++;
-      }
-      if (it.release.lowestPrice != null) {
-        totalMarketValue += it.release.lowestPrice;
-        itemsWithMarket++;
-      }
-      if (it.release.totalDurationMs != null) totalDurationMs += it.release.totalDurationMs;
-      if (it.release.trackCount != null) totalTrackCount += it.release.trackCount;
-    }
-    const avgFromKnown = itemsWithMarket > 0 ? totalMarketValue / itemsWithMarket : 0;
-    const estimatedTotal = totalMarketValue + avgFromKnown * (total - itemsWithMarket);
-    return {
-      total,
-      byType,
-      totalPurchaseCost,
-      avgPurchasePrice: itemsWithPrice > 0 ? totalPurchaseCost / itemsWithPrice : 0,
-      itemsWithPrice,
-      totalMarketValue,
-      avgMarketValue: avgFromKnown,
-      itemsWithMarket,
-      estimatedMarketValue: estimatedTotal,
-      estimatedProfit: estimatedTotal - totalPurchaseCost,
-      totalDurationMs,
-      totalTrackCount,
-    };
-  }, [items]);
 
   const yearEntries = useMemo(() => {
     const yearMap: Record<string, number> = {};
@@ -98,10 +56,6 @@ export function StatsPanel() {
   }, [items]);
 
   const topValue = useMemo(() => computeMostValuable(items), [items]);
-
-  const acquisition = useMemo(() => computeAcquisitionRange(items), [items]);
-
-  const yearStats = useMemo(() => computeYearStats(items), [items]);
 
   const topTags = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -185,111 +139,11 @@ export function StatsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Counts */}
-      <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-5 py-4">
-        <div className="text-fg-heading text-2xl font-semibold">{stats.total}</div>
-        <div className="text-fg-body-subtle text-xs">{t('layout:rail.collection.total_releases')}</div>
-        <div className="mt-3 flex flex-col gap-1">
-          {(Object.keys(stats.byType) as MediaType[]).map((k) => (
-            <div key={k} className="flex items-center justify-between text-sm">
-              <span className="text-fg-body">{typeLabels[k] ?? k}</span>
-              <span className="text-fg-heading font-medium">{stats.byType[k]}</span>
-            </div>
-          ))}
-        </div>
-        {stats.totalTrackCount > 0 ? (
-          <div className="text-fg-body-subtle mt-3 flex flex-col gap-1 text-xs">
-            <div className="flex items-center justify-between">
-              <span>{t('stats:finances.tracks')}</span>
-              <span className="text-fg-heading font-medium">{stats.totalTrackCount}</span>
-            </div>
-            {stats.totalDurationMs > 0 ? (
-              <div className="flex items-center justify-between">
-                <span>{t('stats:finances.total_duration')}</span>
-                <span className="text-fg-heading font-medium">{formatDuration(stats.totalDurationMs)}</span>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        {acquisition ? (
-          <div className="text-fg-body-subtle mt-3 flex flex-col gap-1 text-xs">
-            <div className="flex items-center justify-between">
-              <span>{t('stats:acquisition.first')}</span>
-              <span className="text-fg-heading font-medium">{acquisition.oldest}</span>
-            </div>
-            {acquisition.newest ? (
-              <div className="flex items-center justify-between">
-                <span>{t('stats:acquisition.latest')}</span>
-                <span className="text-fg-heading font-medium">{acquisition.newest}</span>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        {yearStats ? (
-          <div className="text-fg-body-subtle mt-3 flex flex-col gap-1 text-xs">
-            <div className="flex items-center justify-between">
-              <span>{t('stats:years.avg')}</span>
-              <span className="text-fg-heading font-medium">{yearStats.avg}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>{t('stats:years.median')}</span>
-              <span className="text-fg-heading font-medium">{yearStats.median}</span>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Finances */}
-      <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-5 py-4">
-        <div className="text-fg-heading mb-3 text-sm font-semibold">{t('stats:finances.title')}</div>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-fg-body-subtle">{t('stats:finances.total_paid')}</span>
-            <span className="text-fg-heading font-medium">{formatMoney(stats.totalPurchaseCost)}</span>
-          </div>
-          {stats.itemsWithPrice > 0 ? (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-fg-body-subtle">{t('stats:finances.avg_price')}</span>
-              <span className="text-fg-body">{formatMoney(stats.avgPurchasePrice)}</span>
-            </div>
-          ) : null}
-          {stats.itemsWithMarket > 0 ? (
-            <>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-fg-body-subtle">{t('stats:finances.market_value')}</span>
-                <span className="text-fg-heading font-medium">{formatMoney(stats.estimatedMarketValue)}</span>
-              </div>
-              {stats.itemsWithMarket < stats.total ? (
-                <div className="text-fg-body-subtle text-[10px]">
-                  {t('stats:finances.market_value_desc', {
-                    known: stats.itemsWithMarket,
-                    total: stats.total,
-                    avg: formatMoney(stats.avgMarketValue),
-                  })}
-                </div>
-              ) : null}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-fg-body-subtle">{t('stats:finances.estimated_profit')}</span>
-                <span className={`font-medium ${stats.estimatedProfit >= 0 ? 'text-fg-success-strong' : 'text-fg-danger-strong'}`}>
-                  {formatMoney(stats.estimatedProfit, { showSign: true })}
-                </span>
-              </div>
-            </>
-          ) : null}
-          <div className="text-fg-body-subtle mt-1 text-[10px]">
-            {stats.itemsWithPrice > 0
-              ? t('stats:finances.priced_count', { count: stats.itemsWithPrice, total: stats.total })
-              : t('stats:finances.no_prices')}
-          </div>
-        </div>
-      </div>
-
-      {/* Charts */}
+      {/* Charts — counts and finances live in the right rail */}
       {items.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          <h3 className="text-fg-heading text-lg font-semibold">{t('layout:rail.collection.charts')}</h3>
+        <div className="flex flex-col gap-6">
+          <h3 className="text-fg-heading text-lg font-semibold">{t('layout:rail.collection.about')}</h3>
 
-          {/* Pack chart — artists / genre */}
           <ArtistPackChart />
 
           {yearEntries.length > 0 || decadeEntries.length > 0 ? (
@@ -297,49 +151,36 @@ export function StatsPanel() {
           ) : null}
 
           {genreEntries.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('layout:rail.collection.by_genre')}
-              </h4>
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
-                <BarChart data={genreEntries} maxBars={12} />
-              </div>
-            </div>
+            <StatsPanelBlock label={t('layout:rail.collection.by_genre')}>
+              <BarChart data={genreEntries} maxBars={12} />
+            </StatsPanelBlock>
           ) : null}
 
           {topTags.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:tags.title')}
-              </h4>
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
-                <div className="flex flex-wrap gap-1.5">
-                  {topTags.map(([tag, count]) => (
-                    <span
-                      key={tag}
-                      className="rounded-base bg-surface shadow-neu-2xs text-fg-heading inline-flex items-center gap-1.5 px-2.5 py-1 text-xs"
-                    >
-                      <span>{tag}</span>
-                      <span className="text-fg-body-subtle">{count}</span>
-                    </span>
-                  ))}
-                </div>
+            <StatsPanelBlock label={t('stats:tags.title')}>
+              <div className="flex flex-wrap gap-1.5">
+                {topTags.map(([tag, count]) => (
+                  <span
+                    key={tag}
+                    className="rounded-base bg-surface shadow-neu-2xs text-fg-heading inline-flex items-center gap-1.5 px-2.5 py-1 text-xs"
+                  >
+                    <span>{tag}</span>
+                    <span className="text-fg-body-subtle">{count}</span>
+                  </span>
+                ))}
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
 
           {topValue.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:top_value.title')}
-              </h4>
+            <StatsPanelBlock label={t('stats:top_value.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
                 {topValue.map((it, i) => (
                   <button
                     key={it.id}
                     type="button"
                     onClick={() => useUi.getState().openDetail(it.id)}
-                    className="hover:bg-surface flex w-full items-center gap-3 px-4 py-2 text-left transition-colors"
+                    className="hover:shadow-neu-2xs flex w-full items-center gap-3 px-4 py-2 text-left transition-[box-shadow,background-color] duration-200"
                   >
                     <span className="text-fg-body-subtle w-4 shrink-0 text-center text-xs">{i + 1}</span>
                     <span className="rounded-base shadow-neu-2xs bg-surface h-8 w-8 shrink-0 overflow-hidden">
@@ -361,46 +202,38 @@ export function StatsPanel() {
                   </button>
                 ))}
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
 
           {activity ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:activity.title')}
-              </h4>
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
-                <div className="grid grid-cols-12 gap-1.5">
-                  {activity.months.map((m) => {
-                    const intensity = m.count === 0 ? 0 : Math.max(0.2, m.count / activity.max);
-                    const bg =
-                      m.count === 0
-                        ? 'bg-surface shadow-neu-2xs'
-                        : `bg-fg-brand/20`;
-                    return (
+            <StatsPanelBlock label={t('stats:activity.title')}>
+              <div className="grid grid-cols-12 gap-1.5">
+                {activity.months.map((m) => {
+                  const intensity = m.count === 0 ? 0 : Math.max(0.2, m.count / activity.max);
+                  const bg =
+                    m.count === 0
+                      ? 'bg-surface shadow-neu-2xs'
+                      : `bg-fg-brand/20`;
+                  return (
+                    <div
+                      key={m.key}
+                      className="flex flex-col items-center gap-1"
+                      title={`${m.label} ${m.key}: ${m.count}`}
+                    >
                       <div
-                        key={m.key}
-                        className="flex flex-col items-center gap-1"
-                        title={`${m.label} ${m.key}: ${m.count}`}
-                      >
-                        <div
-                          className={`rounded-base h-7 w-full ${bg}`}
-                          style={m.count > 0 ? { backgroundColor: `rgba(15, 98, 254, ${intensity})` } : undefined}
-                        />
-                        <span className="text-fg-body-subtle text-[10px]">{m.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                        className={`rounded-base h-7 w-full ${bg}`}
+                        style={m.count > 0 ? { backgroundColor: `rgba(15, 98, 254, ${intensity})` } : undefined}
+                      />
+                      <span className="text-fg-body-subtle text-[10px]">{m.label}</span>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
 
           {missing.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:missing.title')}
-              </h4>
+            <StatsPanelBlock label={t('stats:missing.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
                 {missing.map((r) => (
                   <div key={r.key} className="flex items-center justify-between px-4 py-2 text-sm">
@@ -411,14 +244,11 @@ export function StatsPanel() {
                   </div>
                 ))}
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
 
           {topWinners.length > 0 || topLosers.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:roi.title')}
-              </h4>
+            <StatsPanelBlock label={t('stats:roi.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
                 {topWinners.map(({ it, roi }) => (
                   <RoiRow key={`w-${it.id}`} it={it} roi={roi} />
@@ -430,21 +260,18 @@ export function StatsPanel() {
                   <RoiRow key={`l-${it.id}`} it={it} roi={roi} />
                 ))}
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
 
           {hiddenGems.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:hidden_gems.title')}
-              </h4>
+            <StatsPanelBlock label={t('stats:hidden_gems.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
                 {hiddenGems.map(({ it, rating, want }) => (
                   <button
                     key={it.id}
                     type="button"
                     onClick={() => useUi.getState().openDetail(it.id)}
-                    className="hover:bg-surface flex w-full items-center gap-3 px-4 py-2 text-left text-sm"
+                    className="hover:shadow-neu-2xs flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-[box-shadow,background-color] duration-200"
                   >
                     <span className="rounded-base shadow-neu-2xs bg-surface h-8 w-8 shrink-0 overflow-hidden">
                       <CoverImage
@@ -466,14 +293,11 @@ export function StatsPanel() {
                   </button>
                 ))}
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
 
           {anniversaries.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:anniversaries.title')}
-              </h4>
+            <StatsPanelBlock label={t('stats:anniversaries.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
                 {anniversaries.map(({ it, years }) => {
                   const milestone = years % 10 === 0 || years % 25 === 0;
@@ -482,7 +306,7 @@ export function StatsPanel() {
                       key={it.id}
                       type="button"
                       onClick={() => useUi.getState().openDetail(it.id)}
-                      className="hover:bg-surface flex w-full items-center gap-3 px-4 py-2 text-left text-sm"
+                      className="hover:shadow-neu-2xs flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-[box-shadow,background-color] duration-200"
                     >
                       <span className="text-fg-heading shrink-0 text-xs font-semibold">
                         {years}{milestone ? '!' : ''}
@@ -498,14 +322,11 @@ export function StatsPanel() {
                   );
                 })}
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
 
           {dna ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:dna.title')}
-              </h4>
+            <StatsPanelBlock label={t('stats:dna.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border p-4">
                 <DnaSection
                   title={t('stats:dna.decades')}
@@ -522,14 +343,11 @@ export function StatsPanel() {
                   palette="format"
                 />
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
 
           {topArtistSpend.length > 0 ? (
-            <div>
-              <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
-                {t('stats:artist_spend.title')}
-              </h4>
+            <StatsPanelBlock label={t('stats:artist_spend.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
                 {topArtistSpend.map(({ artist, total, count }) => (
                   <div key={artist} className="flex items-center justify-between px-4 py-2 text-sm">
@@ -541,11 +359,28 @@ export function StatsPanel() {
                   </div>
                 ))}
               </div>
-            </div>
+            </StatsPanelBlock>
           ) : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+function StatsPanelBlock({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="text-fg-heading mb-2 text-sm font-medium">{label}</div>
+      <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -555,7 +390,7 @@ function RoiRow({ it, roi }: { it: ItemRecord; roi: number }) {
     <button
       type="button"
       onClick={() => useUi.getState().openDetail(it.id)}
-      className="hover:bg-surface flex w-full items-center gap-3 px-4 py-2 text-left text-sm"
+      className="hover:shadow-neu-2xs flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-[box-shadow,background-color] duration-200"
     >
       <span className="min-w-0 flex-1 truncate">
         <span className="text-fg-heading block truncate font-medium">{it.release.title}</span>
@@ -584,26 +419,32 @@ function YearDecadeSection({
   const data = mode === 'year' ? yearEntries : decadeEntries;
   if (!data.length) return null;
   return (
-    <div>
+    <section>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h4 className="text-fg-body-subtle text-xs font-medium uppercase tracking-wide">
-          {t('layout:rail.collection.by_year')}
-        </h4>
-        <div className="rounded-base bg-surface shadow-neu-inset flex items-center gap-0.5 p-0.5 text-[10px]">
+        <div className="text-fg-heading text-sm font-medium">{t('layout:rail.collection.by_year')}</div>
+        <div
+          role="radiogroup"
+          aria-label={t('layout:rail.collection.by_year')}
+          className="rounded-base bg-surface shadow-neu-inset flex items-center gap-0.5 p-0.5 text-[11px]"
+        >
           <button
             type="button"
+            role="radio"
+            aria-checked={mode === 'year'}
             onClick={() => setMode('year')}
-            className={`rounded-base px-2 py-0.5 transition-colors ${
-              mode === 'year' ? 'bg-surface text-fg-heading shadow-neu-2xs' : 'text-fg-body-subtle'
+            className={`rounded-base px-2.5 py-1 transition-[box-shadow,color] duration-200 ${
+              mode === 'year' ? 'bg-surface text-fg-heading shadow-neu-2xs' : 'text-fg-body-subtle hover:text-fg-body'
             }`}
           >
             {t('stats:year_decade.year')}
           </button>
           <button
             type="button"
+            role="radio"
+            aria-checked={mode === 'decade'}
             onClick={() => setMode('decade')}
-            className={`rounded-base px-2 py-0.5 transition-colors ${
-              mode === 'decade' ? 'bg-surface text-fg-heading shadow-neu-2xs' : 'text-fg-body-subtle'
+            className={`rounded-base px-2.5 py-1 transition-[box-shadow,color] duration-200 ${
+              mode === 'decade' ? 'bg-surface text-fg-heading shadow-neu-2xs' : 'text-fg-body-subtle hover:text-fg-body'
             }`}
           >
             {t('stats:year_decade.decade')}
@@ -613,7 +454,7 @@ function YearDecadeSection({
       <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
         <BarChart data={data} maxBars={mode === 'year' ? 15 : 12} />
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -637,7 +478,7 @@ function DnaSection({
     palette === 'format' ? formatColors[label] ?? '#8d8d8d' : decadeColors[idx % decadeColors.length]!;
   return (
     <div className="mb-4 last:mb-0">
-      <div className="text-fg-body-subtle mb-2 text-[11px] uppercase tracking-wide">{title}</div>
+      <div className="text-fg-heading mb-2 text-xs font-medium">{title}</div>
       <div className="bg-surface shadow-neu-2xs flex h-3 w-full overflow-hidden rounded-base">
         {segments.map((s, i) => (
           <div
@@ -662,16 +503,6 @@ function DnaSection({
       </div>
     </div>
   );
-}
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
 }
 
 function formatMoney(amount: number, { showSign = false }: { showSign?: boolean } = {}): string {

@@ -7,6 +7,7 @@ import { getProvidersRegistry } from '../lib/providers';
 import type { MediaType } from '@vinylly/db';
 import { ExternalLink } from './ExternalLink';
 import { stripMarkup } from '../lib/text';
+import { computeCollectionStats, computeFinanceStats } from '../lib/stats';
 
 /* ─────────── DETAIL RAIL — Tracklist ─────────── */
 
@@ -89,7 +90,7 @@ export function DetailRail() {
                 onClick={() => onTrackClick(tr.id)}
                 aria-pressed={active}
                 className={
-                  'rounded-base group flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm transition-all duration-200 ' +
+                  'rounded-base group flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm transition-neu ' +
                   (active
                     ? 'text-fg-brand-strong bg-surface shadow-neu-inset'
                     : 'text-fg-body hover:text-fg-heading bg-surface hover:shadow-neu-2xs')
@@ -154,7 +155,7 @@ function VideoRail() {
           <ExternalLink
             key={i}
             href={v.uri}
-            className="rounded-base hover:shadow-neu-2xs flex items-center gap-2.5 border border-transparent bg-transparent px-4 py-2.5 text-sm transition-all duration-200"
+            className="rounded-base hover:shadow-neu-2xs flex items-center gap-2.5 border border-transparent bg-transparent px-4 py-2.5 text-sm transition-neu"
           >
             <VideoIcon />
             <span className="text-fg-body hover:text-fg-heading truncate">{v.title}</span>
@@ -251,7 +252,7 @@ function CollectionRail() {
                       : [...filterTags, tag];
                     setFilterTags(next);
                   }}
-                  className={`rounded-base px-2 py-1 text-[11px] font-medium transition-all duration-200 ${
+                  className={`rounded-base px-2 py-1 text-[11px] font-medium transition-neu ${
                     active
                       ? 'bg-surface text-fg-brand-strong shadow-neu-sm border border-border-default'
                       : 'text-fg-body-subtle hover:text-fg-body border border-transparent hover:shadow-neu-2xs'
@@ -274,7 +275,7 @@ function CollectionRail() {
               key={opt.value}
               type="button"
               onClick={() => setFilterType(opt.value)}
-              className={`rounded-base w-full px-3 py-2 text-left text-xs font-medium transition-all duration-200 ${
+              className={`rounded-base w-full px-3 py-2 text-left text-xs font-medium transition-neu ${
                 active
                   ? 'bg-surface text-fg-brand-strong shadow-neu-sm border border-border-default'
                   : 'text-fg-body-subtle hover:text-fg-body border border-transparent hover:shadow-neu-2xs'
@@ -295,7 +296,7 @@ function CollectionRail() {
               key={opt.value}
               type="button"
               onClick={() => setSort(opt.value)}
-              className={`rounded-base w-full px-3 py-2 text-left text-xs font-medium transition-all duration-200 ${
+              className={`rounded-base w-full px-3 py-2 text-left text-xs font-medium transition-neu ${
                 active
                   ? 'bg-surface text-fg-brand-strong shadow-neu-sm border border-border-default'
                   : 'text-fg-body-subtle hover:text-fg-body border border-transparent hover:shadow-neu-2xs'
@@ -318,7 +319,7 @@ function CollectionRail() {
               <button
                 type="button"
                 onClick={() => setFilterType('all')}
-                className="rounded-base bg-surface text-fg-brand-strong shadow-neu-2xs hover:shadow-neu-xs active:shadow-neu-inset inline-flex items-center gap-1 border border-transparent px-3 py-1.5 text-xs font-medium transition-all duration-200"
+                className="rounded-base bg-surface text-fg-brand-strong shadow-neu-2xs hover:shadow-neu-xs active:shadow-neu-inset inline-flex items-center gap-1 border border-transparent px-3 py-1.5 text-xs font-medium transition-neu"
               >
                 {typeLabels[filterType]}
                 <span aria-hidden>&times;</span>
@@ -334,7 +335,7 @@ function CollectionRail() {
                 key={tag}
                 type="button"
                 onClick={() => setFilterTags(filterTags.filter((t) => t !== tag))}
-                className="rounded-base bg-surface text-fg-brand-strong shadow-neu-2xs hover:shadow-neu-xs active:shadow-neu-inset inline-flex items-center gap-1 border border-transparent px-3 py-1.5 text-xs font-medium transition-all duration-200"
+                className="rounded-base bg-surface text-fg-brand-strong shadow-neu-2xs hover:shadow-neu-xs active:shadow-neu-inset inline-flex items-center gap-1 border border-transparent px-3 py-1.5 text-xs font-medium transition-neu"
               >
                 {tag}
                 <span aria-hidden>&times;</span>
@@ -355,6 +356,124 @@ function VerticalGroup({ label, children }: { label: string; children: React.Rea
       </h4>
       <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-0.5 border p-1.5">
         {children}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────── STATS RAIL — Counts & Finances ─────────── */
+
+function StatsRail() {
+  const { t } = useTranslation();
+  const { data: items = [] } = useItems({});
+  const counts = useMemo(() => computeCollectionStats(items), [items]);
+  const finances = useMemo(() => computeFinanceStats(items), [items]);
+
+  const typeLabels: Record<string, string> = {
+    vinyl: t('common:media.vinyl'),
+    cd: t('common:media.cd'),
+    cassette: t('common:media.cassette'),
+    other: t('common:media.other'),
+  };
+
+  if (!items.length) {
+    return (
+      <p className="text-fg-body-subtle text-sm">
+        {t('layout:rail.stats.empty', { defaultValue: 'Коллекция пуста — добавляйте релизы, чтобы видеть статистику.' })}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Counts */}
+      <div>
+        <h3 className="text-fg-heading mb-3 text-lg font-semibold">
+          {t('layout:rail.collection.total_releases')}
+        </h3>
+        <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-4">
+          <div className="text-fg-heading text-3xl font-semibold tabular-nums">{counts.total}</div>
+          <div className="text-fg-body-subtle text-xs">
+            {t('layout:rail.stats.releases_caption', { defaultValue: 'релизов в коллекции' })}
+          </div>
+          <div className="mt-3 flex flex-col gap-1">
+            {(Object.keys(counts.byType) as MediaType[]).map((k) => (
+              <div key={k} className="flex items-center justify-between text-sm">
+                <span className="text-fg-body">{typeLabels[k] ?? k}</span>
+                <span className="text-fg-heading font-medium tabular-nums">
+                  {counts.byType[k] ?? 0}
+                </span>
+              </div>
+            ))}
+          </div>
+          {counts.totalTrackCount > 0 ? (
+            <div className="text-fg-body-subtle mt-3 flex flex-col gap-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span>{t('stats:finances.tracks')}</span>
+                <span className="text-fg-heading font-medium tabular-nums">
+                  {counts.totalTrackCount}
+                </span>
+              </div>
+              {counts.totalDurationMs > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span>{t('stats:finances.total_duration')}</span>
+                  <span className="text-fg-heading font-medium tabular-nums">
+                    {formatDuration(counts.totalDurationMs)}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Finances */}
+      <div>
+        <h3 className="text-fg-heading mb-3 text-lg font-semibold">
+          {t('stats:finances.title')}
+        </h3>
+        <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-fg-body-subtle">{t('stats:finances.total_paid')}</span>
+              <span className="text-fg-heading font-medium tabular-nums">
+                {formatMoney(finances.totalPurchaseCost)}
+              </span>
+            </div>
+            {finances.itemsWithMarket > 0 ? (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-fg-body-subtle">{t('stats:finances.market_value')}</span>
+                <span className="text-fg-heading font-medium tabular-nums">
+                  {formatMoney(finances.estimatedMarketValue)}
+                </span>
+              </div>
+            ) : null}
+            {finances.itemsWithMarket > 0 ? (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-fg-body-subtle">
+                  {t('stats:finances.estimated_profit')}
+                </span>
+                <span
+                  className={`font-medium tabular-nums ${
+                    finances.estimatedProfit >= 0
+                      ? 'text-fg-success-strong'
+                      : 'text-fg-danger-strong'
+                  }`}
+                >
+                  {formatMoney(finances.estimatedProfit, { showSign: true })}
+                </span>
+              </div>
+            ) : null}
+          </div>
+          <div className="text-fg-body-subtle mt-3 text-[11px]">
+            {finances.itemsWithPrice > 0
+              ? t('stats:finances.priced_count', {
+                  count: finances.itemsWithPrice,
+                  total: counts.total,
+                })
+              : t('stats:finances.no_prices')}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -492,7 +611,7 @@ export function RightRail() {
       case 'settings':
         return null;
       case 'stats':
-        return <CollectionRail />;
+        return <StatsRail />;
     }
   };
 
@@ -502,7 +621,7 @@ export function RightRail() {
   return (
     <aside
       aria-label={t('layout:sidebar.aria')}
-      className="rounded-base bg-surface shadow-neu-md scrollbar-neu flex h-full w-0 shrink-0 flex-col overflow-hidden opacity-0 transition-all duration-200 ease-in-out lg:w-72 lg:opacity-100"
+      className="rounded-base bg-surface shadow-neu-md scrollbar-neu hidden h-full w-72 shrink-0 flex-col overflow-hidden md:flex"
     >
       <div className="flex h-full w-72 flex-col gap-4 overflow-y-auto p-4">{rendered}</div>
     </aside>
@@ -516,6 +635,11 @@ function formatDuration(ms: number): string {
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function formatMoney(amount: number, { showSign = false }: { showSign?: boolean } = {}): string {
+  const sign = showSign ? (amount >= 0 ? '+' : '-') : '';
+  return `${sign}$${Math.abs(amount).toFixed(2)}`;
 }
 
 function MusicNoteIcon() {

@@ -179,7 +179,7 @@ export function ArtistPackChart() {
             role="radio"
             aria-checked={mode === 'artist'}
             onClick={() => setMode('artist')}
-            className={`rounded-sm px-2.5 py-0.5 text-xs font-medium transition-all ${
+            className={`rounded-sm px-2.5 py-0.5 text-xs font-medium transition-neu ${
               mode === 'artist'
                 ? 'bg-surface text-fg-brand-strong shadow-neu-xs'
                 : 'text-fg-body-subtle hover:text-fg-body'
@@ -192,7 +192,7 @@ export function ArtistPackChart() {
             role="radio"
             aria-checked={mode === 'genre'}
             onClick={() => setMode('genre')}
-            className={`rounded-sm px-2.5 py-0.5 text-xs font-medium transition-all ${
+            className={`rounded-sm px-2.5 py-0.5 text-xs font-medium transition-neu ${
               mode === 'genre'
                 ? 'bg-surface text-fg-brand-strong shadow-neu-xs'
                 : 'text-fg-body-subtle hover:text-fg-body'
@@ -226,7 +226,7 @@ export function ArtistPackChart() {
             return (
               <div
                 key={entry.label}
-                className="rounded-full bg-surface shadow-neu-sm hover:shadow-neu-md relative inline-flex flex-col items-center justify-center border text-center transition-all duration-200"
+                className="rounded-full bg-surface shadow-neu-sm hover:shadow-neu-md relative inline-flex flex-col items-center justify-center border text-center transition-neu"
                 style={{
                   width: size,
                   height: size,

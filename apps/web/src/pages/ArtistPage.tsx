@@ -210,7 +210,7 @@ export function ArtistPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setFormatFilter(opt.value)}
-                  className={`rounded-base px-3 py-1 text-xs transition-all ${
+                  className={`rounded-base px-3 py-1 text-xs transition-neu ${
                     formatFilter === opt.value
                       ? 'bg-surface text-fg-heading shadow-neu-2xs font-medium'
                       : 'text-fg-body-subtle hover:text-fg-body'

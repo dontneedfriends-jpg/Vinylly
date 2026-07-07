@@ -1,4 +1,75 @@
-import type { ItemRecord } from '@vinylly/db';
+import type { ItemRecord, MediaType } from '@vinylly/db';
+
+export interface CollectionStats {
+  total: number;
+  byType: Record<MediaType, number>;
+  totalTrackCount: number;
+  totalDurationMs: number;
+}
+
+export interface FinanceStats {
+  totalPurchaseCost: number;
+  itemsWithPrice: number;
+  avgPurchasePrice: number;
+  totalMarketValue: number;
+  itemsWithMarket: number;
+  avgMarketValue: number;
+  estimatedMarketValue: number;
+  estimatedProfit: number;
+}
+
+/**
+ * Headline counts: total + per-format + tracks and playback duration.
+ */
+export function computeCollectionStats(items: ItemRecord[]): CollectionStats {
+  const byType: Record<MediaType, number> = { vinyl: 0, cd: 0, cassette: 0, other: 0 };
+  let totalTrackCount = 0;
+  let totalDurationMs = 0;
+  for (const it of items) {
+    byType[it.type] = (byType[it.type] ?? 0) + 1;
+    if (it.release.trackCount != null) totalTrackCount += it.release.trackCount;
+    if (it.release.totalDurationMs != null) totalDurationMs += it.release.totalDurationMs;
+  }
+  return {
+    total: items.length,
+    byType,
+    totalTrackCount,
+    totalDurationMs,
+  };
+}
+
+/**
+ * Money snapshot — what was paid, what the market says, est. profit.
+ * Items missing `lowestPrice` are extrapolated at the average of the priced ones.
+ */
+export function computeFinanceStats(items: ItemRecord[]): FinanceStats {
+  let totalPurchaseCost = 0;
+  let itemsWithPrice = 0;
+  let totalMarketValue = 0;
+  let itemsWithMarket = 0;
+  for (const it of items) {
+    if (it.purchasePrice != null) {
+      totalPurchaseCost += it.purchasePrice;
+      itemsWithPrice++;
+    }
+    if (it.release.lowestPrice != null) {
+      totalMarketValue += it.release.lowestPrice;
+      itemsWithMarket++;
+    }
+  }
+  const avgFromKnown = itemsWithMarket > 0 ? totalMarketValue / itemsWithMarket : 0;
+  const estimatedTotal = totalMarketValue + avgFromKnown * (items.length - itemsWithMarket);
+  return {
+    totalPurchaseCost,
+    itemsWithPrice,
+    avgPurchasePrice: itemsWithPrice > 0 ? totalPurchaseCost / itemsWithPrice : 0,
+    totalMarketValue,
+    itemsWithMarket,
+    avgMarketValue: avgFromKnown,
+    estimatedMarketValue: estimatedTotal,
+    estimatedProfit: estimatedTotal - totalPurchaseCost,
+  };
+}
 
 export function computeAcquisitionRange(items: ItemRecord[]): { oldest: string; newest: string | null } | null {
   const dates: string[] = [];

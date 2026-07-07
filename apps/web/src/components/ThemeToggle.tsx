@@ -30,9 +30,9 @@ export function ThemeToggle() {
             aria-checked={active}
             onClick={() => setMode(m)}
             title={labels[m]}
-            className={`flex items-center justify-center gap-1.5 rounded-base px-2.5 py-1.5 text-xs transition-all ${
+            className={`flex items-center justify-center gap-1.5 rounded-base px-2.5 py-1.5 text-xs transition-neu ${
               active
-                ? 'bg-surface text-fg-heading shadow-neu-2xs font-medium'
+                ? 'bg-surface text-fg-brand-strong shadow-neu-2xs font-semibold'
                 : 'text-fg-body-subtle hover:text-fg-body'
             }`}
           >

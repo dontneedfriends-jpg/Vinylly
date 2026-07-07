@@ -425,7 +425,7 @@ export function AddPage() {
                 href={`https://www.discogs.com/search/?q=${encodeURIComponent(query.trim())}&type=release`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-base bg-surface shadow-neu-sm hover:shadow-neu-md text-fg-heading inline-flex items-center gap-2 px-4 py-2 text-sm transition-all"
+                className="rounded-base bg-surface shadow-neu-sm hover:shadow-neu-md text-fg-heading inline-flex items-center gap-2 px-4 py-2 text-sm transition-neu"
               >
                 {t('add:search.open_discogs_search')}
                 <ExternalLinkIcon />
@@ -580,13 +580,30 @@ export function AddPage() {
                 </Button>
               )}
               {selected?.source === 'discogs' && discogsUsername && discogsSyncEnabled ? (
-                <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={syncDiscogs}
-                    onChange={(e) => setSyncDiscogs(e.target.checked)}
-                    className="rounded-base border-border-default bg-surface h-3.5 w-3.5"
-                  />
+                <label className="ml-2 inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-xs">
+                  <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={syncDiscogs}
+                      onChange={(e) => setSyncDiscogs(e.target.checked)}
+                      className="peer absolute inset-0 cursor-pointer appearance-none"
+                      aria-label={t('add:form.sync_discogs')}
+                    />
+                    <span
+                      aria-hidden
+                      className="rounded-base border-border-default-medium bg-surface shadow-neu-2xs peer-checked:border-border-brand peer-checked:shadow-neu-inset peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fg-brand inline-block h-5 w-5 border"
+                    />
+                    <svg
+                      aria-hidden
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      className="text-fg-brand-strong pointer-events-none absolute h-3.5 w-3.5 opacity-0 transition-opacity duration-200 peer-checked:opacity-100"
+                    >
+                      <path d="M5 12l4.5 4.5L19 7.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
                   <span className="text-fg-body-subtle">{t('add:form.sync_discogs')}</span>
                 </label>
               ) : null}

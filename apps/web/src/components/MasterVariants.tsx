@@ -91,8 +91,8 @@ export function MasterVariants({ masterId, ownedItems, wantedReleases, currentSo
                 key={v.id}
                 className={
                   isCurrent
-                    ? 'bg-surface text-fg-heading font-medium'
-                    : 'text-fg-body hover:bg-surface transition-colors'
+                    ? 'bg-brand-softer text-fg-heading font-medium'
+                    : 'text-fg-body hover:bg-brand-softer/40 transition-[background-color] duration-200'
                 }
               >
                 <td className="px-3 py-2">

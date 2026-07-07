@@ -154,7 +154,7 @@ function Thumbnail({
       type="button"
       onClick={onClick}
       title={image.type}
-      className={`aspect-square overflow-hidden rounded-base border transition-all duration-200 ${
+      className={`aspect-square overflow-hidden rounded-base border transition-neu ${
         active
           ? 'border-border-default shadow-neu-inset'
           : 'border-border-default-medium shadow-neu-2xs hover:shadow-neu-xs'
@@ -186,7 +186,7 @@ function MoreTile({ count, onClick }: { count: number; onClick: () => void }) {
       onClick={onClick}
       title={`Ещё ${count}`}
       aria-label={`Показать ещё ${count} изображений`}
-      className="border-border-default-medium shadow-neu-2xs hover:shadow-neu-xs flex aspect-square items-center justify-center rounded-base border transition-all duration-200"
+      className="border-border-default-medium shadow-neu-2xs hover:shadow-neu-xs flex aspect-square items-center justify-center rounded-base border transition-neu"
     >
       <span className="text-fg-heading text-sm font-semibold">+{count}</span>
     </button>

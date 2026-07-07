@@ -169,28 +169,36 @@ export function CollectionPage() {
         }
         actions={
           <div className="flex items-center gap-3">
-            <div className="rounded-base border-border-default bg-surface shadow-neu-inset hidden items-center border sm:flex">
+            <div
+              role="radiogroup"
+              aria-label={t('collection:page.view_mode_aria')}
+              className="rounded-base border-border-default bg-surface shadow-neu-inset hidden items-center border sm:flex"
+            >
               <button
                 type="button"
+                role="radio"
+                aria-checked={viewMode === 'grid'}
                 onClick={() => setViewMode('grid')}
-                className={`rounded-base p-2 transition-all duration-200 ${
+                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-base transition-[box-shadow,color] duration-200 ${
                   viewMode === 'grid'
                     ? 'bg-surface text-fg-brand-strong shadow-neu-xs'
                     : 'text-fg-body-subtle hover:text-fg-body'
                 }`}
-                aria-label="Grid view"
+                aria-label={t('collection:page.view_grid_aria')}
               >
                 <GridViewIcon />
               </button>
               <button
                 type="button"
+                role="radio"
+                aria-checked={viewMode === 'list'}
                 onClick={() => setViewMode('list')}
-                className={`rounded-base p-2 transition-all duration-200 ${
+                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-base transition-[box-shadow,color] duration-200 ${
                   viewMode === 'list'
                     ? 'bg-surface text-fg-brand-strong shadow-neu-xs'
                     : 'text-fg-body-subtle hover:text-fg-body'
                 }`}
-                aria-label="List view"
+                aria-label={t('collection:page.view_list_aria')}
               >
                 <ListViewIcon />
               </button>
@@ -274,23 +282,22 @@ function ItemTile({ item, onOpen, typeLabels, onDelete }: { item: ItemRecord; on
     <Card
       variant="interactive"
       as="div"
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') onOpen();
-      }}
-      className="group relative h-full w-full overflow-hidden text-left"
+      className="group relative h-full w-full overflow-hidden p-0 text-left"
     >
       <button
         type="button"
         onClick={handleDelete}
-        className="text-fg-danger hover:text-fg-danger-strong hover:shadow-neu-2xs absolute right-3 top-3 z-10 rounded-full p-2 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+        className="text-fg-danger hover:text-fg-danger-strong hover:shadow-neu-2xs absolute right-2 top-2 z-10 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full opacity-0 transition-[box-shadow,color,opacity] duration-200 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
         aria-label={t('collection:item.delete_aria')}
       >
         <TrashIcon />
       </button>
-      <div className="flex h-full flex-col p-5">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex h-full w-full flex-col p-5 text-left"
+        aria-label={t('collection:item.open_aria', { title: item.release.title })}
+      >
         <div className="rounded-base shadow-neu-inset aspect-square overflow-hidden">
           <CoverImage
             releaseId={item.release.id}
@@ -313,7 +320,7 @@ function ItemTile({ item, onOpen, typeLabels, onDelete }: { item: ItemRecord; on
             {item.release.artist}
           </p>
         </div>
-      </div>
+      </button>
     </Card>
   );
 }
@@ -330,42 +337,43 @@ function ListItemTile({ item, onOpen, typeLabels, onDelete }: { item: ItemRecord
     <Card
       variant="interactive"
       as="div"
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') onOpen();
-      }}
-      className="group relative flex w-full items-center gap-4 overflow-hidden px-5 py-3 text-left"
+      className="group relative flex w-full items-center gap-4 overflow-hidden p-0 text-left"
     >
-      <div className="rounded-base shadow-neu-inset h-14 w-14 shrink-0 overflow-hidden">
-        <CoverImage
-          releaseId={item.release.id}
-          coverPath={item.release.coverPath}
-          coverRemote={item.release.coverRemote}
-          alt={t('collection:item.cover_alt', { title: item.release.title })}
-          size="thumb"
-        />
-      </div>
-      <div className="flex min-w-0 flex-1 items-center gap-4">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-fg-heading truncate text-sm font-semibold leading-tight">
-            {item.release.title}
-          </h3>
-          <p className="text-fg-body-subtle mt-0.5 truncate text-xs leading-relaxed">
-            {item.release.artist}
-          </p>
-        </div>
-        <div className="text-fg-body-subtle hidden items-center gap-2 text-xs sm:flex">
-          <VinylIcon />
-          <span>{typeLabels[item.type]}</span>
-          {item.release.year ? <span>· {item.release.year}</span> : null}
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-4 px-5 py-3 text-left"
+        aria-label={t('collection:item.open_aria', { title: item.release.title })}
+      >
+        <span className="rounded-base shadow-neu-inset block h-14 w-14 shrink-0 overflow-hidden">
+          <CoverImage
+            releaseId={item.release.id}
+            coverPath={item.release.coverPath}
+            coverRemote={item.release.coverRemote}
+            alt={t('collection:item.cover_alt', { title: item.release.title })}
+            size="thumb"
+          />
+        </span>
+        <span className="flex min-w-0 flex-1 items-center gap-4">
+          <span className="min-w-0 flex-1">
+            <h3 className="text-fg-heading truncate text-sm font-semibold leading-tight">
+              {item.release.title}
+            </h3>
+            <p className="text-fg-body-subtle mt-0.5 truncate text-xs leading-relaxed">
+              {item.release.artist}
+            </p>
+          </span>
+          <span className="text-fg-body-subtle hidden items-center gap-2 text-xs sm:flex">
+            <VinylIcon />
+            <span>{typeLabels[item.type]}</span>
+            {item.release.year ? <span>· {item.release.year}</span> : null}
+          </span>
+        </span>
+      </button>
       <button
         type="button"
         onClick={handleDelete}
-        className="text-fg-danger hover:text-fg-danger-strong hover:shadow-neu-2xs rounded-full p-2 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+        className="text-fg-danger hover:text-fg-danger-strong hover:shadow-neu-2xs mr-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full opacity-0 transition-[box-shadow,color,opacity] duration-200 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
         aria-label={t('collection:item.delete_aria')}
       >
         <TrashIcon />

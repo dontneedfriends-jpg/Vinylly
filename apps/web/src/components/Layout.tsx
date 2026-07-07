@@ -115,7 +115,7 @@ export function Layout({ children }: LayoutProps) {
                   type="button"
                   onClick={() => onClick(it.id)}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`flex items-center gap-3 rounded-base px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out ${
+                  className={`flex items-center gap-3 rounded-base px-3 py-2.5 text-sm font-medium transition-neu ease-out ${
                     isActive
                       ? 'bg-surface text-fg-brand-strong shadow-neu-inset border border-transparent'
                       : 'text-fg-body hover:text-fg-heading hover:shadow-neu-sm border border-transparent'
@@ -139,7 +139,7 @@ export function Layout({ children }: LayoutProps) {
           <main className="scrollbar-neu min-h-0 flex-1 overflow-y-auto px-8 py-10 sm:px-10 sm:py-12 md:px-12">
             {children}
           </main>
-          <RightRail />
+          {page !== 'settings' ? <RightRail /> : null}
         </div>
       </div>
     </div>

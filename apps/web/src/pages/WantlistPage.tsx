@@ -67,11 +67,11 @@ function WantlistTile({ entry }: { entry: WantlistEntry }) {
   const openReleasePreview = useUi((s) => s.openReleasePreview);
 
   return (
-    <Card className="group relative flex h-full flex-col p-5">
+    <Card className="group relative flex h-full flex-col p-0">
       <button
         type="button"
         onClick={() => removeFromWantlist.mutate(entry.id)}
-        className="text-fg-danger hover:text-fg-danger-strong hover:shadow-neu-2xs absolute right-3 top-3 z-10 rounded-full p-2 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+        className="text-fg-danger hover:text-fg-danger-strong hover:shadow-neu-2xs absolute right-2 top-2 z-10 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full opacity-0 transition-[box-shadow,color,opacity] duration-200 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
         aria-label={t('wantlist:item.remove_aria')}
       >
         <TrashIcon />
@@ -79,7 +79,8 @@ function WantlistTile({ entry }: { entry: WantlistEntry }) {
       <button
         type="button"
         onClick={() => openReleasePreview(entry.release.id)}
-        className="flex h-full flex-col text-left"
+        className="flex h-full flex-col p-5 text-left"
+        aria-label={t('wantlist:item.open_aria', { title: entry.release.title })}
       >
         <div className="rounded-base shadow-neu-inset aspect-square overflow-hidden">
           <CoverImage

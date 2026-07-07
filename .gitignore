@@ -52,3 +52,5 @@ apps/desktop/src-tauri/gen/
 # Editors
 .vscode/
 .idea/
+/.github
+/.codex

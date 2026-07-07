@@ -45,7 +45,7 @@ export function Button({
     'inline-flex items-center justify-center font-medium ' +
     'bg-surface border border-border-default ' +
     `${shadowFor(variant)} ` +
-    'transition-all duration-200 ease-in-out ' +
+    'transition-neu duration-200 ease-in-out ' +
     'disabled:text-fg-disabled disabled:cursor-not-allowed disabled:hover:shadow-neu-sm';
 
   return (

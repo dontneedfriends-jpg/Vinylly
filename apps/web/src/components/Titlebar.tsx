@@ -105,7 +105,7 @@ function TitlebarButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className={`bg-surface border-border-default shadow-neu-2xs hover:shadow-neu-xs active:shadow-neu-inset inline-flex h-8 w-10 items-center justify-center rounded-base border transition-all duration-200 ease-in-out ${variantClass}`}
+      className={`bg-surface border-border-default shadow-neu-2xs hover:shadow-neu-xs active:shadow-neu-inset inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-base border transition-[box-shadow,color] duration-200 ease-in-out ${variantClass}`}
     >
       {children}
     </button>

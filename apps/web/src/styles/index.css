@@ -153,6 +153,17 @@
     margin: 0;
   }
 
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
   h1 {
     font-size: 48px;
     line-height: 1.15;
@@ -236,8 +247,8 @@
 
   *:focus-visible {
     outline: 2px solid var(--color-fg-brand);
-    outline-offset: 2px;
-    border-radius: 2px;
+    outline-offset: -2px;
+    border-radius: inherit;
   }
 
   /* utility: line clamp */
@@ -267,6 +278,23 @@
   }
   .animate-rise {
     animation: neu-rise 0.4s ease-out backwards;
+  }
+
+  /* Motion: scope to neumorphic properties only.
+     Avoids the cost of animating layout/filter for every hover. */
+  .transition-neu {
+    transition-property: box-shadow, transform, color, background-color, border-color;
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise,
+    .transition-neu,
+    .scrollbar-neu {
+      animation: none !important;
+      transition: none !important;
+    }
   }
 }
 

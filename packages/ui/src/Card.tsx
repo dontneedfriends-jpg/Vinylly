@@ -16,7 +16,7 @@ export function Card({
   ...rest
 }: CardProps) {
   const base =
-    'bg-surface border border-border-default rounded-base transition-all duration-200 ease-in-out';
+    'bg-surface border border-border-default rounded-base transition-neu duration-200 ease-in-out';
 
   // static: shadow-md (raised surface)
   // interactive: shadow-sm → hover shadow-md → active shadow-inset

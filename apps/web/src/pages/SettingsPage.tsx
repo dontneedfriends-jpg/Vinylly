@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, SegmentedControl } from '@vinylly/ui';
+import { Button, Input, SegmentedControl } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useSettings } from '../lib/settings-store';
 import { useLocale } from '../lib/locale-store';
@@ -24,7 +24,7 @@ export function SettingsPage() {
   const clearDiscogsToken = useSettings((s) => s.clearDiscogsToken);
 
   return (
-    <section className="animate-rise">
+    <section className="animate-rise max-w-5xl">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-fg-heading text-2xl font-semibold">{t('settings:page.title')}</h1>
         <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />} size="sm">
@@ -32,7 +32,7 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Appearance */}
         <AppearanceCard />
 
@@ -84,7 +84,11 @@ function AppearanceCard() {
           />
         </Row>
         <Row label={t('settings:theme.title')}>
-          <div className="flex flex-wrap gap-2">
+          <div
+            role="radiogroup"
+            aria-label={t('settings:theme.title')}
+            className="rounded-base bg-surface shadow-neu-inset inline-flex flex-wrap gap-1 p-1"
+          >
             <ThemeChip mode="light" current={mode} onSelect={setMode} icon={<SunIcon />} label={t('settings:theme.light')} />
             <ThemeChip mode="dark" current={mode} onSelect={setMode} icon={<MoonIcon />} label={t('settings:theme.dark')} />
             <ThemeChip mode="auto" current={mode} onSelect={setMode} icon={<AutoIcon />} label={t('settings:theme.auto')} />
@@ -111,13 +115,14 @@ function ThemeChip({
   const active = mode === current;
   return (
     <button
-      key={mode}
       type="button"
+      role="radio"
+      aria-checked={active}
       onClick={() => onSelect(mode)}
-      className={`flex items-center gap-2 rounded-base px-4 py-2.5 text-sm transition-all duration-200 ${
+      className={`flex min-h-[44px] items-center gap-2 rounded-base border border-transparent px-4 py-2.5 text-sm transition-neu ${
         active
-          ? 'bg-surface text-fg-heading shadow-neu-inset font-medium'
-          : 'text-fg-body hover:text-fg-heading shadow-neu-2xs hover:shadow-neu-xs'
+          ? 'text-fg-heading font-semibold shadow-neu-inset'
+          : 'text-fg-body hover:text-fg-heading hover:shadow-neu-2xs'
       }`}
     >
       {icon}
@@ -146,6 +151,7 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
   const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'error'; message: string }>({ kind: 'idle', message: '' });
   const [testResult, setTestResult] = useState<{ kind: 'idle' | 'ok' | 'error'; message: string } | null>(null);
   const [busy, setBusy] = useState<'save' | 'clear' | 'test' | 'import' | 'importWantlist' | null>(null);
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
   const importCounterRef = useRef(0);
 
   const hasToken = Boolean(token);
@@ -235,39 +241,52 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
       const releases = await registry.fetchDiscogsCollection(username);
       let imported = 0;
       let skipped = 0;
-      for (const rel of releases) {
-        if (importId !== importCounterRef.current) return;
-        const exists = await itemRepo.findBySource('discogs', String(rel.discogsId));
-        if (exists) {
-          skipped++;
-          continue;
+      setImportProgress({ done: 0, total: releases.length });
+      const concurrency = 4;
+      let cursor = 0;
+      const workers = Array.from({ length: concurrency }, async () => {
+        while (true) {
+          if (importId !== importCounterRef.current) return;
+          const i = cursor++;
+          const rel = releases[i];
+          if (!rel) return;
+          const exists = await itemRepo.findBySource('discogs', String(rel.discogsId));
+          if (exists) {
+            skipped++;
+          } else {
+            let tracklist: Array<{ position: string; title: string; duration?: number | null }> | undefined;
+            try {
+              const detail = await registry.discogs?.getRelease(String(rel.discogsId));
+              tracklist = detail?.tracklist;
+            } catch {
+              tracklist = undefined;
+            }
+            await itemRepo.create({
+              collectionId: collection.id,
+              type: rel.type,
+              discogsInstanceId: rel.instanceId,
+              release: {
+                source: 'discogs',
+                sourceId: String(rel.discogsId),
+                title: rel.title,
+                artist: rel.artist,
+                year: rel.year,
+                genres: rel.genres,
+                styles: rel.styles,
+                coverRemote: rel.coverUrl,
+                thumbRemote: rel.thumbUrl,
+              },
+              ...(tracklist ? { tracklist } : {}),
+            });
+            imported++;
+          }
+          if (importId === importCounterRef.current) {
+            setImportProgress({ done: imported + skipped, total: releases.length });
+          }
         }
-        let tracklist: Array<{ position: string; title: string; duration?: number | null }> | undefined;
-        try {
-          const detail = await registry.discogs?.getRelease(String(rel.discogsId));
-          tracklist = detail?.tracklist;
-        } catch {
-          tracklist = undefined;
-        }
-        await itemRepo.create({
-          collectionId: collection.id,
-          type: rel.type,
-          discogsInstanceId: rel.instanceId,
-          release: {
-            source: 'discogs',
-            sourceId: String(rel.discogsId),
-            title: rel.title,
-            artist: rel.artist,
-            year: rel.year,
-            genres: rel.genres,
-            styles: rel.styles,
-            coverRemote: rel.coverUrl,
-            thumbRemote: rel.thumbUrl,
-          },
-          ...(tracklist ? { tracklist } : {}),
-        });
-        imported++;
-      }
+      });
+      await Promise.all(workers);
+      if (importId !== importCounterRef.current) return;
       setStatus({
         kind: 'ok',
         message: t('settings:discogs.import_success', {
@@ -281,7 +300,10 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
         setStatus({ kind: 'error', message: t('settings:discogs.import_error', { error: String(err) }) });
       }
     } finally {
-      if (importId === importCounterRef.current) setBusy(null);
+      if (importId === importCounterRef.current) {
+        setBusy(null);
+        setImportProgress(null);
+      }
     }
   };
 
@@ -295,29 +317,42 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
       const wants = await registry.fetchDiscogsWantlist(username);
       let imported = 0;
       let skipped = 0;
-      for (const rel of wants) {
-        if (importId !== importCounterRef.current) return;
-        const already = await wantlistRepo.contains('discogs', String(rel.discogsId));
-        if (already) {
-          skipped++;
-          continue;
+      setImportProgress({ done: 0, total: wants.length });
+      const concurrency = 4;
+      let cursor = 0;
+      const workers = Array.from({ length: concurrency }, async () => {
+        while (true) {
+          if (importId !== importCounterRef.current) return;
+          const i = cursor++;
+          const rel = wants[i];
+          if (!rel) return;
+          const already = await wantlistRepo.contains('discogs', String(rel.discogsId));
+          if (already) {
+            skipped++;
+          } else {
+            await wantlistRepo.add({
+              release: {
+                source: 'discogs',
+                sourceId: String(rel.discogsId),
+                title: rel.title,
+                artist: rel.artist,
+                year: rel.year,
+                masterId: rel.masterId,
+                genres: rel.genres,
+                styles: rel.styles,
+                coverRemote: rel.coverUrl,
+                thumbRemote: rel.thumbUrl,
+              },
+            });
+            imported++;
+          }
+          if (importId === importCounterRef.current) {
+            setImportProgress({ done: imported + skipped, total: wants.length });
+          }
         }
-        await wantlistRepo.add({
-          release: {
-            source: 'discogs',
-            sourceId: String(rel.discogsId),
-            title: rel.title,
-            artist: rel.artist,
-            year: rel.year,
-            masterId: rel.masterId,
-            genres: rel.genres,
-            styles: rel.styles,
-            coverRemote: rel.coverUrl,
-            thumbRemote: rel.thumbUrl,
-          },
-        });
-        imported++;
-      }
+      });
+      await Promise.all(workers);
+      if (importId !== importCounterRef.current) return;
       setStatus({
         kind: 'ok',
         message: t('settings:discogs.wantlist_import_success', {
@@ -331,7 +366,10 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
         setStatus({ kind: 'error', message: t('settings:discogs.import_error', { error: String(err) }) });
       }
     } finally {
-      if (importId === importCounterRef.current) setBusy(null);
+      if (importId === importCounterRef.current) {
+        setBusy(null);
+        setImportProgress(null);
+      }
     }
   };
 
@@ -347,37 +385,36 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
       <div className="space-y-5">
         {/* Token */}
         <form onSubmit={onSubmit}>
-          <div className="text-fg-body-subtle mb-1 text-xs uppercase tracking-wide">
-            {t('settings:discogs.token_label')}
-          </div>
-          <div className="rounded-base border-border-default bg-surface shadow-neu-inset relative flex items-center border px-4 py-3">
-            <input
-              type={inputType}
-              className="text-fg-heading w-full bg-transparent pr-8 text-sm outline-none"
-              placeholder={
-                hasToken && dirty
-                  ? ''
-                  : hasToken
-                    ? t(revealed ? 'settings:discogs.placeholder_configured_revealed' : 'settings:discogs.placeholder_configured_hidden')
-                    : t('settings:discogs.placeholder_empty')
-              }
-              value={displayValue}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                setStatus({ kind: 'idle', message: '' });
-              }}
-            />
-            {hasToken ? (
-              <button
-                type="button"
-                className="text-fg-body-subtle hover:text-fg-heading absolute right-3 top-1/2 -translate-y-1/2 p-0.5"
-                onClick={() => setRevealed((r) => !r)}
-                aria-label={t(revealed ? 'settings:discogs.hide_aria' : 'settings:discogs.show_aria')}
-              >
-                {revealed ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-            ) : null}
-          </div>
+          <Input
+            label={t('settings:discogs.token_label')}
+            type={inputType}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={
+              hasToken && dirty
+                ? ''
+                : hasToken
+                  ? t(revealed ? 'settings:discogs.placeholder_configured_revealed' : 'settings:discogs.placeholder_configured_hidden')
+                  : t('settings:discogs.placeholder_empty')
+            }
+            value={displayValue}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setStatus({ kind: 'idle', message: '' });
+            }}
+            rightIcon={
+              hasToken ? (
+                <button
+                  type="button"
+                  onClick={() => setRevealed((r) => !r)}
+                  aria-label={t(revealed ? 'settings:discogs.hide_aria' : 'settings:discogs.show_aria')}
+                  className="text-fg-body-subtle hover:text-fg-heading inline-flex items-center justify-center"
+                >
+                  {revealed ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              ) : undefined
+            }
+          />
 
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             {dirty || !hasToken ? (
@@ -430,18 +467,21 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
               ) : null}
             </Row>
 
-            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex items-center justify-between gap-4 border px-4 py-3">
-              <div>
+            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1">
                 <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.sync_label')}</div>
                 <div className="text-fg-body-subtle text-xs">{t('settings:discogs.sync_desc')}</div>
               </div>
               <ToggleSwitch checked={syncEnabled} onChange={(v) => onSetSync(v)} ariaLabel={t('settings:discogs.sync_label')} />
             </div>
 
-            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex items-center justify-between gap-4 border px-4 py-3">
-              <div>
+            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1">
                 <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.import_label')}</div>
                 <div className="text-fg-body-subtle text-xs">{t('settings:discogs.import_desc')}</div>
+                {busy === 'import' && importProgress ? (
+                  <ImportProgress done={importProgress.done} total={importProgress.total} className="mt-2" />
+                ) : null}
               </div>
               <Button
                 size="sm"
@@ -449,15 +489,19 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
                 disabled={busy === 'import' || !username}
                 onClick={onImport}
                 leftIcon={busy === 'import' ? undefined : <DownloadIcon />}
+                className="self-start sm:self-auto"
               >
                 {busy === 'import' ? t('common:loading.generic') : t('settings:discogs.import_button')}
               </Button>
             </div>
 
-            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex items-center justify-between gap-4 border px-4 py-3">
-              <div>
+            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1">
                 <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.wantlist_import_label')}</div>
                 <div className="text-fg-body-subtle text-xs">{t('settings:discogs.wantlist_import_desc')}</div>
+                {busy === 'importWantlist' && importProgress ? (
+                  <ImportProgress done={importProgress.done} total={importProgress.total} className="mt-2" />
+                ) : null}
               </div>
               <Button
                 size="sm"
@@ -465,6 +509,7 @@ function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsern
                 disabled={busy === 'importWantlist' || !username}
                 onClick={onImportWantlist}
                 leftIcon={busy === 'importWantlist' ? undefined : <DownloadIcon />}
+                className="self-start sm:self-auto"
               >
                 {busy === 'importWantlist' ? t('common:loading.generic') : t('settings:discogs.wantlist_import_button')}
               </Button>
@@ -584,7 +629,7 @@ function SupportLink({ href, icon, label }: { href: string; icon: React.ReactNod
   return (
     <ExternalLink
       href={href}
-      className="rounded-base border-border-default bg-surface shadow-neu-2xs hover:shadow-neu-xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 border px-4 py-2.5 text-sm transition-all duration-200"
+      className="rounded-base border-border-default bg-surface shadow-neu-2xs hover:shadow-neu-xs text-fg-body hover:text-fg-heading flex items-center gap-2.5 border px-4 py-2.5 text-sm transition-neu"
     >
       {icon}
       {label}
@@ -645,6 +690,31 @@ function AboutCard() {
 
 /* ─── Shared bits ─── */
 
+function ImportProgress({
+  done,
+  total,
+  className = '',
+}: {
+  done: number;
+  total: number;
+  className?: string;
+}) {
+  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  return (
+    <div className={className} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="import">
+      <div className="bg-surface shadow-neu-inset rounded-base h-1.5 w-full overflow-hidden border border-border-default">
+        <div
+          className="bg-fg-brand h-full transition-[width] duration-200 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="text-fg-body-subtle mt-1 text-[11px] tabular-nums">
+        {done} / {total} · {pct}%
+      </div>
+    </div>
+  );
+}
+
 function CardShell({
   icon,
   title,
@@ -659,7 +729,7 @@ function CardShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
+    <div className="rounded-base border-border-default bg-surface shadow-neu-md relative isolate overflow-hidden border p-6">
       <div className="flex items-start gap-4">
         <div className="rounded-base bg-surface shadow-neu-inset flex h-10 w-10 shrink-0 items-center justify-center">{icon}</div>
         <div className="min-w-0 flex-1">
@@ -688,10 +758,10 @@ function Badge({ ok, okLabel, failLabel }: { ok: boolean; okLabel: string; failL
 
 function Row({ label, children, value }: { label: string; children: React.ReactNode; value?: string }) {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div>
+    <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-6">
+      <div className="min-w-0">
         <div className="text-fg-body-subtle text-xs uppercase tracking-wide">{label}</div>
-        {value ? <div className="text-fg-heading mt-0.5 text-sm">{value}</div> : null}
+        {value ? <div className="text-fg-heading mt-0.5 break-all text-sm">{value}</div> : null}
       </div>
       <div className="shrink-0">{children}</div>
     </div>

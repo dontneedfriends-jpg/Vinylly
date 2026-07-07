@@ -35,7 +35,7 @@ export function Input({
 
   const wrapper =
     'relative bg-surface border rounded-base shadow-neu-inset ' +
-    'transition-all duration-200 ease-in-out ' +
+    'transition-neu duration-200 ease-in-out ' +
     `${stateBorder[state]} ` +
     'focus-within:ring-1 focus-within:ring-fg-brand/30 ' +
     'disabled:opacity-50 disabled:cursor-not-allowed';
@@ -50,7 +50,7 @@ export function Input({
           ? 'pl-3 pr-9'
           : 'px-3');
 
-  const iconBase = 'text-fg-body pointer-events-none absolute top-1/2 -translate-y-1/2 inline-flex';
+  const iconBase = 'text-fg-body absolute top-1/2 -translate-y-1/2 inline-flex items-center justify-center';
 
   return (
     <div className="w-full">
@@ -61,7 +61,7 @@ export function Input({
       ) : null}
       <div className={wrapper}>
         {leftIcon ? (
-          <span className={`${iconBase} left-3`} aria-hidden>
+          <span className={`${iconBase} left-3 pointer-events-none`} aria-hidden>
             {leftIcon}
           </span>
         ) : null}
@@ -73,7 +73,7 @@ export function Input({
           {...rest}
         />
         {rightIcon ? (
-          <span className={`${iconBase} right-3`} aria-hidden>
+          <span className={`${iconBase} right-3`}>
             {rightIcon}
           </span>
         ) : null}
@@ -111,7 +111,7 @@ export function Textarea({
 
   const wrapper =
     'bg-surface border rounded-base shadow-neu-inset ' +
-    'transition-all duration-200 ease-in-out ' +
+    'transition-neu duration-200 ease-in-out ' +
     `${stateBorder[state]} ` +
     'focus-within:ring-1 focus-within:ring-fg-brand/30 ' +
     'disabled:opacity-50 disabled:cursor-not-allowed';

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, PageHeader, Badge, Card, CardBody } from '@vinylly/ui';
+import { Button, PageHeader, Badge, Card, CardBody, Input, Textarea, SegmentedControl } from '@vinylly/ui';
 import type { MediaType, ReleaseRecord } from '@vinylly/db';
 import { useUi } from '../lib/ui-store';
 import { useDefaultCollection, useCreateItem, useItems, useRemoveFromWantlist, useWantlist } from '../lib/queries';
@@ -347,49 +347,43 @@ export function ReleasePreviewPage() {
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <label className="flex flex-col gap-1 text-xs">
-                      <span className="text-fg-body-subtle">{t('add:form.media_type')}</span>
-                      <select
+                    <div>
+                      <div className="text-fg-heading mb-2 block text-sm font-medium">
+                        {t('add:form.media_type')}
+                      </div>
+                      <SegmentedControl
+                        options={[
+                          { value: 'vinyl', label: t('common:media.label_vinyl') },
+                          { value: 'cd', label: t('common:media.label_cd') },
+                          { value: 'cassette', label: t('common:media.label_cassette') },
+                          { value: 'other', label: t('common:media.label_other') },
+                        ]}
                         value={type}
-                        onChange={(e) => setType(e.target.value as MediaType)}
-                        className="rounded-base border-border-default bg-surface shadow-neu-inset text-fg-heading px-3 py-2 text-sm"
-                      >
-                        <option value="vinyl">{t('common:media.label_vinyl')}</option>
-                        <option value="cd">{t('common:media.label_cd')}</option>
-                        <option value="cassette">{t('common:media.label_cassette')}</option>
-                        <option value="other">{t('common:media.label_other')}</option>
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs">
-                      <span className="text-fg-body-subtle">{t('add:form.purchase_price')}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={purchasePrice ?? ''}
-                        onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : null)}
-                        className="rounded-base border-border-default bg-surface shadow-neu-inset text-fg-heading px-3 py-2 text-sm"
+                        onChange={(v) => setType(v as MediaType)}
+                        size="sm"
                       />
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs">
-                      <span className="text-fg-body-subtle">{t('detail:my_notes.location')}</span>
-                      <input
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        className="rounded-base border-border-default bg-surface shadow-neu-inset text-fg-heading px-3 py-2 text-sm"
-                      />
-                    </label>
-                  </div>
-                  <label className="flex flex-col gap-1 text-xs">
-                    <span className="text-fg-body-subtle">{t('detail:my_notes.notes_label')}</span>
-                    <textarea
-                      rows={3}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="rounded-base border-border-default bg-surface shadow-neu-inset text-fg-heading px-3 py-2 text-sm"
+                    </div>
+                    <Input
+                      label={t('add:form.purchase_price')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={purchasePrice ?? ''}
+                      onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : null)}
                     />
-                  </label>
+                    <Input
+                      label={t('detail:my_notes.location')}
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                    />
+                  </div>
+                  <Textarea
+                    label={t('detail:my_notes.notes_label')}
+                    rows={3}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
                   <div className="flex flex-wrap gap-2">
                     <Button onClick={onAdd} disabled={saving} leftIcon={saving ? undefined : <PlusIcon />}>
                       {saving ? t('common:button.saving') : t('release_preview.add_button')}

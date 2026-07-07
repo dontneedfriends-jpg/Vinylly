@@ -8,7 +8,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CoverImage } from '../components/CoverImage';
 import { Gallery } from '../components/Gallery';
 import { ExternalLink } from '../components/ExternalLink';
-import { DetailRail } from '../components/RightRail';
 import { MasterVariants } from '../components/MasterVariants';
 import { getProvidersRegistry } from '../lib/providers';
 import type { MediaType, ItemRecord } from '@vinylly/db';
@@ -190,7 +189,7 @@ export function DetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [item, item?.release.sourceId, item?.release.source, item?.release.title, setReleaseVideos]);
+  }, [item, item?.release.sourceId, item?.release.source, setReleaseVideos]);
 
   if (!itemId) {
     return (
@@ -359,7 +358,7 @@ export function DetailPage() {
             {extendedMeta?.discogsUrl ? (
               <ExternalLink
                 href={extendedMeta.discogsUrl}
-                className="rounded-base bg-surface shadow-neu-2xs hover:shadow-neu-xs text-fg-brand hover:text-fg-brand-strong ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs transition-all"
+                className="rounded-base bg-surface shadow-neu-2xs hover:shadow-neu-xs text-fg-brand hover:text-fg-brand-strong ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs transition-neu"
               >
                 <VinylIcon />
                 <span>{t('detail:about.open_discogs')}</span>
@@ -593,7 +592,9 @@ export function DetailPage() {
         {item.release.source === 'discogs' && item.release.masterId ? (
           <details className="rounded-base border-border-default bg-surface shadow-neu-md group mt-8 border">
             <summary className="text-fg-heading hover:text-fg-heading/90 flex cursor-pointer list-none items-center gap-3 px-6 py-4 text-lg font-semibold [&::-webkit-details-marker]:hidden">
-              <span className="text-fg-body-subtle text-sm transition-transform duration-200 group-open:rotate-90">▸</span>
+              <span className="text-fg-body-subtle inline-flex h-5 w-5 shrink-0 items-center justify-center transition-transform duration-200 group-open:rotate-90">
+                <ChevronRightIcon />
+              </span>
               {t('detail:variants.title')}
             </summary>
             <div className="px-6 pb-6">
@@ -606,14 +607,6 @@ export function DetailPage() {
             </div>
           </details>
         ) : null}
-
-        {/* Треклист и видео — показываем под заметками, когда правый рейл свёрнут */}
-        <section className="mt-8 block lg:hidden">
-          <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:tracklist.title')}</h2>
-          <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
-            <DetailRail />
-          </div>
-        </section>
       </div>
     </section>
   );
@@ -698,7 +691,7 @@ function CoverUploadButton({ releaseId, currentLabel }: { releaseId: string; cur
   };
 
   return (
-    <label className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-2xs hover:shadow-neu-xs inline-flex cursor-pointer items-center gap-2 border px-3 py-1.5 text-xs font-medium transition-all duration-200">
+    <label className="rounded-base border-border-default bg-surface text-fg-body hover:text-fg-heading shadow-neu-2xs hover:shadow-neu-xs inline-flex cursor-pointer items-center gap-2 border px-3 py-1.5 text-xs font-medium transition-neu">
       <UploadIcon />
       <span>{uploading ? '…' : currentLabel}</span>
       <input type="file" accept="image/*" onChange={onChange} className="hidden" />
@@ -777,6 +770,21 @@ function ExternalLinkIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-3.5 w-3.5"
+      aria-hidden
+    >
+      <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

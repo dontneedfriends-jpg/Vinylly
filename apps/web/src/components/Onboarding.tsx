@@ -59,30 +59,44 @@ export function Onboarding() {
                 </h2>
               </CardHeader>
               <CardBody className="px-8 py-6">
-                <div className="flex flex-col gap-4">
+                <div role="radiogroup" aria-label={t('settings:onboarding.step_language')} className="flex flex-col gap-4">
                   {[
-                    { value: 'ru', label: 'Русский', flag: '🇷🇺' },
-                    { value: 'en', label: 'English', flag: '🇬🇧' },
-                  ].map((lang) => (
-                    <button
-                      key={lang.value}
-                      type="button"
-                      onClick={() => setSelectedLang(lang.value)}
-                      className={`rounded-base flex items-center gap-4 px-6 py-5 text-left text-base font-medium transition-all duration-200 ${
-                        selectedLang === lang.value
-                          ? 'text-fg-brand-strong bg-surface shadow-neu-inset border-border-brand border'
-                          : 'text-fg-body bg-surface shadow-neu-sm hover:shadow-neu-md border-border-default border'
-                      }`}
-                    >
-                      <span className="text-2xl">{lang.flag}</span>
-                      <span>{lang.label}</span>
-                      {selectedLang === lang.value ? (
-                        <span className="ml-auto text-fg-brand">
-                          <CheckSmallIcon />
+                    { value: 'ru', label: 'Русский' },
+                    { value: 'en', label: 'English' },
+                  ].map((lang) => {
+                    const selected = selectedLang === lang.value;
+                    return (
+                      <button
+                        key={lang.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setSelectedLang(lang.value)}
+                        className={`rounded-base flex items-center gap-4 px-6 py-5 text-left text-base font-medium transition-neu ${
+                          selected
+                            ? 'text-fg-brand-strong bg-surface shadow-neu-inset border-border-brand border'
+                            : 'text-fg-body bg-surface shadow-neu-sm hover:shadow-neu-md border-border-default border'
+                        }`}
+                      >
+                        <span
+                          aria-hidden
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-base font-mono text-sm font-semibold ${
+                            selected
+                              ? 'bg-brand-softer text-fg-brand-strong'
+                              : 'bg-surface text-fg-body-subtle shadow-neu-inset'
+                          }`}
+                        >
+                          {lang.value.toUpperCase()}
                         </span>
-                      ) : null}
-                    </button>
-                  ))}
+                        <span>{lang.label}</span>
+                        {selected ? (
+                          <span className="ml-auto text-fg-brand">
+                            <CheckSmallIcon />
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               </CardBody>
               <div className="flex justify-end px-8 pb-8">
