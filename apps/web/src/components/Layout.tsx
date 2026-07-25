@@ -4,6 +4,7 @@ import { useUi } from '../lib/ui-store';
 import { ThemeToggle } from './ThemeToggle';
 import { RightRail } from './RightRail';
 import { Titlebar } from './Titlebar';
+import { ProfileSwitcher } from './ProfileSwitcher';
 
 export interface LayoutProps {
   children?: ReactNode;
@@ -104,6 +105,9 @@ export function Layout({ children }: LayoutProps) {
             <VinylMark />
             <span className="text-fg-heading text-sm font-semibold tracking-tight">Vinylly</span>
           </div>
+
+          {/* Profile switcher */}
+          <ProfileSwitcher />
 
           {/* Navigation */}
           <nav className="rounded-base bg-surface shadow-neu-inset scrollbar-neu flex flex-1 flex-col gap-1 overflow-y-auto p-2">

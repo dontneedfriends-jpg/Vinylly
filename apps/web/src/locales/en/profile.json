@@ -1,0 +1,15 @@
+{
+  "switcher.none": "No profile",
+  "switcher.manage": "Manage profiles",
+  "manager.title": "Profiles",
+  "manager.rename_aria": "Rename profile \"{{label}}\"",
+  "manager.settings_aria": "Settings for profile \"{{label}}\"",
+  "manager.delete_aria": "Delete profile \"{{label}}\"",
+  "manager.new_label": "New profile",
+  "manager.new_placeholder": "Profile name",
+  "manager.create": "Create",
+  "manager.delete_title": "Delete profile?",
+  "manager.delete_message": "Profile \"{{label}}\" and all its data will be permanently deleted.",
+  "settings.title": "Profile settings",
+  "settings.activate_first": "Make this profile active to use import and sync."
+}

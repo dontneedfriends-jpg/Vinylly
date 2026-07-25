@@ -11,16 +11,6 @@ const DEFAULT_REPO = 'https://github.com/vinylly/vinylly';
 
 let cache: Promise<AppInfo> | null = null;
 
-interface TauriInternals {
-  invoke(cmd: string, args?: Record<string, unknown>): Promise<unknown>;
-}
-
-function getTauriInternals(): TauriInternals | null {
-  if (typeof window === 'undefined') return null;
-  const w = window as unknown as { __TAURI_INTERNALS__?: TauriInternals };
-  return w.__TAURI_INTERNALS__ ?? null;
-}
-
 export function getAppInfo(): Promise<AppInfo> {
   if (cache) return cache;
 
@@ -34,8 +24,9 @@ export function getAppInfo(): Promise<AppInfo> {
   };
 
   cache = (async () => {
-    const internals = getTauriInternals();
-    if (!internals) return fallback;
+    if (typeof window === 'undefined') return fallback;
+    const internals = window.__TAURI_INTERNALS__;
+    if (!internals || typeof internals.invoke !== 'function') return fallback;
     try {
       const info = await internals.invoke('app_info');
       return info as AppInfo;

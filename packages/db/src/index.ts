@@ -1,5 +1,13 @@
-export { getPrismaClient, setPrismaClient, resetPrismaClient, type PrismaLike } from './client';
+export {
+  getPrismaClient,
+  setPrismaClient,
+  resetPrismaClient,
+  setActivePrismaProfile,
+  getPrismaClientFor,
+  type PrismaLike,
+} from './client';
 export * from './types';
+export { getProfileSettings, setProfileSettings, type ProfileSettings } from './profile-settings';
 export {
   collectionRepo,
   itemRepo,

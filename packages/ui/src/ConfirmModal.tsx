@@ -12,6 +12,8 @@ export interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   variant?: ButtonVariant;
+  /** Alias of `variant="danger"`. Kept for caller readability. */
+  destructive?: boolean;
   loading?: boolean;
 }
 
@@ -23,9 +25,11 @@ export function ConfirmModal({
   cancelLabel,
   onConfirm,
   onCancel,
-  variant = 'danger',
+  variant,
+  destructive,
   loading = false,
 }: ConfirmModalProps) {
+  const resolvedVariant: ButtonVariant = destructive ? 'danger' : variant ?? 'danger';
   useEffect(() => {
     if (!open) return;
     const el = document.querySelector<HTMLButtonElement>('[data-confirm-cancel]');
@@ -45,7 +49,7 @@ export function ConfirmModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-overlay"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-overlay backdrop-blur-sm"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
@@ -71,7 +75,7 @@ export function ConfirmModal({
             <span data-confirm-cancel className="hidden" />
           </Button>
           <Button
-            variant={variant}
+            variant={resolvedVariant}
             onClick={onConfirm}
             disabled={loading}
           >

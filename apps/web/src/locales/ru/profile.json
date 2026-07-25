@@ -1,0 +1,15 @@
+{
+  "switcher.none": "Без профиля",
+  "switcher.manage": "Управление профилями",
+  "manager.title": "Профили",
+  "manager.rename_aria": "Переименовать профиль «{{label}}»",
+  "manager.settings_aria": "Настройки профиля «{{label}}»",
+  "manager.delete_aria": "Удалить профиль «{{label}}»",
+  "manager.new_label": "Новый профиль",
+  "manager.new_placeholder": "Название профиля",
+  "manager.create": "Создать",
+  "manager.delete_title": "Удалить профиль?",
+  "manager.delete_message": "Профиль «{{label}}» и все его данные будут удалены безвозвратно.",
+  "settings.title": "Настройки профиля",
+  "settings.activate_first": "Сделайте профиль активным, чтобы использовать импорт и синхронизацию."
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
@@ -11,42 +12,96 @@ import { StatsPage } from './pages/StatsPage';
 import { WantlistPage } from './pages/WantlistPage';
 import { ArtistPage } from './pages/ArtistPage';
 import { useUi } from './lib/ui-store';
-import { useVinylDbInit } from './lib/db';
+import { useVinylDbInit, switchActiveProfile } from './lib/db';
 import { initSettings, useSettings } from './lib/settings-store';
-import {
-  createTauriHostShell,
-  createWebHostShell,
-  isTauriEnvironment,
-  setHostShell,
-  tryGetHostShell,
-} from '@vinylly/host';
+import { initProfiles, useProfileStore } from './lib/profile-store';
+import { tryGetHostShell, setHostShell, isTauriEnvironment } from '@vinylly/host';
 
 export function App() {
   const { t } = useTranslation();
+  useQueryClient();
   const page = useUi((s) => s.page);
   const releasePreviewId = useUi((s) => s.releasePreviewId);
   const ready = useVinylDbInit();
-  const [settingsReady, setSettingsReady] = useState(false);
-  const discogsToken = useSettings((s) => s.discogsToken);
+  const [bootDone, setBootDone] = useState(false);
   const onboardingDone = useSettings((s) => s.onboardingDone);
+  const settingsReady = useSettings((s) => s.ready);
+  const activeProfileId = useProfileStore((s) => s.activeId);
+  const profilesReady = useProfileStore((s) => s.ready);
 
+  // Bootstrap order:
+  //   1. Profiles index (reads/migrates Tauri data or localStorage)
+  //   2. Profile DB client (also constructs the host-shell for the active profile)
+  //   3. Per-profile settings (Discogs token etc.)
   useEffect(() => {
-    if (tryGetHostShell()) {
-      void initSettings().then(() => setSettingsReady(true));
-      return;
-    }
-    if (isTauriEnvironment()) {
-      void createTauriHostShell().then((shell) => {
-        setHostShell(shell);
-        void initSettings().then(() => setSettingsReady(true));
-      });
-    } else {
-      setHostShell(createWebHostShell());
-      void initSettings().then(() => setSettingsReady(true));
-    }
+    console.warn('[bootstrap] effect start');
+    let cancelled = false;
+    (async () => {
+      try {
+        console.warn('[bootstrap] initProfiles');
+        const { activeId } = await initProfiles();
+        console.warn('[bootstrap] initProfiles done', { activeId, cancelled });
+        if (cancelled) return;
+        if (activeId) {
+          if (!tryGetHostShell()) {
+            if (isTauriEnvironment()) {
+              try {
+                console.warn('[bootstrap] createTauriHostShell');
+                const { createTauriHostShell } = await import('@vinylly/host');
+                const shell = await createTauriHostShell(activeId);
+                console.warn('[bootstrap] tauri shell built');
+                if (!cancelled) setHostShell(shell);
+              } catch (err) {
+                console.warn('[bootstrap] tauri shell failed, falling back to web shell', err);
+                const { createWebHostShell } = await import('@vinylly/host');
+                if (!cancelled) setHostShell(createWebHostShell(activeId));
+              }
+            } else {
+              // Web fallback — host shell carries profile-scoped paths.
+              const { createWebHostShell } = await import('@vinylly/host');
+              if (!cancelled) setHostShell(createWebHostShell(activeId));
+            }
+          }
+          if (!cancelled) {
+            console.warn('[bootstrap] switchActiveProfile');
+            await switchActiveProfile(activeId);
+            console.warn('[bootstrap] initSettings');
+            await initSettings();
+            console.warn('[bootstrap] initSettings done');
+          }
+        }
+        if (!cancelled) {
+          console.warn('[bootstrap] setBootDone(true)');
+          setBootDone(true);
+        }
+      } catch (err) {
+        console.error('[bootstrap] failed', err);
+        if (!cancelled) setBootDone(true);
+      }
+    })();
+    return () => {
+      console.warn('[bootstrap] effect cleanup');
+      cancelled = true;
+    };
   }, []);
 
-  if (!ready) {
+  // When the active profile changes (user switched via UI), reload the DB
+  // client and per-profile settings so queries refetch against the new store.
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!bootDone || !activeProfileId) return;
+    let cancelled = false;
+    (async () => {
+      await switchActiveProfile(activeProfileId);
+      await useSettings.getState().reload();
+      if (!cancelled) qc.invalidateQueries();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProfileId, bootDone, qc]);
+
+  if (!ready || !bootDone || !profilesReady || !settingsReady) {
     return (
       <div className="bg-surface text-fg-body flex min-h-full items-center justify-center">
         <p className="text-fg-body-subtle text-sm">{t('common:loading.db')}</p>
@@ -54,7 +109,7 @@ export function App() {
     );
   }
 
-  if (settingsReady && !onboardingDone && !discogsToken) {
+  if (!onboardingDone) {
     return <Onboarding />;
   }
 

@@ -1,20 +1,15 @@
 import { isTauriEnvironment } from '@vinylly/host';
 
-interface TauriInternals {
-  invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
-}
-
-declare global {
-  interface Window {
-    __TAURI_INTERNALS__?: TauriInternals;
-  }
-}
-
 function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauriEnvironment()) {
     return Promise.reject(new Error('Not in Tauri environment'));
   }
-  return window.__TAURI_INTERNALS__!.invoke<T>(cmd, args);
+  return Promise.race([
+    window.__TAURI_INTERNALS__!.invoke<T>(cmd, args),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Tauri IPC timed out: ${cmd}`)), 2000),
+    ),
+  ]);
 }
 
 export async function minimizeWindow(): Promise<void> {

@@ -1,25 +1,44 @@
 import type { HostFs, HostNet, HostPaths, HostShell } from './types';
 
-interface TauriInternals {
-  invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
-}
-
 interface TauriDataPaths {
   data_dir: string;
   covers_dir: string;
   cache_dir: string;
   db_file: string;
+  profiles_index: string;
   portable: boolean;
 }
 
 declare global {
   interface Window {
-    __TAURI_INTERNALS__?: TauriInternals;
+    __TAURI_INTERNALS__?: {
+      invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
+      transformCallback?: <T>(callback: T, once?: boolean) => number;
+      metadata?: { currentWindow: { label: string } } & Record<string, unknown>;
+      convertFileSrc?: (filePath: string, protocol?: string) => string;
+    };
   }
 }
 
+/**
+ * Heuristic check for a real Tauri host. Some dev tools (Vite HMR, browser
+ * extensions, stub packages) attach `__TAURI_INTERNALS__` as a fake object
+ * with a no-op `invoke`; we want to ignore those and force the web path.
+ *
+ * In a real Tauri runtime `__TAURI_INTERNALS__` carries the full IPC
+ * surface (`invoke`, `transformCallback`, `metadata`, `convertFileSrc`,
+ * …). In a fake stub only `invoke` is present. We require at least two
+ * of these markers to consider the host real.
+ */
 export function isTauriEnvironment(): boolean {
-  return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
+  if (typeof window === 'undefined') return false;
+  const internals = window.__TAURI_INTERNALS__;
+  if (!internals || typeof internals.invoke !== 'function') return false;
+  let markerCount = 0;
+  if (typeof internals.transformCallback === 'function') markerCount += 1;
+  if (internals.metadata && typeof internals.metadata === 'object') markerCount += 1;
+  if (typeof internals.convertFileSrc === 'function') markerCount += 1;
+  return markerCount >= 1;
 }
 
 class TauriHostFs implements HostFs {
@@ -106,20 +125,44 @@ class TauriHostNet implements HostNet {
   }
 }
 
-export async function createTauriHostShell(): Promise<HostShell> {
+/**
+ * Build a Tauri-backed HostShell for the given profile id.
+ *
+ * Cover / cache / db paths are scoped to the active profile. The root
+ * `data/` directory and the `data/profiles.json` index remain shared
+ * across profiles.
+ *
+ * Bounded by a 1500 ms timeout — if the Rust side is missing or hung
+ * (e.g. when this code runs in plain browser dev mode that has a stub
+ * `__TAURI_INTERNALS__`), we throw so the caller can fall back to the
+ * web shell instead of blocking the UI forever.
+ */
+export async function createTauriHostShell(profileId: string): Promise<HostShell> {
   if (!isTauriEnvironment()) {
     throw new Error('Not in Tauri environment');
   }
-  const init = await window.__TAURI_INTERNALS__!.invoke<TauriDataPaths>('host_init_app', {});
+  const invoke = window.__TAURI_INTERNALS__!.invoke;
+  const init = await Promise.race([
+    invoke<TauriDataPaths>('host_init_app', {}),
+    new Promise<TauriDataPaths>((_, reject) =>
+      setTimeout(() => reject(new Error('createTauriHostShell: host_init_app timed out')), 1500),
+    ),
+  ]);
+  const profileRoot = `${init.data_dir}/profiles/${profileId}`;
   const paths: HostPaths = {
     dataDir: init.data_dir,
-    coversDir: init.covers_dir,
+    coversDir: `${profileRoot}/covers`,
     cacheDir: init.cache_dir,
-    dbFile: init.db_file,
+    dbFile: `${profileRoot}/db.json`,
   };
   const fs = new TauriHostFs();
   const net = new TauriHostNet();
-  const platform = await window.__TAURI_INTERNALS__!.invoke<string>('host_platform');
+  const platform = await Promise.race([
+    invoke<string>('host_platform'),
+    new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error('createTauriHostShell: host_platform timed out')), 1500),
+    ),
+  ]);
   return {
     paths: () => paths,
     fs: () => fs,

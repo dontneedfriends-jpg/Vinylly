@@ -22,25 +22,30 @@ function renderApp() {
 describe('App', () => {
   it('renders collection page after init', async () => {
     renderApp();
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1, name: /Коллекция/i })).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByRole('heading', { level: 1, name: /Коллекция/i })).toBeInTheDocument();
+      },
+      { timeout: 4000 },
+    );
   });
 
   it('renders sidebar with all nav items', async () => {
     renderApp();
-    const nav = screen.getByRole('navigation', { name: /Навигация/i });
+    const nav = await waitFor(
+      () => screen.getByRole('navigation', { name: /Навигация/i }),
+      { timeout: 4000 },
+    );
     expect(nav).toBeInTheDocument();
-    expect(
-      nav.querySelectorAll('button[aria-label], button:not([aria-label])').length,
-    ).toBeGreaterThanOrEqual(3);
+    expect(nav.querySelectorAll('button').length).toBeGreaterThanOrEqual(3);
   });
 
   it('marks the current page in the sidebar', async () => {
     renderApp();
-    await waitFor(() => {
-      const active = screen.getByRole('button', { current: 'page' });
-      expect(active).toBeInTheDocument();
-    });
+    const active = await waitFor(
+      () => screen.getByRole('button', { current: 'page' }),
+      { timeout: 4000 },
+    );
+    expect(active).toBeInTheDocument();
   });
 });

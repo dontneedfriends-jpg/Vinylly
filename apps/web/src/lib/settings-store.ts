@@ -1,72 +1,47 @@
 import { create } from 'zustand';
 import { tryGetHostShell } from '@vinylly/host';
+import { getProfileSettings, setProfileSettings, type ProfileSettings as DbProfileSettings } from '@vinylly/db';
 
-const STORAGE_KEY = 'vinylly:discogs-token';
-const USERNAME_KEY = 'vinylly:discogs-username';
-const SYNC_KEY = 'vinylly:discogs-sync';
 const ONBOARDING_KEY = 'vinylly:onboarding-done';
 const CONFIG_FILE_NAME = 'config.json';
 
 interface SettingsState {
+  /** Once profile settings have been read into the store. */
+  ready: boolean;
+  onboardingDone: boolean;
+  // Per-profile Discogs settings.
   discogsToken: string;
   discogsUsername: string;
   discogsSyncEnabled: boolean;
-  onboardingDone: boolean;
-  _initialized: boolean;
+  setOnboardingDone(): void;
   setDiscogsToken(token: string): Promise<void>;
   clearDiscogsToken(): Promise<void>;
   setDiscogsUsername(username: string): Promise<void>;
   setDiscogsSyncEnabled(enabled: boolean): Promise<void>;
-  setOnboardingDone(): void;
-}
-
-function readLocalToken(): string {
-  if (typeof window === 'undefined') return '';
-  try { return localStorage.getItem(STORAGE_KEY) ?? ''; } catch { return ''; }
-}
-function writeLocalToken(token: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    if (token) localStorage.setItem(STORAGE_KEY, token);
-    else localStorage.removeItem(STORAGE_KEY);
-  } catch { /* ignore */ }
-}
-
-function readLocalUsername(): string {
-  if (typeof window === 'undefined') return '';
-  try { return localStorage.getItem(USERNAME_KEY) ?? ''; } catch { return ''; }
-}
-function writeLocalUsername(u: string): void {
-  if (typeof window === 'undefined') return;
-  try { if (u) localStorage.setItem(USERNAME_KEY, u); else localStorage.removeItem(USERNAME_KEY); } catch {}
-}
-function readLocalSync(): boolean {
-  if (typeof window === 'undefined') return true;
-  try { return localStorage.getItem(SYNC_KEY) !== 'false'; } catch { return true; }
-}
-function writeLocalSync(v: boolean): void {
-  if (typeof window === 'undefined') return;
-  try { localStorage.setItem(SYNC_KEY, String(v)); } catch {}
+  /** Reload profile settings (call after a profile switch). */
+  reload(): Promise<void>;
 }
 
 function readLocalOnboarding(): boolean {
   if (typeof window === 'undefined') return false;
-  try { return localStorage.getItem(ONBOARDING_KEY) === 'true'; } catch { return false; }
+  try {
+    return localStorage.getItem(ONBOARDING_KEY) === 'true';
+  } catch {
+    return false;
+  }
 }
+
 function writeLocalOnboarding(done: boolean): void {
   if (typeof window === 'undefined') return;
   try {
     if (done) localStorage.setItem(ONBOARDING_KEY, 'true');
     else localStorage.removeItem(ONBOARDING_KEY);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
-async function readHostConfig(): Promise<{
-  discogsToken?: string;
-  discogsUsername?: string;
-  discogsSyncEnabled?: boolean;
-  onboardingDone?: boolean;
-}> {
+async function readHostConfig(): Promise<{ onboardingDone?: boolean }> {
   const shell = tryGetHostShell();
   if (!shell) return {};
   try {
@@ -75,9 +50,6 @@ async function readHostConfig(): Promise<{
     const text = await shell.fs().readText(path);
     const parsed = JSON.parse(text) as Record<string, unknown>;
     return {
-      discogsToken: typeof parsed.discogsToken === 'string' ? parsed.discogsToken : undefined,
-      discogsUsername: typeof parsed.discogsUsername === 'string' ? parsed.discogsUsername : undefined,
-      discogsSyncEnabled: typeof parsed.discogsSyncEnabled === 'boolean' ? parsed.discogsSyncEnabled : undefined,
       onboardingDone: typeof parsed.onboardingDone === 'boolean' ? parsed.onboardingDone : undefined,
     };
   } catch {
@@ -96,87 +68,90 @@ async function writeHostConfig(partial: Record<string, unknown>): Promise<void> 
         const text = await shell.fs().readText(path);
         Object.assign(existing, JSON.parse(text) as Record<string, unknown>);
       }
-    } catch { /* start fresh */ }
+    } catch {
+      /* start fresh */
+    }
     const merged = { ...existing, ...partial };
     await shell.fs().writeText(path, JSON.stringify(merged));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export const useSettings = create<SettingsState>((set) => ({
-  discogsToken: readLocalToken(),
-  discogsUsername: readLocalUsername(),
-  discogsSyncEnabled: readLocalSync(),
+  ready: false,
   onboardingDone: readLocalOnboarding(),
-  _initialized: false,
-  async setDiscogsToken(token) {
-    const trimmed = token.trim();
-    writeLocalToken(trimmed);
-    await writeHostConfig({ discogsToken: trimmed });
-    set({ discogsToken: trimmed });
-  },
-  async clearDiscogsToken() {
-    writeLocalToken('');
-    writeLocalUsername('');
-    writeLocalSync(true);
-    await writeHostConfig({ discogsToken: '', discogsUsername: '' });
-    set({ discogsToken: '', discogsUsername: '', discogsSyncEnabled: true });
-  },
-  async setDiscogsUsername(username) {
-    writeLocalUsername(username);
-    await writeHostConfig({ discogsUsername: username });
-    set({ discogsUsername: username });
-  },
-  async setDiscogsSyncEnabled(enabled) {
-    writeLocalSync(enabled);
-    await writeHostConfig({ discogsSyncEnabled: enabled });
-    set({ discogsSyncEnabled: enabled });
-  },
+  discogsToken: '',
+  discogsUsername: '',
+  discogsSyncEnabled: true,
   setOnboardingDone() {
     writeLocalOnboarding(true);
     void writeHostConfig({ onboardingDone: true });
     set({ onboardingDone: true });
   },
+  async setDiscogsToken(token) {
+    const trimmed = token.trim();
+    const next = await setProfileSettings({ discogsToken: trimmed });
+    set({
+      discogsToken: next.discogsToken,
+      discogsUsername: next.discogsUsername,
+      discogsSyncEnabled: next.discogsSyncEnabled,
+    });
+  },
+  async clearDiscogsToken() {
+    const next = await setProfileSettings({
+      discogsToken: '',
+      discogsUsername: '',
+      discogsSyncEnabled: true,
+    });
+    set({
+      discogsToken: next.discogsToken,
+      discogsUsername: next.discogsUsername,
+      discogsSyncEnabled: next.discogsSyncEnabled,
+    });
+  },
+  async setDiscogsUsername(username) {
+    const next = await setProfileSettings({ discogsUsername: username });
+    set({
+      discogsToken: next.discogsToken,
+      discogsUsername: next.discogsUsername,
+      discogsSyncEnabled: next.discogsSyncEnabled,
+    });
+  },
+  async setDiscogsSyncEnabled(enabled) {
+    const next = await setProfileSettings({ discogsSyncEnabled: enabled });
+    set({
+      discogsToken: next.discogsToken,
+      discogsUsername: next.discogsUsername,
+      discogsSyncEnabled: next.discogsSyncEnabled,
+    });
+  },
+  async reload() {
+    const settings = await getProfileSettings().catch<DbProfileSettings>(() => ({
+      discogsToken: '',
+      discogsUsername: '',
+      discogsSyncEnabled: true,
+    }));
+    set({
+      discogsToken: settings.discogsToken,
+      discogsUsername: settings.discogsUsername,
+      discogsSyncEnabled: settings.discogsSyncEnabled,
+      ready: true,
+    });
+  },
 }));
 
 export async function initSettings(): Promise<void> {
-  if (useSettings.getState()._initialized) return;
-  initPromise = doInit();
-  try {
-    await initPromise;
-  } finally {
-    initPromise = null;
-  }
-}
-
-let initPromise: Promise<void> | null = null;
-
-async function doInit(): Promise<void> {
-  useSettings.setState({ _initialized: true });
-  const localToken = readLocalToken();
-  const localUsername = readLocalUsername();
-  const localSync = readLocalSync();
+  // Onboarding: global, persisted in localStorage + host config.
   const localOnboarding = readLocalOnboarding();
   const host = await readHostConfig();
-  if (host.discogsToken !== undefined) {
-    if (host.discogsToken !== localToken) writeLocalToken(host.discogsToken);
-    useSettings.setState({ discogsToken: host.discogsToken });
-  } else if (localToken) {
-    useSettings.setState({ discogsToken: localToken });
-  }
-  if (host.discogsUsername !== undefined) {
-    if (host.discogsUsername !== localUsername) writeLocalUsername(host.discogsUsername);
-    useSettings.setState({ discogsUsername: host.discogsUsername });
-  } else if (localUsername) {
-    useSettings.setState({ discogsUsername: localUsername });
-  }
-  if (host.discogsSyncEnabled !== undefined) {
-    if (host.discogsSyncEnabled !== localSync) writeLocalSync(host.discogsSyncEnabled);
-    useSettings.setState({ discogsSyncEnabled: host.discogsSyncEnabled });
-  } else {
-    useSettings.setState({ discogsSyncEnabled: localSync });
-  }
   if (host.onboardingDone !== undefined) {
     if (host.onboardingDone !== localOnboarding) writeLocalOnboarding(host.onboardingDone);
     useSettings.setState({ onboardingDone: host.onboardingDone });
+  } else if (localOnboarding) {
+    useSettings.setState({ onboardingDone: localOnboarding });
   }
+
+  // Profile-scoped Discogs settings. Reload via DB layer.
+  await useSettings.getState().reload();
 }

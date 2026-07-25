@@ -56,14 +56,15 @@ class WebHostNet implements HostNet {
   }
 }
 
-export function createWebHostShell(): HostShell {
+export function createWebHostShell(profileId: string = 'default'): HostShell {
   const fs = new WebHostFs();
   const net = new WebHostNet();
+  const profileRoot = `vinylly/profiles/${profileId}`;
   const paths: HostPaths = {
     dataDir: 'vinylly',
-    coversDir: 'vinylly/covers',
+    coversDir: `${profileRoot}/covers`,
     cacheDir: 'vinylly/cache',
-    dbFile: 'vinylly/db.sqlite',
+    dbFile: `${profileRoot}/db.json`,
   };
   return {
     paths: () => paths,

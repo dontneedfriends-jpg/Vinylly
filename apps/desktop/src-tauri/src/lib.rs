@@ -139,6 +139,13 @@ pub fn run() {
             db_json::db_load,
             db_json::db_replace,
             db_json::db_reset,
+            db_json::db_get_profile_config,
+            db_json::db_set_profile_config,
+            db_json::db_list_profiles,
+            db_json::db_create_profile,
+            db_json::db_rename_profile,
+            db_json::db_delete_profile,
+            db_json::db_set_active_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

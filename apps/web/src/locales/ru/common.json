@@ -1,6 +1,8 @@
 {
   "button.back": "Назад",
   "button.cancel": "Отмена",
+  "button.close": "Закрыть",
+  "button.delete": "Удалить",
   "button.save": "Сохранить",
   "button.undo": "Отменить",
   "button.saving": "Сохраняю…",

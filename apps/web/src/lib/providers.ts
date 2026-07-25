@@ -1,6 +1,7 @@
 import { ProvidersRegistry, type ProvidersConfig } from '@vinylly/media-providers';
 import { isTauriEnvironment } from '@vinylly/host';
 import { useSettings } from './settings-store';
+import { useProfileStore } from './profile-store';
 
 const env = import.meta.env as Record<string, string | undefined>;
 
@@ -12,7 +13,8 @@ const isBrowser = !isTauriEnvironment();
 const proxyUrl = DISCOGS_PROXY || (isBrowser ? '/discogs-api/' : undefined);
 const caaProxyUrl = isBrowser ? '/coverartarchive' : undefined;
 
-let cached: { token: string; registry: ProvidersRegistry } | null = null;
+type CacheKey = `${string}::${string}`;
+const cache = new Map<CacheKey, ProvidersRegistry>();
 
 function buildConfig(token: string): ProvidersConfig {
   return {
@@ -27,14 +29,33 @@ function buildConfig(token: string): ProvidersConfig {
   };
 }
 
-export function getProvidersRegistry(): ProvidersRegistry {
-  const token = useSettings.getState().discogsToken;
-  if (cached && cached.token === token) return cached.registry;
-  const registry = new ProvidersRegistry(buildConfig(token));
-  cached = { token, registry };
-  return registry;
+function registryKey(profileId: string | null, token: string): CacheKey {
+  return `${profileId ?? '__none__'}::${token}`;
 }
 
-export function resetProvidersRegistry(): void {
-  cached = null;
+export function getProvidersRegistry(): ProvidersRegistry {
+  const profileId = useProfileStore.getState().activeId;
+  const token = useSettings.getState().discogsToken;
+  const key = registryKey(profileId, token);
+  let r = cache.get(key);
+  if (!r) {
+    r = new ProvidersRegistry(buildConfig(token));
+    cache.set(key, r);
+  }
+  return r;
+}
+
+/**
+ * Drop cached registries that belong to the given profile id. Called
+ * after a profile is deleted or its Discogs token is cleared.
+ */
+export function resetProvidersRegistry(profileId?: string): void {
+  if (!profileId) {
+    cache.clear();
+    return;
+  }
+  const prefix = `${profileId}::`;
+  for (const key of Array.from(cache.keys())) {
+    if (key.startsWith(prefix)) cache.delete(key);
+  }
 }

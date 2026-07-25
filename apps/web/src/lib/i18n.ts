@@ -2,27 +2,29 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
-import ruCommon from '../../public/locales/ru/common.json';
-import ruLayout from '../../public/locales/ru/layout.json';
-import ruCollection from '../../public/locales/ru/collection.json';
-import ruAdd from '../../public/locales/ru/add.json';
-import ruDetail from '../../public/locales/ru/detail.json';
-import ruSettings from '../../public/locales/ru/settings.json';
-import ruStats from '../../public/locales/ru/stats.json';
-import ruWantlist from '../../public/locales/ru/wantlist.json';
-import ruArtist from '../../public/locales/ru/artist.json';
-import ruReleasePreview from '../../public/locales/ru/release_preview.json';
+import ruCommon from '../locales/ru/common.json';
+import ruLayout from '../locales/ru/layout.json';
+import ruCollection from '../locales/ru/collection.json';
+import ruAdd from '../locales/ru/add.json';
+import ruDetail from '../locales/ru/detail.json';
+import ruSettings from '../locales/ru/settings.json';
+import ruStats from '../locales/ru/stats.json';
+import ruWantlist from '../locales/ru/wantlist.json';
+import ruArtist from '../locales/ru/artist.json';
+import ruReleasePreview from '../locales/ru/release_preview.json';
+import ruProfile from '../locales/ru/profile.json';
 
-import enCommon from '../../public/locales/en/common.json';
-import enLayout from '../../public/locales/en/layout.json';
-import enCollection from '../../public/locales/en/collection.json';
-import enAdd from '../../public/locales/en/add.json';
-import enDetail from '../../public/locales/en/detail.json';
-import enSettings from '../../public/locales/en/settings.json';
-import enStats from '../../public/locales/en/stats.json';
-import enWantlist from '../../public/locales/en/wantlist.json';
-import enArtist from '../../public/locales/en/artist.json';
-import enReleasePreview from '../../public/locales/en/release_preview.json';
+import enCommon from '../locales/en/common.json';
+import enLayout from '../locales/en/layout.json';
+import enCollection from '../locales/en/collection.json';
+import enAdd from '../locales/en/add.json';
+import enDetail from '../locales/en/detail.json';
+import enSettings from '../locales/en/settings.json';
+import enStats from '../locales/en/stats.json';
+import enWantlist from '../locales/en/wantlist.json';
+import enArtist from '../locales/en/artist.json';
+import enReleasePreview from '../locales/en/release_preview.json';
+import enProfile from '../locales/en/profile.json';
 
 const resources = {
   ru: {
@@ -36,6 +38,7 @@ const resources = {
     wantlist: ruWantlist,
     artist: ruArtist,
     release_preview: ruReleasePreview,
+    profile: ruProfile,
   },
   en: {
     common: enCommon,
@@ -48,6 +51,7 @@ const resources = {
     wantlist: enWantlist,
     artist: enArtist,
     release_preview: enReleasePreview,
+    profile: enProfile,
   },
 };
 
@@ -57,7 +61,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'ru',
-    ns: ['common', 'layout', 'collection', 'add', 'detail', 'settings', 'stats', 'wantlist', 'artist', 'release_preview'],
+    ns: ['common', 'layout', 'collection', 'add', 'detail', 'settings', 'stats', 'wantlist', 'artist', 'release_preview', 'profile'],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
     detection: {

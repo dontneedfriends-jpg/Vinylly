@@ -1,6 +1,8 @@
 {
   "button.back": "Back",
   "button.cancel": "Cancel",
+  "button.close": "Close",
+  "button.delete": "Delete",
   "button.save": "Save",
   "button.undo": "Undo",
   "button.saving": "Saving…",

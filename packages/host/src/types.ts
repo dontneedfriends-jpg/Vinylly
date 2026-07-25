@@ -30,3 +30,37 @@ export interface HostShell {
   isPortable(): boolean;
   platform(): 'linux' | 'windows' | 'macos' | 'android' | 'ios' | 'web' | 'unknown';
 }
+
+/** A single profile entry — owned by a profile store. */
+export interface ProfileRecord {
+  id: string;
+  label: string;
+  createdAt: string;
+}
+
+/** On-disk shape of `data/profiles.json`. */
+export interface ProfilesIndex {
+  profiles: ProfileRecord[];
+  activeId: string | null;
+}
+
+/** Per-profile runtime configuration (Discogs token, sync flag). */
+export interface ProfileConfig {
+  discogsToken: string;
+  discogsUsername: string;
+  discogsSyncEnabled: boolean;
+}
+
+/** Tauri-side profile commands exposed via `__TAURI_INTERNALS__.invoke`. */
+export interface ProfileCommands {
+  db_list_profiles(): Promise<ProfilesIndex & { activeId: string | null }>;
+  db_create_profile(label: string, setActive?: boolean): Promise<{
+    profile: ProfileRecord;
+    activeId: string | null;
+  }>;
+  db_rename_profile(id: string, label: string): Promise<ProfileRecord>;
+  db_delete_profile(id: string): Promise<void>;
+  db_set_active_profile(id: string): Promise<void>;
+  db_get_profile_config(profileId?: string): Promise<ProfileConfig>;
+  db_set_profile_config(profileId: string | null, partial: Partial<ProfileConfig>): Promise<ProfileConfig>;
+}

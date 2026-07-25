@@ -1,27 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Input, SegmentedControl } from '@vinylly/ui';
+import { Button, SegmentedControl } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
-import { useSettings } from '../lib/settings-store';
 import { useLocale } from '../lib/locale-store';
 import { useTheme, type ThemeMode } from '../lib/theme';
 import { getAppInfo, type AppInfo } from '../lib/app-info';
-import { getProvidersRegistry, resetProvidersRegistry } from '../lib/providers';
-import { getHostShell } from '@vinylly/host';
 import { ExternalLink } from '../components/ExternalLink';
 import { serializeDb, restoreFromJsonFile } from '../lib/db';
-import { itemRepo, collectionRepo, wantlistRepo } from '@vinylly/db';
+import { useProfileStore } from '../lib/profile-store';
 
 export function SettingsPage() {
   const { t } = useTranslation();
   const openCollection = useUi((s) => s.openCollection);
-  const discogsToken = useSettings((s) => s.discogsToken);
-  const discogsUsername = useSettings((s) => s.discogsUsername);
-  const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
-  const setDiscogsToken = useSettings((s) => s.setDiscogsToken);
-  const setDiscogsUsername = useSettings((s) => s.setDiscogsUsername);
-  const setDiscogsSyncEnabled = useSettings((s) => s.setDiscogsSyncEnabled);
-  const clearDiscogsToken = useSettings((s) => s.clearDiscogsToken);
 
   return (
     <section className="animate-rise max-w-5xl">
@@ -33,27 +23,10 @@ export function SettingsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Appearance */}
         <AppearanceCard />
-
-        {/* Discogs */}
-        <DiscogsCard
-          token={discogsToken}
-          username={discogsUsername}
-          syncEnabled={discogsSyncEnabled}
-          onSave={setDiscogsToken}
-          onClear={clearDiscogsToken}
-          onSetUsername={setDiscogsUsername}
-          onSetSync={setDiscogsSyncEnabled}
-        />
-
-        {/* Data — backup / restore */}
+        <DiscogsMovedCard />
         <DataCard />
-
-        {/* Support */}
         <SupportCard />
-
-        {/* About */}
         <AboutCard />
       </div>
     </section>
@@ -131,406 +104,67 @@ function ThemeChip({
   );
 }
 
-/* ─── Discogs card ─── */
+/* ─── Discogs moved to per-profile settings ─── */
 
-interface DiscogsCardProps {
-  token: string;
-  username: string;
-  syncEnabled: boolean;
-  onSave(token: string): Promise<void>;
-  onClear(): Promise<void>;
-  onSetUsername(u: string): Promise<void>;
-  onSetSync(v: boolean): Promise<void>;
-}
-
-function DiscogsCard({ token, username, syncEnabled, onSave, onClear, onSetUsername, onSetSync }: DiscogsCardProps) {
+function DiscogsMovedCard() {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState('');
-  const [revealed, setRevealed] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'error'; message: string }>({ kind: 'idle', message: '' });
-  const [testResult, setTestResult] = useState<{ kind: 'idle' | 'ok' | 'error'; message: string } | null>(null);
-  const [busy, setBusy] = useState<'save' | 'clear' | 'test' | 'import' | 'importWantlist' | null>(null);
-  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
-  const importCounterRef = useRef(0);
-
-  const hasToken = Boolean(token);
-  const dirty = draft.trim() !== '' && draft.trim() !== token;
-  const displayValue = revealed && !dirty && hasToken ? token : draft;
-  const inputType = !hasToken ? 'password' : revealed && !dirty ? 'text' : 'password';
-
-  const onSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const next = draft.trim();
-    if (!next) {
-      setStatus({ kind: 'error', message: t('settings:discogs.error_empty') });
-      return;
-    }
-    setBusy('save');
-    setStatus({ kind: 'idle', message: '' });
-    setTestResult(null);
-    try {
-      await onSave(next);
-      resetProvidersRegistry();
-      setDraft('');
-      setRevealed(false);
-      setStatus({ kind: 'ok', message: t('settings:discogs.saved_ok') });
-    } catch (err) {
-      console.warn('[discogs] save token failed:', err);
-      setStatus({ kind: 'error', message: t('settings:discogs.test_fail', { error: String(err) }) });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const onClearClick = async () => {
-    setBusy('clear');
-    setStatus({ kind: 'idle', message: '' });
-    setTestResult(null);
-    try {
-      await onClear();
-      resetProvidersRegistry();
-      setDraft('');
-      setRevealed(false);
-      setConfirmingDelete(false);
-      setStatus({ kind: 'ok', message: t('settings:discogs.cleared_ok') });
-    } catch (err) {
-      console.warn('[discogs] clear failed:', err);
-      setStatus({ kind: 'error', message: t('settings:discogs.test_fail', { error: String(err) }) });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const onTest = async () => {
-    setBusy('test');
-    setTestResult(null);
-    setStatus({ kind: 'idle', message: '' });
-    try {
-      const shell = getHostShell();
-      const res = await shell
-        .net()
-        .fetchJson<{ username?: string }>('https://api.discogs.com/oauth/identity', {
-          headers: { Authorization: `Discogs token=${token}` },
-        });
-      const who = res.username ?? '';
-      if (who && who !== username) {
-        await onSetUsername(who);
-      }
-      const whoSuffix = who ? ` (@${who})` : '';
-      setTestResult({ kind: 'ok', message: t('settings:discogs.test_ok', { username: whoSuffix }) });
-    } catch (err) {
-      const msg = (err as Error).message ?? 'unknown error';
-      setTestResult({
-        kind: 'error',
-        message: t('settings:discogs.test_fail', { error: msg }),
-      });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const onImport = async () => {
-    if (!username) return;
-    setBusy('import');
-    setStatus({ kind: 'idle', message: '' });
-    const importId = ++importCounterRef.current;
-    try {
-      const collection = await collectionRepo.ensureDefault();
-      const registry = getProvidersRegistry();
-      const releases = await registry.fetchDiscogsCollection(username);
-      let imported = 0;
-      let skipped = 0;
-      setImportProgress({ done: 0, total: releases.length });
-      const concurrency = 4;
-      let cursor = 0;
-      const workers = Array.from({ length: concurrency }, async () => {
-        while (true) {
-          if (importId !== importCounterRef.current) return;
-          const i = cursor++;
-          const rel = releases[i];
-          if (!rel) return;
-          const exists = await itemRepo.findBySource('discogs', String(rel.discogsId));
-          if (exists) {
-            skipped++;
-          } else {
-            let tracklist: Array<{ position: string; title: string; duration?: number | null }> | undefined;
-            try {
-              const detail = await registry.discogs?.getRelease(String(rel.discogsId));
-              tracklist = detail?.tracklist;
-            } catch {
-              tracklist = undefined;
-            }
-            await itemRepo.create({
-              collectionId: collection.id,
-              type: rel.type,
-              discogsInstanceId: rel.instanceId,
-              release: {
-                source: 'discogs',
-                sourceId: String(rel.discogsId),
-                title: rel.title,
-                artist: rel.artist,
-                year: rel.year,
-                genres: rel.genres,
-                styles: rel.styles,
-                coverRemote: rel.coverUrl,
-                thumbRemote: rel.thumbUrl,
-              },
-              ...(tracklist ? { tracklist } : {}),
-            });
-            imported++;
-          }
-          if (importId === importCounterRef.current) {
-            setImportProgress({ done: imported + skipped, total: releases.length });
-          }
-        }
-      });
-      await Promise.all(workers);
-      if (importId !== importCounterRef.current) return;
-      setStatus({
-        kind: 'ok',
-        message: t('settings:discogs.import_success', {
-          imported,
-          skipped,
-          total: releases.length,
-        }),
-      });
-    } catch (err) {
-      if (importId === importCounterRef.current) {
-        setStatus({ kind: 'error', message: t('settings:discogs.import_error', { error: String(err) }) });
-      }
-    } finally {
-      if (importId === importCounterRef.current) {
-        setBusy(null);
-        setImportProgress(null);
-      }
-    }
-  };
-
-  const onImportWantlist = async () => {
-    if (!username) return;
-    setBusy('importWantlist');
-    setStatus({ kind: 'idle', message: '' });
-    const importId = ++importCounterRef.current;
-    try {
-      const registry = getProvidersRegistry();
-      const wants = await registry.fetchDiscogsWantlist(username);
-      let imported = 0;
-      let skipped = 0;
-      setImportProgress({ done: 0, total: wants.length });
-      const concurrency = 4;
-      let cursor = 0;
-      const workers = Array.from({ length: concurrency }, async () => {
-        while (true) {
-          if (importId !== importCounterRef.current) return;
-          const i = cursor++;
-          const rel = wants[i];
-          if (!rel) return;
-          const already = await wantlistRepo.contains('discogs', String(rel.discogsId));
-          if (already) {
-            skipped++;
-          } else {
-            await wantlistRepo.add({
-              release: {
-                source: 'discogs',
-                sourceId: String(rel.discogsId),
-                title: rel.title,
-                artist: rel.artist,
-                year: rel.year,
-                masterId: rel.masterId,
-                genres: rel.genres,
-                styles: rel.styles,
-                coverRemote: rel.coverUrl,
-                thumbRemote: rel.thumbUrl,
-              },
-            });
-            imported++;
-          }
-          if (importId === importCounterRef.current) {
-            setImportProgress({ done: imported + skipped, total: wants.length });
-          }
-        }
-      });
-      await Promise.all(workers);
-      if (importId !== importCounterRef.current) return;
-      setStatus({
-        kind: 'ok',
-        message: t('settings:discogs.wantlist_import_success', {
-          imported,
-          skipped,
-          total: wants.length,
-        }),
-      });
-    } catch (err) {
-      if (importId === importCounterRef.current) {
-        setStatus({ kind: 'error', message: t('settings:discogs.import_error', { error: String(err) }) });
-      }
-    } finally {
-      if (importId === importCounterRef.current) {
-        setBusy(null);
-        setImportProgress(null);
-      }
-    }
-  };
+  const profiles = useProfileStore((s) => s.profiles);
+  const activeId = useProfileStore((s) => s.activeId);
+  const [openSettingsFor, setOpenSettingsFor] = useState<string | null>(null);
+  const activeProfile = profiles.find((p) => p.id === activeId);
 
   return (
-    <CardShell
-      icon={<VinylIcon />}
-      title={t('settings:discogs.title')}
-      subtitle={t('settings:discogs.description')}
-      badge={
-        <Badge ok={hasToken} okLabel={t('settings:discogs.configured')} failLabel={t('settings:discogs.missing')} />
-      }
-    >
-      <div className="space-y-5">
-        {/* Token */}
-        <form onSubmit={onSubmit}>
-          <Input
-            label={t('settings:discogs.token_label')}
-            type={inputType}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={
-              hasToken && dirty
-                ? ''
-                : hasToken
-                  ? t(revealed ? 'settings:discogs.placeholder_configured_revealed' : 'settings:discogs.placeholder_configured_hidden')
-                  : t('settings:discogs.placeholder_empty')
-            }
-            value={displayValue}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              setStatus({ kind: 'idle', message: '' });
-            }}
-            rightIcon={
-              hasToken ? (
-                <button
-                  type="button"
-                  onClick={() => setRevealed((r) => !r)}
-                  aria-label={t(revealed ? 'settings:discogs.hide_aria' : 'settings:discogs.show_aria')}
-                  className="text-fg-body-subtle hover:text-fg-heading inline-flex items-center justify-center"
-                >
-                  {revealed ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              ) : undefined
-            }
-          />
-
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            {dirty || !hasToken ? (
-              <Button type="submit" size="sm" disabled={busy === 'save'} leftIcon={busy === 'save' ? undefined : <SaveIcon />}>
-                {busy === 'save' ? t('settings:discogs.save_progress') : hasToken ? t('settings:discogs.save_change') : t('settings:discogs.save_new')}
-              </Button>
-            ) : null}
-            {hasToken ? (
-              <Button type="button" variant="neutral" size="sm" disabled={busy === 'test'} onClick={onTest} leftIcon={busy === 'test' ? undefined : <NetworkIcon />}>
-                {busy === 'test' ? t('settings:discogs.test_progress') : t('settings:discogs.test_button')}
-              </Button>
-            ) : null}
-            {hasToken && !confirmingDelete ? (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmingDelete(true)} leftIcon={<TrashIcon />}>
-                {t('settings:discogs.delete_button')}
-              </Button>
-            ) : null}
-            {hasToken && confirmingDelete ? (
-              <>
-                <span className="text-fg-body-subtle text-xs">{t('settings:discogs.delete_confirm')}</span>
-                <Button type="button" variant="danger" size="sm" disabled={busy === 'clear'} onClick={onClearClick}>
-                  {busy === 'clear' ? t('settings:discogs.delete_progress') : t('settings:discogs.delete_yes')}
-                </Button>
-                <Button type="button" variant="neutral" size="sm" onClick={() => setConfirmingDelete(false)}>
-                  {t('common:button.cancel')}
-                </Button>
-              </>
-            ) : null}
+    <CardShell icon={<VinylIcon />} title={t('settings:discogs.moved_title')}>
+      <p className="text-fg-body text-sm leading-relaxed">
+        {t('settings:discogs.moved_body')}
+      </p>
+      {activeProfile ? (
+        <div className="rounded-base border-border-default bg-surface shadow-neu-inset mt-4 flex items-center justify-between gap-3 border px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-fg-heading text-sm font-medium">{activeProfile.label}</div>
+            <div className="text-fg-body-subtle text-xs">{t('settings:discogs.moved_active')}</div>
           </div>
-          {testResult ? (
-            <div className={`mt-2 text-xs ${testResult.kind === 'ok' ? 'text-fg-brand' : 'text-fg-danger'}`}>
-              {testResult.message}
-            </div>
-          ) : null}
-          {status.message ? (
-            <div className={`mt-2 text-xs ${status.kind === 'ok' ? 'text-fg-brand' : 'text-fg-danger'}`}>
-              {status.message}
-            </div>
-          ) : null}
-        </form>
-
-        {/* Sync toggle + import — only when token is configured */}
-        {hasToken ? (
-          <div className="space-y-3">
-            <Row label={t('settings:discogs.username_label')} value={username || '—'}>
-              {!username ? (
-                <Button size="sm" variant="neutral" onClick={onTest} disabled={busy === 'test'}>
-                  {t('settings:discogs.detect_button')}
-                </Button>
-              ) : null}
-            </Row>
-
-            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.sync_label')}</div>
-                <div className="text-fg-body-subtle text-xs">{t('settings:discogs.sync_desc')}</div>
-              </div>
-              <ToggleSwitch checked={syncEnabled} onChange={(v) => onSetSync(v)} ariaLabel={t('settings:discogs.sync_label')} />
-            </div>
-
-            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.import_label')}</div>
-                <div className="text-fg-body-subtle text-xs">{t('settings:discogs.import_desc')}</div>
-                {busy === 'import' && importProgress ? (
-                  <ImportProgress done={importProgress.done} total={importProgress.total} className="mt-2" />
-                ) : null}
-              </div>
-              <Button
-                size="sm"
-                variant="neutral"
-                disabled={busy === 'import' || !username}
-                onClick={onImport}
-                leftIcon={busy === 'import' ? undefined : <DownloadIcon />}
-                className="self-start sm:self-auto"
-              >
-                {busy === 'import' ? t('common:loading.generic') : t('settings:discogs.import_button')}
-              </Button>
-            </div>
-
-            <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.wantlist_import_label')}</div>
-                <div className="text-fg-body-subtle text-xs">{t('settings:discogs.wantlist_import_desc')}</div>
-                {busy === 'importWantlist' && importProgress ? (
-                  <ImportProgress done={importProgress.done} total={importProgress.total} className="mt-2" />
-                ) : null}
-              </div>
-              <Button
-                size="sm"
-                variant="neutral"
-                disabled={busy === 'importWantlist' || !username}
-                onClick={onImportWantlist}
-                leftIcon={busy === 'importWantlist' ? undefined : <DownloadIcon />}
-                className="self-start sm:self-auto"
-              >
-                {busy === 'importWantlist' ? t('common:loading.generic') : t('settings:discogs.wantlist_import_button')}
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {!hasToken ? (
-          <a
-            href="https://www.discogs.com/settings/developers"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-fg-brand inline-flex items-center gap-1 text-xs underline underline-offset-2 hover:text-fg-brand-strong"
+          <Button
+            size="sm"
+            variant="neutral"
+            onClick={() => setOpenSettingsFor(activeProfile.id)}
           >
-            {t('settings:discogs.instruction_link')}
-            <ExternalLinkIcon />
-          </a>
-        ) : null}
-      </div>
+            {t('settings:discogs.moved_open')}
+          </Button>
+        </div>
+      ) : null}
+      <ProfileSettingsModal
+        profileId={openSettingsFor}
+        onClose={() => setOpenSettingsFor(null)}
+      />
     </CardShell>
   );
+}
+
+function ProfileSettingsModal({
+  profileId,
+  onClose,
+}: {
+  profileId: string | null;
+  onClose: () => void;
+}) {
+  // Lazy import keeps the modal code (and its host shell) out of the
+  // SettingsPage bundle's main render path.
+  const [Mod, setMod] = useState<React.ComponentType<{ profileId: string | null; onClose: () => void }> | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!profileId) return;
+    let cancelled = false;
+    import('../components/ProfileSettings').then((m) => {
+      if (!cancelled) setMod(() => m.ProfileSettings);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId]);
+  if (!profileId || !Mod) return null;
+  return <Mod profileId={profileId} onClose={onClose} />;
 }
 
 /* ─── Data card (backup + restore) ─── */
@@ -690,31 +324,6 @@ function AboutCard() {
 
 /* ─── Shared bits ─── */
 
-function ImportProgress({
-  done,
-  total,
-  className = '',
-}: {
-  done: number;
-  total: number;
-  className?: string;
-}) {
-  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
-  return (
-    <div className={className} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="import">
-      <div className="bg-surface shadow-neu-inset rounded-base h-1.5 w-full overflow-hidden border border-border-default">
-        <div
-          className="bg-fg-brand h-full transition-[width] duration-200 ease-out"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="text-fg-body-subtle mt-1 text-[11px] tabular-nums">
-        {done} / {total} · {pct}%
-      </div>
-    </div>
-  );
-}
-
 function CardShell({
   icon,
   title,
@@ -743,19 +352,6 @@ function CardShell({
   );
 }
 
-function Badge({ ok, okLabel, failLabel }: { ok: boolean; okLabel: string; failLabel: string }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-        ok ? 'bg-success-soft text-fg-success-strong' : 'bg-surface text-fg-body-subtle shadow-neu-2xs'
-      }`}
-    >
-      {ok ? <CheckIcon className="h-3 w-3" /> : <XIcon className="h-3 w-3" />}
-      {ok ? okLabel : failLabel}
-    </span>
-  );
-}
-
 function Row({ label, children, value }: { label: string; children: React.ReactNode; value?: string }) {
   return (
     <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-6">
@@ -765,37 +361,6 @@ function Row({ label, children, value }: { label: string; children: React.ReactN
       </div>
       <div className="shrink-0">{children}</div>
     </div>
-  );
-}
-
-function ToggleSwitch({
-  checked,
-  onChange,
-  ariaLabel,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  ariaLabel: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={ariaLabel}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border transition-colors ${
-        checked
-          ? 'bg-surface border-border-default-medium text-fg-brand-strong shadow-neu-inset'
-          : 'bg-surface border-border-default shadow-neu-xs'
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 translate-y-0 rounded-full border bg-white shadow-sm transition-transform ${
-          checked ? 'translate-x-4 border-border-default-medium' : 'translate-x-0.5 border-border-default'
-        }`}
-      />
-    </button>
   );
 }
 
@@ -892,65 +457,7 @@ function DownloadIcon() {
 function UploadIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M12 20V8m-5 5 5-5 5 5M5 4h14" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SaveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M5 5h11l3 3v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM8 5v4h7V5M8 14h8" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function NetworkIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" strokeLinejoin="round" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M3 3l18 18M10.6 5.1A9.7 9.7 0 0 1 12 5c6.5 0 10 7 10 7a17.5 17.5 0 0 1-3.1 4M6.6 6.6C3.7 8.6 2 12 2 12s3.5 7 10 7c1.6 0 3-.3 4.3-.8M9.9 9.9a3 3 0 0 0 4.2 4.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-      <path d="M5 12l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function XIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
-      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+      <path d="M12 20V8m-5 5 5-5 5 5M5 4h14" strokeLinecap="round" />
     </svg>
   );
 }
@@ -966,7 +473,7 @@ function ExternalLinkIcon() {
 function BackIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M19 12H5m6-6-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M19 12H5m6-6-6 6 6 6" strokeLinecap="round" />
     </svg>
   );
 }
