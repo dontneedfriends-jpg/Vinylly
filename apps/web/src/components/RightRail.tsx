@@ -181,6 +181,8 @@ function CollectionRail() {
   const setFilterType = useUi((s) => s.setFilterType);
   const setFilterTags = useUi((s) => s.setFilterTags);
   const setSort = useUi((s) => s.setSort);
+  const showTileStatus = useUi((s) => s.showTileStatus);
+  const setShowTileStatus = useUi((s) => s.setShowTileStatus);
   const [localSearch, setLocalSearch] = useState(search);
   const [tagsExpanded, setTagsExpanded] = useState(false);
 
@@ -329,6 +331,31 @@ function CollectionRail() {
             </button>
           );
         })}
+      </VerticalGroup>
+
+      {/* Display options */}
+      <VerticalGroup label={t('layout:rail.collection.display')}>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showTileStatus}
+          onClick={() => setShowTileStatus(!showTileStatus)}
+          className={`rounded-base flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium transition-neu ${
+            showTileStatus
+              ? 'bg-surface text-fg-brand-strong shadow-neu-sm border border-border-default'
+              : 'text-fg-body-subtle hover:text-fg-body border border-transparent hover:shadow-neu-2xs'
+          }`}
+        >
+          <span>{t('layout:rail.collection.tile_status')}</span>
+          <span
+            aria-hidden
+            className={`inline-flex h-4 w-7 items-center rounded-full p-0.5 transition-neu ${
+              showTileStatus ? 'bg-brand-soft justify-end' : 'shadow-neu-inset justify-start'
+            }`}
+          >
+            <span className="bg-surface shadow-neu-2xs h-3 w-3 rounded-full" />
+          </span>
+        </button>
       </VerticalGroup>
 
       {/* Active filters summary */}

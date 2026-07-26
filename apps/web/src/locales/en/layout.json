@@ -39,6 +39,8 @@
   "rail.collection.by_genre": "By genre",
   "rail.collection.by_artist": "By artist",
   "rail.collection.total_releases": "total releases",
+  "rail.collection.display": "Display",
+  "rail.collection.tile_status": "Tile statuses",
   "rail.detail.lyrics_badge": "lyrics",
   "rail.detail.tracklist": "Tracklist",
   "rail.detail.tracklist_aria": "Tracklist",

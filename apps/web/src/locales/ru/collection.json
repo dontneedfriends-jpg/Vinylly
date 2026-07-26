@@ -27,6 +27,8 @@
   "bulk_edit.apply": "Применить",
   "bulk_edit.done": "Обновлено релизов: {{count}}",
   "bulk_edit.error": "Ошибка массового редактирования: {{error}}",
+  "tile.no_price": "без цены",
+  "tile.no_location": "нет полки",
   "search.placeholder": "Название или артист",
   "sort.added_asc": "Сначала старые",
   "sort.added_desc": "Сначала новые",

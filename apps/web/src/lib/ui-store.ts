@@ -32,6 +32,26 @@ export interface ToastState {
   duration?: number;
 }
 
+const TILE_STATUS_KEY = 'vinylly:tile-status';
+
+function readTileStatusPref(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(TILE_STATUS_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeTileStatusPref(v: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(TILE_STATUS_KEY, String(v));
+  } catch {
+    /* ignore */
+  }
+}
+
 export interface UiState {
   page: Page;
   detailItemId: string | null;
@@ -47,6 +67,8 @@ export interface UiState {
   filterTags: string[];
   sort: 'addedDesc' | 'addedAsc' | 'titleAsc' | 'artistAsc' | 'yearDesc';
   viewMode: 'grid' | 'list';
+  /** Show per-tile status strip (price/location/lent) in the collection grid. */
+  showTileStatus: boolean;
   toast: ToastState | null;
   openCollection(): void;
   openAdd(query?: string): void;
@@ -61,6 +83,7 @@ export interface UiState {
   setFilterTags(tags: string[]): void;
   setSort(s: UiState['sort']): void;
   setViewMode(m: UiState['viewMode']): void;
+  setShowTileStatus(v: boolean): void;
   setTrack(trackId: string | null): void;
   setReleaseVideos(videos: VideoLink[]): void;
   setAddTracklist(tracks: TrackItem[], loading: boolean): void;
@@ -84,6 +107,7 @@ export const useUi = create<UiState>((set) => ({
   filterTags: [],
   sort: 'addedDesc',
   viewMode: 'grid',
+  showTileStatus: readTileStatusPref(),
   toast: null,
   openCollection: () => set({ page: 'collection', detailItemId: null, releasePreviewId: null, releaseVideos: [] }),
   openAdd: (query) =>
@@ -106,6 +130,10 @@ export const useUi = create<UiState>((set) => ({
   setFilterTags: (tags) => set({ filterTags: tags }),
   setSort: (s) => set({ sort: s }),
   setViewMode: (m) => set({ viewMode: m }),
+  setShowTileStatus: (v) => {
+    writeTileStatusPref(v);
+    set({ showTileStatus: v });
+  },
   setTrack: (trackId) => set({ detailTrackId: trackId }),
   setReleaseVideos: (videos) => set({ releaseVideos: videos }),
   setAddTracklist: (tracks, loading) => set({ addTracklist: tracks, addTracklistLoading: loading }),

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Card, CardBody, Badge, Textarea, ConditionPicker } from '@vinylly/ui';
+import { Button, Card, CardBody, Badge, Textarea, ConditionPicker, Input } from '@vinylly/ui';
 import { ensureReleaseAssets, fromDiscogsCondition, type NormalizedRelease } from '@vinylly/media-providers';
 import type { MediaType } from '@vinylly/db';
 import { itemRepo } from '../lib/db';
@@ -33,6 +33,10 @@ interface BulkRow {
   release: NormalizedRelease | null;
   error: string | null;
   include: boolean;
+  /** Per-row overrides — empty means "fall back to CSV value, then bulk default". */
+  sleeve: string;
+  media: string;
+  price: number | null;
 }
 
 type Phase = 'input' | 'resolving' | 'review' | 'importing' | 'done';
@@ -57,6 +61,7 @@ export function BulkAddPanel() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [csvByRow, setCsvByRow] = useState<Map<number, DiscogsCsvRow>>(new Map());
   const [csvError, setCsvError] = useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const cancelRef = useRef(false);
   const rowIdRef = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -79,6 +84,9 @@ export function BulkAddPanel() {
       release: null,
       error: null,
       include: false,
+      sleeve: '',
+      media: '',
+      price: null,
     }));
     setRows(initial);
     setPhase('resolving');
@@ -138,7 +146,7 @@ export function BulkAddPanel() {
         const line: BulkLine = row.releaseId
           ? { raw: `${row.artist} — ${row.title}`, kind: 'discogs_id', query: {}, directId: row.releaseId }
           : { raw: `${row.artist} — ${row.title}`, kind: 'text', query: { text: `${row.artist} ${row.title}` } };
-        return { id, line, status: 'pending', release: null, error: null, include: false };
+        return { id, line, status: 'pending', release: null, error: null, include: false, sleeve: '', media: '', price: null };
       });
       setCsvByRow(csv);
       setRows(initial);
@@ -200,12 +208,17 @@ export function BulkAddPanel() {
           csv?.mediaType && csv.mediaType !== 'other'
             ? csv.mediaType
             : ((release.mediaType as MediaType | undefined) ?? defaultType);
-        const sleeveCondition = csv?.sleeveCondition
-          ? fromDiscogsCondition(csv.sleeveCondition)
-          : bulkSleeve || null;
-        const mediaCondition = csv?.mediaCondition
-          ? fromDiscogsCondition(csv.mediaCondition)
-          : bulkMedia || null;
+        // Precedence: per-row override → CSV value → bulk default.
+        const sleeveCondition =
+          row.sleeve ||
+          (csv?.sleeveCondition ? fromDiscogsCondition(csv.sleeveCondition) : null) ||
+          bulkSleeve ||
+          null;
+        const mediaCondition =
+          row.media ||
+          (csv?.mediaCondition ? fromDiscogsCondition(csv.mediaCondition) : null) ||
+          bulkMedia ||
+          null;
         const created = await itemRepo.create({
           collectionId: collection.id,
           type,
@@ -226,6 +239,7 @@ export function BulkAddPanel() {
           })),
           barcode: release.barcode?.[0] ?? (row.line.kind === 'barcode' ? row.line.raw : null),
           catalogNumber: csv?.catalogNumber ?? (row.line.kind === 'catno' ? row.line.raw : null),
+          purchasePrice: row.price,
           sleeveCondition,
           mediaCondition,
           notes: csv?.notes ?? null,
@@ -347,6 +361,19 @@ export function BulkAddPanel() {
             key={row.id}
             row={row}
             typeLabels={typeLabels}
+            expanded={expandedRows.has(row.id)}
+            onToggleExpand={
+              phase === 'review' && row.status === 'matched'
+                ? () =>
+                    setExpandedRows((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(row.id)) next.delete(row.id);
+                      else next.add(row.id);
+                      return next;
+                    })
+                : undefined
+            }
+            onPatch={(patch) => patchRow(row.id, patch)}
             onToggle={
               phase === 'review' && row.status === 'matched'
                 ? () => patchRow(row.id, { include: !row.include })
@@ -466,10 +493,16 @@ function BulkRowView({
   row,
   typeLabels,
   onToggle,
+  expanded = false,
+  onToggleExpand,
+  onPatch,
 }: {
   row: BulkRow;
   typeLabels: Record<MediaType, string>;
   onToggle?: () => void;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+  onPatch?: (patch: Partial<BulkRow>) => void;
 }) {
   const { t } = useTranslation();
   const rel = row.release;
@@ -498,45 +531,94 @@ function BulkRowView({
   })();
 
   return (
-    <li className="rounded-base border-border-default bg-surface shadow-neu-2xs flex items-center gap-3 border px-4 py-3">
-      {onToggle ? (
-        <input
-          type="checkbox"
-          checked={row.include}
-          onChange={onToggle}
-          className="h-4 w-4 shrink-0"
-          aria-label={t('add:bulk.include_aria', { title: rel?.title ?? row.line.raw })}
-        />
-      ) : null}
-      <span className="rounded-base shadow-neu-inset block h-12 w-12 shrink-0 overflow-hidden">
-        {rel ? (
-          <CoverImage
-            releaseId={`bulk-${row.id}`}
-            coverPath={null}
-            coverRemote={rel.thumbUrl ?? rel.coverUrl}
-            alt={rel.title}
-            size="thumb"
+    <li className="rounded-base border-border-default bg-surface shadow-neu-2xs border">
+      <div className="flex items-center gap-3 px-4 py-3">
+        {onToggle ? (
+          <input
+            type="checkbox"
+            checked={row.include}
+            onChange={onToggle}
+            className="h-4 w-4 shrink-0"
+            aria-label={t('add:bulk.include_aria', { title: rel?.title ?? row.line.raw })}
           />
-        ) : (
-          <span className="text-fg-body-subtle flex h-full w-full items-center justify-center text-xs">?</span>
-        )}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-fg-heading block truncate text-sm font-medium">
-          {rel ? rel.title : row.line.raw}
-        </span>
-        <span className="text-fg-body-subtle block truncate text-xs">
-          {rel
-            ? `${rel.artist}${rel.year ? ` · ${rel.year}` : ''}${
-                rel.mediaType ? ` · ${typeLabels[rel.mediaType as MediaType] ?? rel.mediaType}` : ''
-              }`
-            : t(`add:bulk.kind.${row.line.kind}`)}
-        </span>
-        {row.error ? (
-          <span className="text-fg-danger block truncate text-xs">{row.error}</span>
         ) : null}
-      </span>
-      {statusBadge}
+        <span className="rounded-base shadow-neu-inset block h-12 w-12 shrink-0 overflow-hidden">
+          {rel ? (
+            <CoverImage
+              releaseId={`bulk-${row.id}`}
+              coverPath={null}
+              coverRemote={rel.thumbUrl ?? rel.coverUrl}
+              alt={rel.title}
+              size="thumb"
+            />
+          ) : (
+            <span className="text-fg-body-subtle flex h-full w-full items-center justify-center text-xs">?</span>
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="text-fg-heading block truncate text-sm font-medium">
+            {rel ? rel.title : row.line.raw}
+          </span>
+          <span className="text-fg-body-subtle block truncate text-xs">
+            {rel
+              ? `${rel.artist}${rel.year ? ` · ${rel.year}` : ''}${
+                  rel.mediaType ? ` · ${typeLabels[rel.mediaType as MediaType] ?? rel.mediaType}` : ''
+                }`
+              : t(`add:bulk.kind.${row.line.kind}`)}
+          </span>
+          {row.error ? (
+            <span className="text-fg-danger block truncate text-xs">{row.error}</span>
+          ) : null}
+          {row.status === 'matched' && (row.sleeve || row.media || row.price != null) ? (
+            <span className="text-fg-brand block truncate text-xs">
+              {[row.sleeve || null, row.media || null, row.price != null ? `$${row.price.toFixed(2)}` : null]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          ) : null}
+        </span>
+        {onToggleExpand ? (
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-expanded={expanded}
+            aria-label={t('add:bulk.row_edit_aria', { title: rel?.title ?? row.line.raw })}
+            className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-base transition-neu ${
+              expanded ? 'text-fg-brand-strong shadow-neu-inset' : 'text-fg-body-subtle hover:text-fg-body hover:shadow-neu-2xs'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} aria-hidden>
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ) : null}
+        {statusBadge}
+      </div>
+      {expanded && onPatch ? (
+        <div className="border-border-default flex flex-wrap items-end gap-x-6 gap-y-4 border-t px-4 py-4">
+          <ConditionPicker
+            label={t('detail:my_notes.sleeve')}
+            value={row.sleeve}
+            onChange={(v) => onPatch({ sleeve: v })}
+          />
+          <ConditionPicker
+            label={t('detail:my_notes.media')}
+            value={row.media}
+            onChange={(v) => onPatch({ media: v })}
+          />
+          <div className="w-32">
+            <Input
+              label={t('add:form.purchase_price')}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={row.price ?? ''}
+              onChange={(e) => onPatch({ price: e.target.value ? Number(e.target.value) : null })}
+            />
+          </div>
+        </div>
+      ) : null}
     </li>
   );
 }

@@ -39,6 +39,8 @@
   "rail.collection.by_genre": "По жанрам",
   "rail.collection.by_artist": "По артистам",
   "rail.collection.total_releases": "всего релизов",
+  "rail.collection.display": "Отображение",
+  "rail.collection.tile_status": "Статусы на плитках",
   "rail.detail.lyrics_badge": "текст",
   "rail.detail.tracklist": "Треклист",
   "rail.detail.tracklist_aria": "Треклист",

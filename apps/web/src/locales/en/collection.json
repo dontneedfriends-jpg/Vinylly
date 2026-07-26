@@ -27,6 +27,8 @@
   "bulk_edit.apply": "Apply",
   "bulk_edit.done": "Updated {{count}} releases",
   "bulk_edit.error": "Bulk edit failed: {{error}}",
+  "tile.no_price": "no price",
+  "tile.no_location": "no shelf",
   "search.placeholder": "Title or artist",
   "sort.added_asc": "Oldest first",
   "sort.added_desc": "Newest first",

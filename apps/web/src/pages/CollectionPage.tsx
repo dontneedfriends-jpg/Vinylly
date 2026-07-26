@@ -28,6 +28,7 @@ export function CollectionPage() {
   const sort = useUi((s) => s.sort);
   const viewMode = useUi((s) => s.viewMode);
   const setViewMode = useUi((s) => s.setViewMode);
+  const showTileStatus = useUi((s) => s.showTileStatus);
   const openDetail = useUi((s) => s.openDetail);
   const openAdd = useUi((s) => s.openAdd);
   const showToast = useUi((s) => s.showToast);
@@ -249,6 +250,7 @@ export function CollectionPage() {
                 onDelete={() => onDelete(it)}
                 selecting={selecting}
                 selected={selectedIds.has(it.id)}
+                showStatus={showTileStatus}
               />
             </div>
           ))}
@@ -268,6 +270,7 @@ export function CollectionPage() {
                 onDelete={() => onDelete(it)}
                 selecting={selecting}
                 selected={selectedIds.has(it.id)}
+                showStatus={showTileStatus}
               />
             </li>
           ))}
@@ -294,6 +297,7 @@ function ItemTile({
   onDelete,
   selecting = false,
   selected = false,
+  showStatus = false,
 }: {
   item: ItemRecord;
   onOpen: () => void;
@@ -301,6 +305,7 @@ function ItemTile({
   onDelete: () => void;
   selecting?: boolean;
   selected?: boolean;
+  showStatus?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -376,9 +381,28 @@ function ItemTile({
           <p className="text-fg-body-subtle mt-1 line-clamp-1 text-sm leading-relaxed">
             {item.release.artist}
           </p>
+          {showStatus ? <TileStatus item={item} /> : null}
         </div>
       </button>
     </Card>
+  );
+}
+
+function TileStatus({ item, className = '' }: { item: ItemRecord; className?: string }) {
+  const { t } = useTranslation();
+  return (
+    <p className={`mt-1 flex flex-wrap items-center gap-x-2 text-xs leading-relaxed ${className}`}>
+      {item.purchasePrice != null ? (
+        <span className="text-fg-body-subtle tabular-nums">${item.purchasePrice.toFixed(2)}</span>
+      ) : (
+        <span className="text-fg-warning">{t('collection:tile.no_price')}</span>
+      )}
+      {item.location ? (
+        <span className="text-fg-body-subtle max-w-full truncate">· {item.location}</span>
+      ) : (
+        <span className="text-fg-warning">· {t('collection:tile.no_location')}</span>
+      )}
+    </p>
   );
 }
 
@@ -389,6 +413,7 @@ function ListItemTile({
   onDelete,
   selecting = false,
   selected = false,
+  showStatus = false,
 }: {
   item: ItemRecord;
   onOpen: () => void;
@@ -396,6 +421,7 @@ function ListItemTile({
   onDelete: () => void;
   selecting?: boolean;
   selected?: boolean;
+  showStatus?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -448,6 +474,7 @@ function ListItemTile({
             <p className="text-fg-body-subtle mt-0.5 truncate text-xs leading-relaxed">
               {item.release.artist}
             </p>
+            {showStatus ? <TileStatus item={item} /> : null}
           </span>
           <span className="text-fg-body-subtle hidden items-center gap-2 text-xs sm:flex">
             <VinylIcon />

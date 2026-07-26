@@ -51,6 +51,7 @@
   "bulk.kind.discogs_id": "Discogs id",
   "bulk.kind.text": "Текстовый поиск",
   "bulk.resolve_button": "Найти совпадения ({{count}})",
+  "bulk.row_edit_aria": "Состояние и цена для «{{title}}»",
   "bulk.resolving": "Ищу совпадения…",
   "bulk.status.duplicate": "Уже есть",
   "bulk.status.failed": "Ошибка",
