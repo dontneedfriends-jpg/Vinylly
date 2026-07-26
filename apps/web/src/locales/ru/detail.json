@@ -47,5 +47,10 @@
   "page.no_release": "Релиз не выбран",
   "page.to_collection": "К коллекции",
   "hero.update_cover": "Заменить обложку",
+  "gallery.more_title": "Ещё {{count}}",
+  "gallery.more_aria": "Показать ещё {{count}} изображений",
+  "gallery.preview_aria": "Просмотр изображения",
+  "gallery.prev_aria": "Предыдущее изображение",
+  "gallery.next_aria": "Следующее изображение",
   "tracklist.title": "Треклист"
 }

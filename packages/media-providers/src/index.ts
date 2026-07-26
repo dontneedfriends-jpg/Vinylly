@@ -270,18 +270,25 @@ export class ProvidersRegistry {
   }
 
   async searchAll(query: SearchQuery): Promise<SearchResult[]> {
-    // Fire Discogs + MusicBrainz in parallel
-    const [discogsResults, mbResults] = await Promise.all([
-      this.discogs?.isEnabled()
-        ? this.discogs.search(query).catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-      this.musicbrainz.search(query).catch(() => [] as SearchResult[]),
-    ]);
+    // Discogs is primary and fast (~300ms). MusicBrainz is rate-limited and
+    // routinely takes 2-6s — fire it in the background but NEVER wait for it
+    // when Discogs produces results.
+    const mbPromise = this.musicbrainz
+      .search(query)
+      .catch(() => [] as SearchResult[]);
 
-    // Discogs is primary: if it returned anything, use only Discogs
-    if (discogsResults.length > 0) return discogsResults;
+    if (this.discogs?.isEnabled()) {
+      const discogsResults = await this.discogs.search(query).catch(() => [] as SearchResult[]);
+      if (discogsResults.length > 0) {
+        // Let MB finish in the background (its cache entry is still useful
+        // for a later retry); swallow to avoid unhandled rejection.
+        void mbPromise.catch(() => []);
+        return discogsResults;
+      }
+    }
 
-    // Fallback to MusicBrainz
+    // Discogs empty or disabled — MusicBrainz is the fallback, wait for it.
+    const mbResults = await mbPromise;
     if (mbResults.length > 0) return mbResults;
 
     // Last resort: Last.fm

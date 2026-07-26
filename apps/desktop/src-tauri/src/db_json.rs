@@ -35,6 +35,11 @@ pub struct DbSnapshot {
     pub tracks: Vec<Value>,
     #[serde(default)]
     pub wantlist: Vec<Value>,
+    /// Per-profile settings (Discogs token etc.) — camelCase to match the JS side.
+    /// Without this field serde silently dropped the token on every db_replace,
+    /// which is why saved tokens vanished on restart.
+    #[serde(default, rename = "profileSettings")]
+    pub profile_settings: Option<Value>,
 }
 
 /// Per-profile on-disk config (`data/profiles/<id>/config.json`).

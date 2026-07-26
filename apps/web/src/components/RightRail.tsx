@@ -8,6 +8,8 @@ import type { MediaType } from '@vinylly/db';
 import { ExternalLink } from './ExternalLink';
 import { stripMarkup } from '../lib/text';
 import { computeCollectionStats, computeFinanceStats } from '../lib/stats';
+import { formatDuration, formatMoney } from '../lib/format';
+import { useTypeLabels } from '../lib/type-labels';
 
 /* ─────────── DETAIL RAIL — Tracklist ─────────── */
 
@@ -147,7 +149,7 @@ function VideoRail() {
 
   return (
     <div>
-      <h4 className="text-fg-body-subtle mb-3 text-xs font-medium uppercase tracking-wide">
+      <h4 className="text-fg-body-subtle mb-3 text-xs font-medium">
         {t('layout:rail.detail.video')}
       </h4>
       <div className="flex flex-col gap-2">
@@ -180,13 +182,21 @@ function CollectionRail() {
   const setFilterTags = useUi((s) => s.setFilterTags);
   const setSort = useUi((s) => s.setSort);
   const [localSearch, setLocalSearch] = useState(search);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
 
-  const typeLabels: Record<string, string> = {
-    vinyl: t('common:media.vinyl'),
-    cd: t('common:media.cd'),
-    cassette: t('common:media.cassette'),
-    other: t('common:media.other'),
-  };
+  const typeLabels = useTypeLabels();
+
+  // Keep the field in sync when the applied search changes elsewhere (reset, hotkey).
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
+  // Debounced apply — no Enter required.
+  useEffect(() => {
+    if (localSearch === search) return;
+    const id = setTimeout(() => setSearch(localSearch), 300);
+    return () => clearTimeout(id);
+  }, [localSearch, search, setSearch]);
 
   const typeFilterOptions: Array<{ value: 'all' | MediaType; label: string }> = [
     { value: 'all', label: t('collection:filter.all') },
@@ -215,6 +225,8 @@ function CollectionRail() {
     return [...set].sort();
   }, [items]);
 
+  const visibleTags = tagsExpanded ? allTags : allTags.slice(0, 8);
+
   const hasFilters = filterType !== 'all' || search !== '' || filterTags.length > 0;
 
   return (
@@ -236,11 +248,11 @@ function CollectionRail() {
       {/* Tag filter */}
       {allTags.length > 0 ? (
         <div>
-          <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
+          <h4 className="text-fg-body-subtle mb-2 text-xs font-medium">
             {t('layout:rail.collection.filter_tags')}
           </h4>
           <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-wrap gap-1 border p-2">
-            {allTags.map((tag) => {
+            {visibleTags.map((tag) => {
               const active = filterTags.includes(tag);
               return (
                 <button
@@ -252,7 +264,7 @@ function CollectionRail() {
                       : [...filterTags, tag];
                     setFilterTags(next);
                   }}
-                  className={`rounded-base px-2 py-1 text-[11px] font-medium transition-neu ${
+                  className={`rounded-base px-2 py-1 text-xs font-medium transition-neu ${
                     active
                       ? 'bg-surface text-fg-brand-strong shadow-neu-sm border border-border-default'
                       : 'text-fg-body-subtle hover:text-fg-body border border-transparent hover:shadow-neu-2xs'
@@ -262,6 +274,17 @@ function CollectionRail() {
                 </button>
               );
             })}
+            {allTags.length > 8 ? (
+              <button
+                type="button"
+                onClick={() => setTagsExpanded((v) => !v)}
+                className="rounded-base text-fg-brand hover:text-fg-brand-strong px-2 py-1 text-xs font-medium transition-neu"
+              >
+                {tagsExpanded
+                  ? t('common:button.show_less')
+                  : t('common:button.show_more', { count: allTags.length - 8 })}
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -311,7 +334,7 @@ function CollectionRail() {
       {/* Active filters summary */}
       {hasFilters ? (
         <div>
-          <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
+          <h4 className="text-fg-body-subtle mb-2 text-xs font-medium">
             {t('layout:rail.collection.active_filters')}
           </h4>
           <div className="flex flex-wrap gap-2">
@@ -351,7 +374,7 @@ function CollectionRail() {
 function VerticalGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <h4 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
+      <h4 className="text-fg-body-subtle mb-2 text-xs font-medium">
         {label}
       </h4>
       <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-0.5 border p-1.5">
@@ -369,12 +392,7 @@ function StatsRail() {
   const counts = useMemo(() => computeCollectionStats(items), [items]);
   const finances = useMemo(() => computeFinanceStats(items), [items]);
 
-  const typeLabels: Record<string, string> = {
-    vinyl: t('common:media.vinyl'),
-    cd: t('common:media.cd'),
-    cassette: t('common:media.cassette'),
-    other: t('common:media.other'),
-  };
+  const typeLabels = useTypeLabels();
 
   if (!items.length) {
     return (
@@ -465,7 +483,7 @@ function StatsRail() {
               </div>
             ) : null}
           </div>
-          <div className="text-fg-body-subtle mt-3 text-[11px]">
+          <div className="text-fg-body-subtle mt-3 text-xs">
             {finances.itemsWithPrice > 0
               ? t('stats:finances.priced_count', {
                   count: finances.itemsWithPrice,
@@ -629,18 +647,6 @@ export function RightRail() {
 }
 
 /* ─────────── HELPERS ─────────── */
-
-function formatDuration(ms: number): string {
-  const total = Math.round(ms / 1000);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatMoney(amount: number, { showSign = false }: { showSign?: boolean } = {}): string {
-  const sign = showSign ? (amount >= 0 ? '+' : '-') : '';
-  return `${sign}$${Math.abs(amount).toFixed(2)}`;
-}
 
 function MusicNoteIcon() {
   return (

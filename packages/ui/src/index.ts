@@ -33,3 +33,5 @@ export type { PageHeaderProps } from './PageHeader';
 
 export { ConfirmModal } from './ConfirmModal';
 export type { ConfirmModalProps } from './ConfirmModal';
+
+export { useDialogA11y } from './useDialogA11y';

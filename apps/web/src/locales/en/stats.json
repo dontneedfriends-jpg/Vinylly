@@ -38,5 +38,7 @@
   "refresh.done_with_failures": "Updated {{updated}} of {{total}}, {{failed}} failed",
   "refresh.discogs_required": "Discogs token required",
   "refresh.no_targets": "No Discogs releases to refresh",
-  "refresh.not_available": "Not in Tauri environment"
+  "refresh.not_available": "Not in Tauri environment",
+  "about.title": "Collection overview",
+  "chart.bar_aria": "Bar chart"
 }

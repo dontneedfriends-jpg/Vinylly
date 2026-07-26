@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@vinylly/ui';
 import { useSettings } from '../lib/settings-store';
 import { getProvidersRegistry } from '../lib/providers';
@@ -11,12 +12,11 @@ import { ImportProgress } from './ImportProgress';
 interface DiscogsPanelProps {
   /** True when this panel belongs to the active profile; controls/imports require it. */
   isActive: boolean;
-  /** When non-null, the active profile is being viewed for someone else; imports are blocked. */
-  readOnlyToken?: boolean;
 }
 
 export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const token = useSettings((s) => s.discogsToken);
   const username = useSettings((s) => s.discogsUsername);
   const syncEnabled = useSettings((s) => s.discogsSyncEnabled);
@@ -115,6 +115,7 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
       });
       await Promise.all(workers);
       if (importId !== importCounterRef.current) return;
+      await queryClient.invalidateQueries({ queryKey: ['items'] });
       setImportStatus({
         kind: 'ok',
         message: t('settings:discogs.import_success', {
@@ -184,6 +185,7 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
       });
       await Promise.all(workers);
       if (importId !== importCounterRef.current) return;
+      await queryClient.invalidateQueries({ queryKey: ['wantlist'] });
       setImportStatus({
         kind: 'ok',
         message: t('settings:discogs.wantlist_import_success', {
@@ -317,7 +319,7 @@ function Row({
   return (
     <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-6">
       <div className="min-w-0">
-        <div className="text-fg-body-subtle text-xs uppercase tracking-wide">{label}</div>
+        <div className="text-fg-body-subtle text-xs">{label}</div>
         {value ? <div className="text-fg-heading mt-0.5 break-all text-sm">{value}</div> : null}
       </div>
       <div className="shrink-0">{children}</div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Textarea, Badge, Input, PageHeader, ConditionPicker, TagInput } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
@@ -9,21 +9,19 @@ import { CoverImage } from '../components/CoverImage';
 import { Gallery } from '../components/Gallery';
 import { ExternalLink } from '../components/ExternalLink';
 import { MasterVariants } from '../components/MasterVariants';
+import { BackButton } from '../components/BackButton';
 import { getProvidersRegistry } from '../lib/providers';
-import type { MediaType, ItemRecord } from '@vinylly/db';
+import type { ItemRecord } from '@vinylly/db';
 import { itemRepo } from '../lib/db';
 import { getHostShell } from '@vinylly/host';
 import { stripMarkup } from '../lib/text';
+import { useUndoableDelete } from '../lib/undo-delete';
+import { useTypeLabels } from '../lib/type-labels';
 
 export function DetailPage() {
   const { t } = useTranslation();
   const itemId = useUi((s) => s.detailItemId);
-  const typeLabels: Record<MediaType, string> = {
-    vinyl: t('common:media.vinyl'),
-    cd: t('common:media.cd'),
-    cassette: t('common:media.cassette'),
-    other: t('common:media.other'),
-  };
+  const typeLabels = useTypeLabels();
 
   const openCollection = useUi((s) => s.openCollection);
   const openArtist = useUi((s) => s.openArtist);
@@ -62,10 +60,6 @@ export function DetailPage() {
   const hideToast = useUi((s) => s.hideToast);
   const discogsUsername = useSettings((s) => s.discogsUsername);
   const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
-  const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sectionRef = useRef<HTMLElement>(null);
-  const [scheduledItemId, setScheduledItemId] = useState<string | null>(null);
-  const [scheduledSnapshot, setScheduledSnapshot] = useState<ItemRecord | null>(null);
 
   const syncDiscogsDelete = (itemArg: ItemRecord | undefined | null) => {
     if (!itemArg || !discogsUsername || !discogsSyncEnabled) return;
@@ -73,6 +67,28 @@ export function DetailPage() {
     const registry = getProvidersRegistry();
     void registry.removeFromDiscogsCollection(discogsUsername, Number(itemArg.release.sourceId), itemArg.discogsInstanceId);
   };
+
+  const { schedule, pending, clearPending } = useUndoableDelete<ItemRecord>(
+    useCallback(
+      (deleteTarget, clear) => {
+        removeItem.mutate(deleteTarget.id, {
+          onSuccess: () => {
+            hideToast();
+            void queryClient.invalidateQueries({ queryKey: ['items'] });
+            void queryClient.invalidateQueries({ queryKey: ['item', deleteTarget.id] });
+            syncDiscogsDelete(deleteTarget);
+          },
+          onError: (err) => {
+            clear();
+            hideToast();
+            showToast(t('collection:item.delete_error', { error: String(err) }));
+          },
+        });
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [removeItem, hideToast, showToast, queryClient, t, discogsUsername, discogsSyncEnabled],
+    ),
+  );
 
   const itemIdKey = item?.id;
   useEffect(() => {
@@ -86,17 +102,11 @@ export function DetailPage() {
       setTags(current.tags ?? []);
     }
     // Switching items invalidates any pending delete on the previous one
-    setScheduledItemId(null);
-    setScheduledSnapshot(null);
-    if (removeTimerRef.current) {
-      clearTimeout(removeTimerRef.current);
-      removeTimerRef.current = null;
-    }
+    clearPending();
     // Reset scroll to top on item change so the user sees the cover/hero, not
     // a mid-page section carried over from the previous item.
     if (itemIdKey) {
       window.scrollTo({ top: 0, behavior: 'auto' });
-      sectionRef.current?.scrollIntoView?.({ block: 'start' });
     }
     // Re-seed form state only when switching to a different item — not on every refetch
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,7 +205,7 @@ export function DetailPage() {
     return (
       <section>
         <PageHeader title={t('detail:page.no_release')} />
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
           <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
         </div>
       </section>
@@ -212,17 +222,17 @@ export function DetailPage() {
     return (
       <section>
         <PageHeader title={t('detail:page.no_release')} />
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
           <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
         </div>
       </section>
     );
   }
-  if (scheduledItemId === item.id) {
+  if (pending?.id === item.id) {
     return (
       <section>
         <PageHeader title={t('detail:page.no_release')} />
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
           <Button onClick={openCollection}>{t('detail:page.to_collection')}</Button>
         </div>
       </section>
@@ -245,64 +255,12 @@ export function DetailPage() {
   };
 
   const onDelete = () => {
-    if (removeTimerRef.current) {
-      clearTimeout(removeTimerRef.current);
-      removeTimerRef.current = null;
-      const prevId = scheduledItemId;
-      const prevSnapshot = scheduledSnapshot;
-      if (prevId) {
-        setScheduledItemId(null);
-        setScheduledSnapshot(null);
-        removeItem.mutate(prevId, {
-          onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: ['items'] });
-            void queryClient.invalidateQueries({ queryKey: ['item', prevId] });
-            syncDiscogsDelete(prevSnapshot);
-          },
-          onError: (err) => {
-            showToast(t('collection:item.delete_error', { error: String(err) }));
-          },
-        });
-      }
-    }
-    const snapshot = item;
-    const id = snapshot.id;
-    const title = snapshot.release.title;
-    setScheduledItemId(id);
-    setScheduledSnapshot(snapshot);
-    showToast(t('detail:page.deleted_undo', { title }), {
-      label: t('common:button.undo'),
-      onClick: () => {
-        if (removeTimerRef.current) {
-          clearTimeout(removeTimerRef.current);
-          removeTimerRef.current = null;
-        }
-        setScheduledItemId(null);
-        setScheduledSnapshot(null);
-        hideToast();
-      },
-    });
-    removeTimerRef.current = setTimeout(() => {
-      removeTimerRef.current = null;
-      removeItem.mutate(id, {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({ queryKey: ['items'] });
-          void queryClient.invalidateQueries({ queryKey: ['item', id] });
-          syncDiscogsDelete(scheduledSnapshot ?? snapshot);
-        },
-        onError: (err) => {
-          setScheduledItemId(null);
-          setScheduledSnapshot(null);
-          hideToast();
-          showToast(t('collection:item.delete_error', { error: String(err) }));
-        },
-      });
-    }, 4000);
+    schedule(item, t('detail:page.deleted_undo', { title: item.release.title }));
   };
 
 
   return (
-    <section ref={sectionRef} className="animate-rise">
+    <section className="animate-rise">
       {/* ─── Hero: Cover + Key Info ─── */}
       <div className="flex flex-col gap-8 md:flex-row">
         {/* Cover */}
@@ -314,6 +272,7 @@ export function DetailPage() {
               coverRemote={item.release.coverRemote}
               alt={item.release.title}
               size="full"
+              elevated={false}
               onClick={() => setLightboxTrigger((n) => n + 1)}
             />
           </div>
@@ -385,11 +344,9 @@ export function DetailPage() {
           ) : null}
 
           <div className="flex items-center gap-2">
-            <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />}>
-              {t('detail:page.to_collection')}
-            </Button>
+            <BackButton onClick={openCollection} label={t('detail:page.to_collection')} />
             <Button
-              variant="neutral"
+              variant="danger"
               onClick={onDelete}
               leftIcon={<TrashIcon />}
             >
@@ -404,18 +361,18 @@ export function DetailPage() {
         {/* Об альбоме */}
         {albumNotes || wikipediaHtml || extendedMeta || aboutLoading ? (
           <section>
-            <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:about.title')}</h2>
+            <h2 className="text-fg-heading mb-5 text-lg font-semibold">{t('detail:about.title')}</h2>
             {aboutLoading ? (
-              <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+              <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
                 <p className="text-fg-body-subtle text-sm">{t('detail:about.loading')}</p>
               </div>
             ) : (
-              <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+              <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
                 <div className="flex flex-col gap-6">
                   {extendedMeta ? (
-                    <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
+                    <div className="rounded-base border-border-default bg-surface shadow-neu-inset grid border p-2 gap-x-8 md:grid-cols-2">
                       {extendedMeta.country ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.country')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.country}
@@ -423,7 +380,7 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.released ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.release_date')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.released}
@@ -431,7 +388,7 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.format ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.format')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.format}
@@ -439,7 +396,7 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.labels?.length ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.label')}</span>
                           <span className="text-fg-heading text-right text-sm font-medium">
                             {extendedMeta.labels.join(', ')}
@@ -447,7 +404,7 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.barcode?.length ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.barcode')}</span>
                           <span className="text-fg-heading text-right font-mono text-xs font-medium">
                             {extendedMeta.barcode.join(', ')}
@@ -455,7 +412,7 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.community ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">
                             {t('detail:about.have_want')}
                           </span>
@@ -465,7 +422,7 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.community?.rating ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.rating')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             ★ {extendedMeta.community.rating.average.toFixed(2)} ({extendedMeta.community.rating.count})
@@ -473,13 +430,13 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.numForSale != null ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.for_sale')}</span>
                           <span className="text-fg-heading text-sm font-medium">{extendedMeta.numForSale}</span>
                         </div>
                       ) : null}
                       {extendedMeta.lowestPrice != null ? (
-                        <div className="border-border-default flex items-center justify-between gap-4 border-b pb-2">
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.lowest_price')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             ${extendedMeta.lowestPrice.toFixed(2)}
@@ -487,7 +444,7 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.extraArtists?.length ? (
-                        <div className="border-border-default col-span-full flex flex-col gap-1 border-b pb-2">
+                        <div className="col-span-full flex flex-col gap-1 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.artists')}</span>
                           <span className="text-fg-heading text-sm font-medium">
                             {extendedMeta.extraArtists
@@ -497,7 +454,7 @@ export function DetailPage() {
                         </div>
                       ) : null}
                       {extendedMeta.discogsUrl ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 px-4 py-2.5">
                           <span className="text-fg-body-subtle text-sm">{t('detail:about.discogs')}</span>
                           <ExternalLink
                             href={extendedMeta.discogsUrl}
@@ -512,7 +469,7 @@ export function DetailPage() {
                   ) : null}
                   {albumNotes ? (
                     <div>
-                      <span className="text-fg-body-subtle block text-xs font-medium uppercase tracking-wide">
+                      <span className="text-fg-body-subtle block text-xs font-medium">
                         {t('detail:about.notes_discogs')}
                       </span>
                       <p className="text-fg-body mt-2 whitespace-pre-wrap text-sm leading-relaxed">
@@ -522,7 +479,7 @@ export function DetailPage() {
                   ) : null}
                   {wikipediaHtml ? (
                     <div>
-                      <span className="text-fg-body-subtle block text-xs font-medium uppercase tracking-wide">
+                      <span className="text-fg-body-subtle block text-xs font-medium">
                         {t('detail:about.wikipedia')}
                       </span>
                       <p className="text-fg-body mt-2 text-sm leading-relaxed">{wikipediaHtml}</p>
@@ -536,8 +493,8 @@ export function DetailPage() {
 
         {/* Мои заметки */}
         <section>
-          <h2 className="text-fg-heading mb-5 text-2xl font-semibold">{t('detail:my_notes.title')}</h2>
-          <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+          <h2 className="text-fg-heading mb-5 text-lg font-semibold">{t('detail:my_notes.title')}</h2>
+          <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
             <div className="grid gap-x-6 gap-y-5 md:grid-cols-3">
               <Input
                 label={t('detail:my_notes.location')}
@@ -706,21 +663,6 @@ function UploadIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden>
       <path d="M12 16V4M6 10l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 20h16" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BackIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-      aria-hidden
-    >
-      <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

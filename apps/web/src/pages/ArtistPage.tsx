@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, PageHeader } from '@vinylly/ui';
+import { Button, PageHeader, SegmentedControl, Skeleton } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useItems, useWantlist } from '../lib/queries';
 import type { ItemRecord, MediaType, WantlistEntry } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
+import { BackButton } from '../components/BackButton';
 import { getProvidersRegistry } from '../lib/providers';
 import { stripMarkup } from '../lib/text';
 
@@ -100,13 +101,19 @@ export function ArtistPage() {
     { value: 'other', label: t('common:media.other') },
   ];
 
+  const segmentedOptions = formatOptions.map((opt) => ({
+    value: opt.value,
+    label:
+      opt.value === 'all'
+        ? opt.label
+        : `${opt.label} (${owned.filter((it) => it.type === opt.value).length})`,
+  }));
+
   if (!artistName) {
     return (
       <section className="animate-rise">
         <PageHeader level="h1" title={t('artist:page.no_artist')} />
-        <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />} size="sm">
-          {t('common:button.back')}
-        </Button>
+        <BackButton onClick={openCollection} label={t('common:button.back')} />
       </section>
     );
   }
@@ -121,9 +128,7 @@ export function ArtistPage() {
         title={info?.name ?? artistName}
         subtitle={t('artist:page.subtitle', { owned: owned.length, wanted: wanted.length })}
         actions={
-          <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />} size="sm">
-            {t('common:button.back')}
-          </Button>
+          <BackButton onClick={openCollection} label={t('common:button.back')} />
         }
       />
 
@@ -138,10 +143,10 @@ export function ArtistPage() {
           >
             {infoLoading ? (
               <>
-                <div className="rounded-base shadow-neu-2xs bg-surface h-14 w-14 shrink-0 animate-pulse" />
+                <Skeleton width={56} height={56} rounded="lg" className="shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="bg-surface shadow-neu-2xs h-4 w-2/3 animate-pulse rounded" />
-                  <div className="bg-surface shadow-neu-2xs h-3 w-1/2 animate-pulse rounded" />
+                  <Skeleton width="66%" height="1rem" />
+                  <Skeleton width="50%" height="0.75rem" />
                 </div>
               </>
             ) : info ? (
@@ -202,29 +207,16 @@ export function ArtistPage() {
             />
           </div>
 
-          {/* Format filter chips */}
+          {/* Format filter */}
           {owned.length > 0 ? (
-            <div className="rounded-base bg-surface shadow-neu-inset mb-4 flex flex-wrap gap-1 p-1">
-              {formatOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setFormatFilter(opt.value)}
-                  className={`rounded-base px-3 py-1 text-xs transition-neu ${
-                    formatFilter === opt.value
-                      ? 'bg-surface text-fg-heading shadow-neu-2xs font-medium'
-                      : 'text-fg-body-subtle hover:text-fg-body'
-                  }`}
-                >
-                  {opt.label}
-                  {opt.value !== 'all' && (
-                    <span className="text-fg-body-subtle ml-1">
-                      ({owned.filter((it) => it.type === opt.value).length})
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              options={segmentedOptions}
+              value={formatFilter}
+              onChange={(v) => setFormatFilter(v as FormatFilter)}
+              size="sm"
+              ariaLabel={t('artist:format.all')}
+              className="mb-4 flex w-full"
+            />
           ) : null}
 
           {filteredOwned.length === 0 ? (
@@ -240,7 +232,7 @@ export function ArtistPage() {
                   key={it.id}
                   type="button"
                   onClick={() => openDetail(it.id)}
-                  className="rounded-base shadow-neu-2xs hover:shadow-neu-inset bg-surface aspect-square overflow-hidden transition-shadow"
+                  className="rounded-base shadow-neu-2xs hover:shadow-neu-xs bg-surface aspect-square overflow-hidden transition-neu"
                   title={`${it.release.title} (${it.release.year ?? '—'})`}
                 >
                   <CoverImage
@@ -350,16 +342,8 @@ function CompletionBadge({
         <span className="text-fg-body-subtle ml-1 font-normal">({finalPct}%)</span>
       </span>
       {filter !== 'all' ? (
-        <span className="text-fg-body-subtle text-[10px]">{estimateLabel}</span>
+        <span className="text-fg-body-subtle text-xs">{estimateLabel}</span>
       ) : null}
     </div>
-  );
-}
-
-function BackIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M19 12H5m6-6-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

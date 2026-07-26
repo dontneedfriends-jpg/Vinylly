@@ -170,7 +170,7 @@ function Thumbnail({
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-surface">
-          <span className="text-fg-body-subtle text-[10px]">…</span>
+          <span className="text-fg-body-subtle text-xs">…</span>
         </div>
       )}
     </button>
@@ -180,12 +180,13 @@ function Thumbnail({
 /* ─── MoreTile ─── */
 
 function MoreTile({ count, onClick }: { count: number; onClick: () => void }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onClick}
-      title={`Ещё ${count}`}
-      aria-label={`Показать ещё ${count} изображений`}
+      title={t('detail:gallery.more_title', { count })}
+      aria-label={t('detail:gallery.more_aria', { count })}
       className="border-border-default-medium shadow-neu-2xs hover:shadow-neu-xs flex aspect-square items-center justify-center rounded-base border transition-neu"
     >
       <span className="text-fg-heading text-sm font-semibold">+{count}</span>
@@ -346,13 +347,13 @@ function Lightbox({
         if (e.key === 'ArrowRight') goNext();
       }}
       role="dialog"
-      aria-label="Image preview"
+      aria-label={t('detail:gallery.preview_aria')}
     >
       <button
         type="button"
         onClick={onClose}
         className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-overlay-control text-fg-on-overlay hover:bg-overlay-control-hover transition-colors"
-        aria-label="Close"
+        aria-label={t('common:button.close')}
       >
         <CloseIcon />
       </button>
@@ -362,7 +363,7 @@ function Lightbox({
           type="button"
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
           className="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-overlay-control text-fg-on-overlay hover:bg-overlay-control-hover transition-colors"
-          aria-label="Previous"
+          aria-label={t('detail:gallery.prev_aria')}
         >
           <ChevronLeftIcon />
         </button>
@@ -373,7 +374,7 @@ function Lightbox({
           type="button"
           onClick={(e) => { e.stopPropagation(); goNext(); }}
           className="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-overlay-control text-fg-on-overlay hover:bg-overlay-control-hover transition-colors"
-          aria-label="Next"
+          aria-label={t('detail:gallery.next_aria')}
         >
           <ChevronRightIcon />
         </button>

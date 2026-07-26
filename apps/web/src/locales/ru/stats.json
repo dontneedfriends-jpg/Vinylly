@@ -38,5 +38,7 @@
   "refresh.done_with_failures": "Обновлено: {{updated}} из {{total}}, ошибок: {{failed}}",
   "refresh.discogs_required": "Нужен Discogs-токен",
   "refresh.no_targets": "Нет релизов Discogs для обновления",
-  "refresh.not_available": "Не в Tauri-среде"
+  "refresh.not_available": "Не в Tauri-среде",
+  "about.title": "Обзор коллекции",
+  "chart.bar_aria": "Столбчатая диаграмма"
 }

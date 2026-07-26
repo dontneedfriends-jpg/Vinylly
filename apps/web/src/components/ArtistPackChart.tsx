@@ -1,24 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SegmentedControl } from '@vinylly/ui';
 import { useItems } from '../lib/queries';
 import { getProvidersRegistry } from '../lib/providers';
+import { useChartColors } from '../lib/chart-colors';
 
 type PackMode = 'artist' | 'genre';
 
 const SEP_RE = /\s*(?:[&＆]|feat\.|featuring|ft\.?|with|[,／/])\s*/i;
-
-const GROUP_COLORS = [
-  '#0F62FE',
-  '#FA4D56',
-  '#24A148',
-  '#FF832B',
-  '#8A3FFC',
-  '#009D9A',
-  '#EE5396',
-  '#D12765',
-  '#1192E8',
-  '#A56EFF',
-];
 
 function parse(raw: string): string[] {
   const t = raw.trim();
@@ -33,6 +22,7 @@ export function ArtistPackChart() {
   const [limit, setLimit] = useState(25);
   const [lfmEdges, setLfmEdges] = useState<Map<string, Set<string>>>(new Map());
   const fetching = useRef(false);
+  const chartColors = useChartColors();
 
   // build co-occurrence from multi-artist fields
   const localEdges = useMemo(() => {
@@ -168,49 +158,28 @@ export function ArtistPackChart() {
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
-        <div
-          role="radiogroup"
-          aria-label={t('layout:rail.collection.by_artist')}
-          className="flex gap-1 rounded-base border-border-default bg-surface shadow-neu-inset border p-0.5"
-        >
-          <button
-            type="button"
-            role="radio"
-            aria-checked={mode === 'artist'}
-            onClick={() => setMode('artist')}
-            className={`rounded-sm px-2.5 py-0.5 text-xs font-medium transition-neu ${
-              mode === 'artist'
-                ? 'bg-surface text-fg-brand-strong shadow-neu-xs'
-                : 'text-fg-body-subtle hover:text-fg-body'
-            }`}
-          >
-            {t('layout:rail.collection.by_artist')}
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={mode === 'genre'}
-            onClick={() => setMode('genre')}
-            className={`rounded-sm px-2.5 py-0.5 text-xs font-medium transition-neu ${
-              mode === 'genre'
-                ? 'bg-surface text-fg-brand-strong shadow-neu-xs'
-                : 'text-fg-body-subtle hover:text-fg-body'
-            }`}
-          >
-            {t('layout:rail.collection.by_genre')}
-          </button>
-        </div>
-        <select
-          aria-label={t('layout:rail.collection.by_artist')}
-          value={limit}
-          onChange={(e) => setLimit(Number(e.target.value))}
-          className="rounded-base border-border-default bg-surface text-fg-body-subtle px-2 py-0.5 text-xs"
-        >
-          <option value={10}>10</option>
-          <option value={25}>25</option>
-          <option value={50}>50</option>
-        </select>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <SegmentedControl
+          options={[
+            { value: 'artist', label: t('layout:rail.collection.by_artist') },
+            { value: 'genre', label: t('layout:rail.collection.by_genre') },
+          ]}
+          value={mode}
+          onChange={(v) => setMode(v as PackMode)}
+          size="sm"
+          ariaLabel={t('layout:rail.collection.by_artist')}
+        />
+        <SegmentedControl
+          options={[
+            { value: '10', label: '10' },
+            { value: '25', label: '25' },
+            { value: '50', label: '50' },
+          ]}
+          value={String(limit)}
+          onChange={(v) => setLimit(Number(v))}
+          size="sm"
+          ariaLabel={t('layout:rail.collection.by_artist')}
+        />
       </div>
 
       <div className="rounded-base border-border-default bg-surface shadow-neu-inset border p-3">
@@ -220,7 +189,7 @@ export function ArtistPackChart() {
             const size = 48 + ratio * 72;
             const fontSize = 9 + ratio * 4;
             const color = mode === 'artist'
-              ? GROUP_COLORS[(groupMap.get(entry.label) ?? 0) % GROUP_COLORS.length]
+              ? chartColors.palette[(groupMap.get(entry.label) ?? 0) % chartColors.palette.length]
               : undefined;
 
             return (

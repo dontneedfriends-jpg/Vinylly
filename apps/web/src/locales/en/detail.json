@@ -47,5 +47,10 @@
   "page.no_release": "No release selected",
   "page.to_collection": "To collection",
   "hero.update_cover": "Update cover",
+  "gallery.more_title": "{{count}} more",
+  "gallery.more_aria": "Show {{count}} more images",
+  "gallery.preview_aria": "Image preview",
+  "gallery.prev_aria": "Previous image",
+  "gallery.next_aria": "Next image",
   "tracklist.title": "Tracklist"
 }

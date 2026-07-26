@@ -3,7 +3,10 @@
   "button.cancel": "Cancel",
   "button.close": "Close",
   "button.delete": "Delete",
+  "button.dismiss": "Dismiss",
   "button.save": "Save",
+  "button.show_less": "Show less",
+  "button.show_more": "{{count}} more",
   "button.undo": "Undo",
   "button.saving": "Saving…",
   "cover.no_cover": "No cover",
@@ -20,5 +23,6 @@
   "media.label_cd": "CD",
   "media.label_vinyl": "Vinyl",
   "media.other": "Other",
-  "media.vinyl": "Vinyl"
+  "media.vinyl": "Vinyl",
+  "shortcuts.help": "1 Collection · 2 Add · 3 Wantlist · 4 Stats · 5 Settings · / Search · ? Help"
 }

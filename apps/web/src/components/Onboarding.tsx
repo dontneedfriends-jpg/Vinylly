@@ -53,12 +53,12 @@ export function Onboarding() {
         <Card>
           {step === 'language' ? (
             <>
-              <CardHeader className="pb-6 pt-8">
+              <CardHeader>
                 <h2 className="text-fg-heading text-center text-lg font-semibold">
                   {t('settings:onboarding.step_language')}
                 </h2>
               </CardHeader>
-              <CardBody className="px-8 py-6">
+              <CardBody>
                 <div role="radiogroup" aria-label={t('settings:onboarding.step_language')} className="flex flex-col gap-4">
                   {[
                     { value: 'ru', label: 'Русский' },
@@ -74,8 +74,8 @@ export function Onboarding() {
                         onClick={() => setSelectedLang(lang.value)}
                         className={`rounded-base flex items-center gap-4 px-6 py-5 text-left text-base font-medium transition-neu ${
                           selected
-                            ? 'text-fg-brand-strong bg-surface shadow-neu-inset border-border-brand border'
-                            : 'text-fg-body bg-surface shadow-neu-sm hover:shadow-neu-md border-border-default border'
+                            ? 'text-fg-brand-strong bg-surface shadow-neu-inset border border-transparent'
+                            : 'text-fg-body bg-surface shadow-neu-sm hover:shadow-neu-md border border-transparent'
                         }`}
                       >
                         <span
@@ -99,7 +99,7 @@ export function Onboarding() {
                   })}
                 </div>
               </CardBody>
-              <div className="flex justify-end px-8 pb-8">
+              <div className="flex justify-end px-6 pb-6">
                 <Button onClick={onLanguageNext} leftIcon={<ArrowRightIcon />}>
                   {t('settings:onboarding.continue')}
                 </Button>
@@ -107,30 +107,21 @@ export function Onboarding() {
             </>
           ) : (
             <>
-              <CardHeader className="pb-6 pt-8">
+              <CardHeader>
                 <h2 className="text-fg-heading text-center text-lg font-semibold">
                   {t('settings:onboarding.step_token')}
                 </h2>
               </CardHeader>
-              <CardBody className="space-y-6 px-8 py-6">
+              <CardBody className="space-y-6">
                 <p className="text-fg-body text-sm leading-relaxed">
                   {t('settings:onboarding.step_token_desc')}
                 </p>
 
                 {/* Instructions */}
                 <div className="rounded-base border-border-default bg-surface shadow-neu-inset space-y-3 border px-6 py-5">
-                  <div className="flex items-start gap-3 text-sm">
-                    <span className="text-fg-brand-strong mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold">1</span>
-                    <span className="text-fg-body">{t('settings:onboarding.step_token_instruction_1')}</span>
-                  </div>
-                  <div className="flex items-start gap-3 text-sm">
-                    <span className="text-fg-brand-strong mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold">2</span>
-                    <span className="text-fg-body">{t('settings:onboarding.step_token_instruction_2')}</span>
-                  </div>
-                  <div className="flex items-start gap-3 text-sm">
-                    <span className="text-fg-brand-strong mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold">3</span>
-                    <span className="text-fg-body">{t('settings:onboarding.step_token_instruction_3')}</span>
-                  </div>
+                  <p className="text-fg-body text-sm">{t('settings:onboarding.step_token_instruction_1')}</p>
+                  <p className="text-fg-body text-sm">{t('settings:onboarding.step_token_instruction_2')}</p>
+                  <p className="text-fg-body text-sm">{t('settings:onboarding.step_token_instruction_3')}</p>
                 </div>
 
                 <Input
@@ -143,7 +134,7 @@ export function Onboarding() {
                   spellCheck={false}
                 />
               </CardBody>
-              <div className="flex items-center justify-between px-8 pb-8">
+              <div className="flex items-center justify-between px-6 pb-6">
                 <Button variant="ghost" onClick={onSkip}>
                   {t('settings:onboarding.skip')}
                 </Button>

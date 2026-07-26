@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Input } from '@vinylly/ui';
+import { Button, Input, useDialogA11y } from '@vinylly/ui';
 import { useSettings } from '../lib/settings-store';
 import { useProfileStore } from '../lib/profile-store';
-import { setProfileSettings, getProfileSettings } from '@vinylly/db';
+import { setProfileSettings } from '@vinylly/db';
 import { DiscogsPanel } from './DiscogsPanel';
 
 interface ProfileSettingsProps {
@@ -31,28 +31,35 @@ export function ProfileSettings({ profileId, onClose }: ProfileSettingsProps) {
     message: '',
   });
   const [busy, setBusy] = useState<null | 'save' | 'clear'>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(dialogRef, Boolean(profileId), onClose);
 
   const isActive = profileId === activeId;
-  const inputType = !token ? 'password' : revealed ? 'text' : 'password';
 
-  // If we are viewing a non-active profile, load its settings on mount.
+  // Non-active profile: read ITS config (active profile's settings must never
+  // leak into another profile's view — and never write them into the global store).
+  const [otherSettings, setOtherSettings] = useState<{
+    discogsToken: string;
+    discogsUsername: string;
+    discogsSyncEnabled: boolean;
+  } | null>(null);
+
   useEffect(() => {
-    if (!profileId || isActive) return;
+    if (!profileId || isActive) {
+      setOtherSettings(null);
+      return;
+    }
     let cancelled = false;
-    (async () => {
-      const settings = await getProfileSettings().catch(() => null);
-      if (cancelled || !settings) return;
-      useSettings.setState({
-        discogsToken: settings.discogsToken,
-        discogsUsername: settings.discogsUsername,
-        discogsSyncEnabled: settings.discogsSyncEnabled,
-        ready: true,
-      });
-    })();
+    void readProfileConfigFor(profileId).then((s) => {
+      if (!cancelled) setOtherSettings(s);
+    });
     return () => {
       cancelled = true;
     };
   }, [profileId, isActive]);
+
+  const effectiveToken = isActive ? token : (otherSettings?.discogsToken ?? '');
+  const inputType = !effectiveToken ? 'password' : revealed ? 'text' : 'password';
 
   if (!profileId) return null;
 
@@ -67,12 +74,15 @@ export function ProfileSettings({ profileId, onClose }: ProfileSettingsProps) {
     setStatus({ kind: 'idle', message: '' });
     try {
       await setProfileSettingsForProfile(profileId, { discogsToken: next });
-      if (isActive) await setToken(next);
+      if (isActive) {
+        await setToken(next);
+        await reload();
+      } else {
+        setOtherSettings(await readProfileConfigFor(profileId));
+      }
       setDraft('');
       setRevealed(false);
       setStatus({ kind: 'ok', message: t('settings:discogs.saved_ok') });
-      // Refresh settings store so live reads pick up the change.
-      await reload();
     } catch (err) {
       setStatus({ kind: 'error', message: t('settings:discogs.test_fail', { error: String(err) }) });
     } finally {
@@ -89,12 +99,16 @@ export function ProfileSettings({ profileId, onClose }: ProfileSettingsProps) {
         discogsUsername: '',
         discogsSyncEnabled: true,
       });
-      if (isActive) await clearToken();
+      if (isActive) {
+        await clearToken();
+        await reload();
+      } else {
+        setOtherSettings(await readProfileConfigFor(profileId));
+      }
       setDraft('');
       setRevealed(false);
       setConfirmingDelete(false);
       setStatus({ kind: 'ok', message: t('settings:discogs.cleared_ok') });
-      await reload();
     } catch (err) {
       setStatus({ kind: 'error', message: t('settings:discogs.test_fail', { error: String(err) }) });
     } finally {
@@ -109,7 +123,7 @@ export function ProfileSettings({ profileId, onClose }: ProfileSettingsProps) {
       aria-modal="true"
       aria-labelledby="profile-settings-title"
     >
-      <div className="rounded-base border-border-default bg-surface shadow-neu-xl relative isolate w-full max-w-xl max-h-[90vh] overflow-y-auto border">
+      <div ref={dialogRef} className="rounded-base border-border-default bg-surface shadow-neu-xl relative isolate w-full max-w-xl max-h-[90vh] overflow-y-auto border">
         <header className="border-border-default sticky top-0 z-10 flex items-center justify-between border-b bg-surface px-6 py-4">
           <div>
             <h2 id="profile-settings-title" className="text-fg-heading text-lg font-semibold">
@@ -137,7 +151,7 @@ export function ProfileSettings({ profileId, onClose }: ProfileSettingsProps) {
               autoComplete="off"
               spellCheck={false}
               placeholder={
-                token && draft === ''
+                effectiveToken && draft === ''
                   ? t(revealed ? 'settings:discogs.placeholder_configured_revealed' : 'settings:discogs.placeholder_configured_hidden')
                   : t('settings:discogs.placeholder_empty')
               }
@@ -147,7 +161,7 @@ export function ProfileSettings({ profileId, onClose }: ProfileSettingsProps) {
                 setStatus({ kind: 'idle', message: '' });
               }}
               rightIcon={
-                token ? (
+                effectiveToken ? (
                   <button
                     type="button"
                     onClick={() => setRevealed((r) => !r)}
@@ -160,16 +174,16 @@ export function ProfileSettings({ profileId, onClose }: ProfileSettingsProps) {
               }
             />
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-              {draft.trim() || !token ? (
+              {draft.trim() || !effectiveToken ? (
                 <Button type="submit" size="sm" disabled={busy === 'save'} leftIcon={busy === 'save' ? undefined : <SaveIcon />}>
                   {busy === 'save'
                     ? t('settings:discogs.save_progress')
-                    : token
+                    : effectiveToken
                       ? t('settings:discogs.save_change')
                       : t('settings:discogs.save_new')}
                 </Button>
               ) : null}
-              {token && !confirmingDelete ? (
+              {effectiveToken && !confirmingDelete ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -180,7 +194,7 @@ export function ProfileSettings({ profileId, onClose }: ProfileSettingsProps) {
                   {t('settings:discogs.delete_button')}
                 </Button>
               ) : null}
-              {token && confirmingDelete ? (
+              {effectiveToken && confirmingDelete ? (
                 <>
                   <span className="text-fg-body-subtle text-xs">{t('settings:discogs.delete_confirm')}</span>
                   <Button
@@ -241,6 +255,46 @@ async function setProfileSettingsForProfile(
       ...(partial.discogsSyncEnabled !== undefined ? { discogs_sync_enabled: partial.discogsSyncEnabled } : {}),
     },
   });
+}
+
+async function readProfileConfigFor(profileId: string): Promise<{
+  discogsToken: string;
+  discogsUsername: string;
+  discogsSyncEnabled: boolean;
+}> {
+  const defaults = { discogsToken: '', discogsUsername: '', discogsSyncEnabled: true };
+  if (typeof window === 'undefined') return defaults;
+  const w = window as unknown as {
+    __TAURI_INTERNALS__?: { invoke: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T> };
+  };
+  if (w.__TAURI_INTERNALS__) {
+    try {
+      const cfg = await Promise.race([
+        w.__TAURI_INTERNALS__.invoke<{
+          discogs_token?: string;
+          discogs_username?: string;
+          discogs_sync_enabled?: boolean;
+        }>('db_get_profile_config', { profileId }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('db_get_profile_config timed out')), 2000),
+        ),
+      ]);
+      return {
+        discogsToken: cfg.discogs_token ?? '',
+        discogsUsername: cfg.discogs_username ?? '',
+        discogsSyncEnabled: cfg.discogs_sync_enabled ?? true,
+      };
+    } catch {
+      return defaults;
+    }
+  }
+  try {
+    const raw = localStorage.getItem(`vinylly:profile-config:${profileId}`);
+    const parsed = raw ? (JSON.parse(raw) as Partial<typeof defaults>) : {};
+    return { ...defaults, ...parsed };
+  } catch {
+    return defaults;
+  }
 }
 
 function writeWebProfileConfig(

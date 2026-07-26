@@ -1,6 +1,20 @@
 use base64::Engine;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, USER_AGENT};
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+
+/// Shared client — keeps TCP/TLS connections alive across requests instead of
+/// paying a full handshake on every call (was: new client per command).
+static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn shared_client() -> &'static reqwest::Client {
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .user_agent("Vinylly/0.1 (Tauri)")
+            .build()
+            .expect("failed to build reqwest client")
+    })
+}
 
 #[derive(Deserialize, Default)]
 pub struct FetchInit {
@@ -59,11 +73,8 @@ pub struct FetchResponse {
 #[tauri::command]
 pub async fn net_fetch(url: String, init: Option<FetchInit>) -> Result<FetchResponse, String> {
     let init = init.unwrap_or_default();
-    let client = reqwest::Client::builder()
-        .user_agent("Vinylly/0.1 (Tauri)")
-        .build()
-        .map_err(|e| e.to_string())?;
-    let resp = build_request(&client, &url, &init)
+    let client = shared_client();
+    let resp = build_request(client, &url, &init)
         .send()
         .await
         .map_err(|e| e.to_string())?;
@@ -98,11 +109,8 @@ pub async fn net_fetch(url: String, init: Option<FetchInit>) -> Result<FetchResp
 #[tauri::command]
 pub async fn net_fetch_binary(url: String, init: Option<FetchInit>) -> Result<Vec<u8>, String> {
     let init = init.unwrap_or_default();
-    let client = reqwest::Client::builder()
-        .user_agent("Vinylly/0.1 (Tauri)")
-        .build()
-        .map_err(|e| e.to_string())?;
-    let resp = build_request(&client, &url, &init)
+    let client = shared_client();
+    let resp = build_request(client, &url, &init)
         .send()
         .await
         .map_err(|e| e.to_string())?;
@@ -120,10 +128,7 @@ pub async fn cover_download(url: String, dest: String) -> Result<String, String>
             .await
             .map_err(|e| e.to_string())?;
     }
-    let client = reqwest::Client::builder()
-        .user_agent("Vinylly/0.1 (Tauri)")
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = shared_client();
     let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
         return Err(format!("cover download failed: {} {}", resp.status(), url));

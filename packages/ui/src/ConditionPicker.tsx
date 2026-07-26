@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 export interface ConditionOption {
   value: string;
   label: string;
@@ -27,12 +29,17 @@ export function ConditionPicker({
   label,
   options = DEFAULT_OPTIONS,
 }: ConditionPickerProps) {
+  const labelId = useId();
   return (
     <div>
       {label ? (
-        <label className="text-fg-heading mb-2 block text-sm font-medium">{label}</label>
+        <span id={labelId} className="text-fg-heading mb-2 block text-sm font-medium">{label}</span>
       ) : null}
-      <div className="rounded-base border-border-default bg-surface shadow-neu-inset inline-grid grid-cols-4 gap-1 border p-1.5">
+      <div
+        role="group"
+        aria-labelledby={label ? labelId : undefined}
+        className="rounded-base border-border-default bg-surface shadow-neu-inset inline-grid grid-cols-4 gap-1 border p-1.5"
+      >
         {options.map((opt) => {
           const active = opt.value === value;
           return (

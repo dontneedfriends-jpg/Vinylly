@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -25,10 +25,14 @@ import {
   type NormalizedRelease,
 } from '@vinylly/media-providers';
 import { getHostShell } from '@vinylly/host';
-import type { MediaType, CreateItemInput } from '@vinylly/db';
+import type { MediaType, CreateItemInput, ItemRecord } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
 import { Gallery } from '../components/Gallery';
+import { BackButton } from '../components/BackButton';
+import { BulkAddPanel } from '../components/BulkAddPanel';
 import { getProvidersRegistry } from '../lib/providers';
+import { useUndoableDelete } from '../lib/undo-delete';
+import { useTypeLabels } from '../lib/type-labels';
 
 const discogsFormatMap: Record<string, string | undefined> = {
   Vinyl: 'Vinyl',
@@ -51,14 +55,42 @@ export function AddPage() {
   const { data: wantlist = [] } = useWantlist();
   const addToWantlist = useAddToWantlist();
   const wantlistRemove = useRemoveFromWantlist();
-  const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const discogsUsername = useSettings((s) => s.discogsUsername);
+  const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
 
-  const typeLabels: Record<MediaType, string> = {
-    vinyl: t('common:media.vinyl'),
-    cd: t('common:media.cd'),
-    cassette: t('common:media.cassette'),
-    other: t('common:media.other'),
-  };
+  const typeLabels = useTypeLabels();
+
+  const { schedule: scheduleDelete } = useUndoableDelete<ItemRecord>(
+    useCallback(
+      (snapshot, clear) => {
+        const shouldSync =
+          discogsUsername &&
+          discogsSyncEnabled &&
+          snapshot.discogsInstanceId != null &&
+          snapshot.release.source === 'discogs';
+        removeItem.mutate(snapshot.id, {
+          onSuccess: () => {
+            hideToast();
+            void queryClient.invalidateQueries({ queryKey: ['items'] });
+            void queryClient.invalidateQueries({ queryKey: ['item', snapshot.id] });
+            if (shouldSync) {
+              void getProvidersRegistry().removeFromDiscogsCollection(
+                discogsUsername!,
+                Number(snapshot.release.sourceId),
+                snapshot.discogsInstanceId!,
+              );
+            }
+          },
+          onError: (err) => {
+            clear();
+            hideToast();
+            showToast(t('collection:item.delete_error', { error: String(err) }));
+          },
+        });
+      },
+      [removeItem, hideToast, showToast, queryClient, discogsUsername, discogsSyncEnabled, t],
+    ),
+  );
 
   const formatFilterOptions: Array<{ value: string; label: string }> = [
     { value: '', label: t('common:filter.all') },
@@ -68,14 +100,13 @@ export function AddPage() {
   ];
 
   const [query, setQuery] = useState('');
+  const [addMode, setAddMode] = useState<'search' | 'bulk'>('search');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState<NormalizedRelease | null>(null);
   const [releaseDetail, setReleaseDetail] = useState<NormalizedRelease | null>(null);
   const [, setLoadingDetail] = useState(false);
 
-  const discogsUsername = useSettings((s) => s.discogsUsername);
-  const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
   const [type, setType] = useState<MediaType>('vinyl');
   const [syncDiscogs, setSyncDiscogs] = useState(true);
   const [formatFilter, setFormatFilter] = useState('');
@@ -307,60 +338,8 @@ export function AddPage() {
 
   const onRemoveFromCollection = () => {
     if (!existingItem) return;
-    if (removeTimerRef.current) {
-      clearTimeout(removeTimerRef.current);
-      removeTimerRef.current = null;
-    }
-    const snapshot = existingItem;
-    const id = snapshot.id;
-    showToast(t('add:form.removed_toast', { title: snapshot.release.title }), {
-      label: t('common:button.undo'),
-      onClick: () => {
-        if (removeTimerRef.current) {
-          clearTimeout(removeTimerRef.current);
-          removeTimerRef.current = null;
-        }
-        hideToast();
-      },
-    });
-    removeTimerRef.current = setTimeout(() => {
-      removeTimerRef.current = null;
-      const registry = getProvidersRegistry();
-      const shouldSync =
-        discogsUsername &&
-        discogsSyncEnabled &&
-        snapshot.discogsInstanceId != null &&
-        snapshot.release.source === 'discogs';
-      removeItem.mutate(id, {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({ queryKey: ['items'] });
-          void queryClient.invalidateQueries({ queryKey: ['item', id] });
-          if (shouldSync) {
-            void registry.removeFromDiscogsCollection(
-              discogsUsername!,
-              Number(snapshot.release.sourceId),
-              snapshot.discogsInstanceId!,
-            );
-          }
-        },
-        onError: (err) => {
-          hideToast();
-          showToast(t('collection:item.delete_error', { error: String(err) }));
-        },
-      });
-    }, 4000);
+    scheduleDelete(existingItem, t('add:form.removed_toast', { title: existingItem.release.title }));
   };
-
-  // Clear pending delete when navigating away from the form
-  useEffect(
-    () => () => {
-      if (removeTimerRef.current) {
-        clearTimeout(removeTimerRef.current);
-        removeTimerRef.current = null;
-      }
-    },
-    [],
-  );
 
   if (!selected) {
     return (
@@ -368,8 +347,24 @@ export function AddPage() {
         <PageHeader level="h1"
           title={t('add:page.title')}
           subtitle={t('add:page.subtitle')}
+          actions={
+            <SegmentedControl
+              options={[
+                { value: 'search', label: t('add:mode.single') },
+                { value: 'bulk', label: t('add:mode.bulk') },
+              ]}
+              value={addMode}
+              onChange={(v) => setAddMode(v as 'search' | 'bulk')}
+              size="sm"
+              ariaLabel={t('add:mode.aria')}
+            />
+          }
         />
 
+        {addMode === 'bulk' ? (
+          <BulkAddPanel />
+        ) : (
+          <>
         <Card className="mb-6">
           <CardBody>
             <div className="flex flex-col gap-4 sm:flex-row">
@@ -433,8 +428,9 @@ export function AddPage() {
             }
           />
         ) : results.length > 0 ? (
+          <>
 <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {results.map((r, i) => (
+          {results.slice(0, 24).map((r, i) => (
               <li
                 key={`${r.provider}-${r.release.sourceId}-${i}`}
                 className="animate-rise"
@@ -478,9 +474,17 @@ export function AddPage() {
               </li>
             ))}
           </ul>
+            {results.length > 24 ? (
+              <p className="text-fg-body-subtle mt-3 text-xs">
+                {t('add:search.more_results', { count: results.length - 24 })}
+              </p>
+            ) : null}
+          </>
         ) : !searching && results.length === 0 ? (
           <p className="text-fg-body-subtle text-sm">{t('add:search.hint')}</p>
         ) : null}
+          </>
+        )}
       </section>
     );
   }
@@ -488,7 +492,7 @@ export function AddPage() {
   return (
     <section className="animate-rise">
       <div className="w-full overflow-hidden text-left rounded-base border-border-default bg-surface shadow-neu-md border">
-        <div className="flex flex-col gap-6 p-10 md:flex-row">
+        <div className="flex flex-col gap-6 p-6 md:flex-row">
           <div className="w-full shrink-0 md:w-[180px]">
             <button
               type="button"
@@ -537,20 +541,14 @@ export function AddPage() {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <Button
-                variant="neutral"
-                onClick={onBackToSearch}
-                leftIcon={<BackIcon />}
-              >
-                {t('common:button.back')}
-              </Button>
+              <BackButton onClick={onBackToSearch} label={t('common:button.back')} />
               {existingItem ? (
                 <Button
-                  variant="secondary"
+                  variant="danger"
                   onClick={onRemoveFromCollection}
-                  leftIcon={<CheckIcon />}
+                  leftIcon={<TrashIcon />}
                 >
-                  {t('add:form.in_collection')}
+                  {t('add:form.remove_from_collection')}
                 </Button>
               ) : (
                 <Button
@@ -563,11 +561,11 @@ export function AddPage() {
               )}
               {existingWantlist ? (
                 <Button
-                  variant="secondary"
+                  variant="neutral"
                   onClick={() => void onRemoveFromWantlist()}
                   leftIcon={<HeartIcon />}
                 >
-                  {t('wantlist:form.in_wantlist')}
+                  {t('wantlist:form.remove_from_wantlist')}
                 </Button>
               ) : (
                 <Button
@@ -614,7 +612,7 @@ export function AddPage() {
 
       {/* ─── Form ─── */}
       <div className="mt-8">
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-10">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
           <h3 className="text-fg-heading mb-6 text-lg font-semibold">{t('add:form.manual_title')}</h3>
           <div className="mb-6">
             <span className="text-fg-heading mb-2 block text-sm font-medium">{t('add:form.media_type')}</span>
@@ -697,17 +695,10 @@ function ExternalLinkIcon() {
   );
 }
 
-function BackIcon() {
+function TrashIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-      aria-hidden
-    >
-      <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

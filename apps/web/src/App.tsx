@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Layout } from './components/Layout';
@@ -131,6 +131,7 @@ export function App() {
 }
 
 function KeyboardShortcuts() {
+  const { t } = useTranslation();
   const page = useUi((s) => s.page);
   const openCollection = useUi((s) => s.openCollection);
   const openAdd = useUi((s) => s.openAdd);
@@ -166,7 +167,7 @@ function KeyboardShortcuts() {
         case '?': {
           e.preventDefault();
           if (toast) { hideToast(); return; }
-          showToast('1 Коллекция · 2 Добавить · 3 Хочется · 4 Статистика · 5 Настройки · / Поиск · ? Помощь');
+          showToast(t('common:shortcuts.help'));
           break;
         }
         case '/': {
@@ -182,7 +183,7 @@ function KeyboardShortcuts() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [page, openCollection, openAdd, openSettings, openWantlist, openStats, showToast, hideToast, toast]);
+  }, [page, openCollection, openAdd, openSettings, openWantlist, openStats, showToast, hideToast, toast, t]);
 
   return null;
 }
@@ -191,17 +192,46 @@ function Toast() {
   const { t } = useTranslation();
   const toast = useUi((s) => s.toast);
   const hideToast = useUi((s) => s.hideToast);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remainingRef = useRef(0);
+  const endsAtRef = useRef(0);
 
+  // Auto-dismiss with pause-on-hover/focus (WCAG 2.2.1 — user must be able
+  // to extend the time limit on transient messages).
   useEffect(() => {
     if (!toast || !toast.duration) return;
-    const timer = setTimeout(hideToast, toast.duration);
-    return () => clearTimeout(timer);
+    remainingRef.current = toast.duration;
+    endsAtRef.current = Date.now() + toast.duration;
+    timerRef.current = setTimeout(hideToast, toast.duration);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = null;
+    };
   }, [toast, hideToast]);
+
+  const pause = () => {
+    if (!timerRef.current) return;
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+    remainingRef.current = Math.max(endsAtRef.current - Date.now(), 0);
+  };
+  const resume = () => {
+    if (timerRef.current || !toast?.duration) return;
+    const wait = Math.max(remainingRef.current, 500);
+    endsAtRef.current = Date.now() + wait;
+    timerRef.current = setTimeout(hideToast, wait);
+  };
 
   if (!toast) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-rise">
+    <div
+      className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-rise"
+      onMouseEnter={pause}
+      onMouseLeave={resume}
+      onFocus={pause}
+      onBlur={resume}
+    >
       <div className="rounded-base border-border-default bg-surface shadow-neu-lg flex items-center gap-4 border px-5 py-3">
         <span className="text-fg-body text-sm">{toast.message}</span>
         {toast.action ? (
@@ -217,7 +247,7 @@ function Toast() {
           type="button"
           onClick={hideToast}
           className="text-fg-body-subtle hover:text-fg-heading rounded-sm p-1 transition-colors"
-          aria-label={t('common:button.cancel')}
+          aria-label={t('common:button.dismiss')}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5" aria-hidden>
             <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />

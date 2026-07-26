@@ -23,7 +23,7 @@ export function ImportProgress({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="text-fg-body-subtle mt-1 text-[11px] tabular-nums">
+      <div className="text-fg-body-subtle mt-1 text-xs tabular-nums">
         {done} / {total} · {pct}%
       </div>
     </div>

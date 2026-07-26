@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, SegmentedControl } from '@vinylly/ui';
+import { useQueryClient } from '@tanstack/react-query';
+import { Button, ConfirmModal, PageHeader, SegmentedControl } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useLocale } from '../lib/locale-store';
 import { useTheme, type ThemeMode } from '../lib/theme';
 import { getAppInfo, type AppInfo } from '../lib/app-info';
 import { ExternalLink } from '../components/ExternalLink';
+import { BackButton } from '../components/BackButton';
 import { serializeDb, restoreFromJsonFile } from '../lib/db';
 import { useProfileStore } from '../lib/profile-store';
+import { useSettings } from '../lib/settings-store';
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -15,12 +18,13 @@ export function SettingsPage() {
 
   return (
     <section className="animate-rise max-w-5xl">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-fg-heading text-2xl font-semibold">{t('settings:page.title')}</h1>
-        <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />} size="sm">
-          {t('settings:page.to_collection')}
-        </Button>
-      </div>
+      <PageHeader
+        level="h1"
+        title={t('settings:page.title')}
+        actions={
+          <BackButton onClick={openCollection} label={t('settings:page.to_collection')} />
+        }
+      />
 
       <div className="grid gap-6 md:grid-cols-2">
         <AppearanceCard />
@@ -57,50 +61,20 @@ function AppearanceCard() {
           />
         </Row>
         <Row label={t('settings:theme.title')}>
-          <div
-            role="radiogroup"
-            aria-label={t('settings:theme.title')}
-            className="rounded-base bg-surface shadow-neu-inset inline-flex flex-wrap gap-1 p-1"
-          >
-            <ThemeChip mode="light" current={mode} onSelect={setMode} icon={<SunIcon />} label={t('settings:theme.light')} />
-            <ThemeChip mode="dark" current={mode} onSelect={setMode} icon={<MoonIcon />} label={t('settings:theme.dark')} />
-            <ThemeChip mode="auto" current={mode} onSelect={setMode} icon={<AutoIcon />} label={t('settings:theme.auto')} />
-          </div>
+          <SegmentedControl
+            value={mode}
+            onChange={(v) => setMode(v as ThemeMode)}
+            options={[
+              { value: 'light', label: t('settings:theme.light'), icon: <SunIcon /> },
+              { value: 'dark', label: t('settings:theme.dark'), icon: <MoonIcon /> },
+              { value: 'auto', label: t('settings:theme.auto'), icon: <AutoIcon /> },
+            ]}
+            size="sm"
+            ariaLabel={t('settings:theme.title')}
+          />
         </Row>
       </div>
     </CardShell>
-  );
-}
-
-function ThemeChip({
-  mode,
-  current,
-  onSelect,
-  icon,
-  label,
-}: {
-  mode: ThemeMode;
-  current: ThemeMode;
-  onSelect: (m: ThemeMode) => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  const active = mode === current;
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={active}
-      onClick={() => onSelect(mode)}
-      className={`flex min-h-[44px] items-center gap-2 rounded-base border border-transparent px-4 py-2.5 text-sm transition-neu ${
-        active
-          ? 'text-fg-heading font-semibold shadow-neu-inset'
-          : 'text-fg-body hover:text-fg-heading hover:shadow-neu-2xs'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
 
@@ -172,7 +146,9 @@ function ProfileSettingsModal({
 function DataCard() {
   const { t } = useTranslation();
   const showToast = useUi((s) => s.showToast);
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onBackup = async () => {
@@ -198,16 +174,26 @@ function DataCard() {
     }
   };
 
-  const onRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setConfirmRestore(file);
+  };
+
+  const doRestore = async () => {
+    const file = confirmRestore;
     if (!file) return;
     setBusy(true);
     try {
       await restoreFromJsonFile(file);
+      await useSettings.getState().reload();
+      await queryClient.invalidateQueries();
+      setConfirmRestore(null);
       showToast(t('settings:backup.restore_done'));
-      setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
       showToast(t('settings:backup.restore_error', { error: String(e) }));
+    } finally {
       setBusy(false);
     }
   };
@@ -229,6 +215,16 @@ function DataCard() {
         </Button>
         <input ref={fileRef} type="file" accept=".json" onChange={onRestore} className="hidden" />
       </div>
+      <ConfirmModal
+        open={Boolean(confirmRestore)}
+        title={t('settings:backup.restore_confirm_title')}
+        message={t('settings:backup.restore_confirm_message', { name: confirmRestore?.name ?? '' })}
+        confirmLabel={t('settings:backup.restore_button')}
+        cancelLabel={t('common:button.cancel')}
+        onConfirm={() => void doRestore()}
+        onCancel={() => setConfirmRestore(null)}
+        loading={busy}
+      />
     </CardShell>
   );
 }
@@ -275,7 +271,7 @@ function CryptoRow({ label, addr }: { label: string; addr: string }) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="text-fg-body-subtle w-14 shrink-0">{label}</span>
-      <code className="rounded-sm bg-surface px-2 py-0.5 text-[11px] break-all select-all shadow-neu-2xs">{addr}</code>
+      <code className="rounded-sm bg-surface px-2 py-0.5 text-xs break-all select-all shadow-neu-2xs">{addr}</code>
     </div>
   );
 }
@@ -356,7 +352,7 @@ function Row({ label, children, value }: { label: string; children: React.ReactN
   return (
     <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-6">
       <div className="min-w-0">
-        <div className="text-fg-body-subtle text-xs uppercase tracking-wide">{label}</div>
+        <div className="text-fg-body-subtle text-xs">{label}</div>
         {value ? <div className="text-fg-heading mt-0.5 break-all text-sm">{value}</div> : null}
       </div>
       <div className="shrink-0">{children}</div>
@@ -465,15 +461,7 @@ function UploadIcon() {
 function ExternalLinkIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3 w-3" aria-hidden>
-      <path d="M14 4h6v6M10 14L20 4M19 13v6a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function BackIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M19 12H5m6-6-6 6 6 6" strokeLinecap="round" />
+      <path d="M14 4h6v6M10 14L20 4M19 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1h6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

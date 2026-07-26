@@ -7,8 +7,10 @@ import { useDefaultCollection, useCreateItem, useItems, useRemoveFromWantlist, u
 import { useQueryClient } from '@tanstack/react-query';
 import { CoverImage } from '../components/CoverImage';
 import { Gallery } from '../components/Gallery';
+import { BackButton } from '../components/BackButton';
 import { tryGetHostShell } from '@vinylly/host';
 import { stripMarkup } from '../lib/text';
+import { useTypeLabels } from '../lib/type-labels';
 
 type ExtendedRelease = ReleaseRecord & {
   community?: { have: number; want: number; rating?: { average: number; count: number } };
@@ -35,6 +37,7 @@ export function ReleasePreviewPage() {
   const openCollection = useUi((s) => s.openCollection);
   const openWantlist = useUi((s) => s.openWantlist);
   const showToast = useUi((s) => s.showToast);
+  const typeLabels = useTypeLabels();
 
   const { data: wantlist = [] } = useWantlist();
   const { data: items = [] } = useItems({});
@@ -209,9 +212,7 @@ export function ReleasePreviewPage() {
     return (
       <section className="animate-rise">
         <PageHeader level="h1" title={t('release_preview.no_release')} />
-        <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />}>
-          {t('common:button.back')}
-        </Button>
+        <BackButton onClick={openCollection} label={t('common:button.back')} />
       </section>
     );
   }
@@ -228,11 +229,9 @@ export function ReleasePreviewPage() {
     return (
       <section className="animate-rise">
         <PageHeader level="h1" title={t('release_preview.error_title')} />
-        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-8">
+        <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
           <p className="text-fg-danger mb-4 text-sm">{error}</p>
-          <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />}>
-            {t('common:button.back')}
-          </Button>
+          <BackButton onClick={openCollection} label={t('common:button.back')} />
         </div>
       </section>
     );
@@ -240,29 +239,15 @@ export function ReleasePreviewPage() {
 
   if (!release) return null;
 
-  const typeLabels: Record<MediaType, string> = {
-    vinyl: t('common:media.vinyl'),
-    cd: t('common:media.cd'),
-    cassette: t('common:media.cassette'),
-    other: t('common:media.other'),
-  };
-
   const community = release.communityHave != null || release.communityWant != null
     ? { have: release.communityHave ?? 0, want: release.communityWant ?? 0 }
     : null;
 
   return (
     <section className="animate-rise">
-      <PageHeader
-        level="h1"
-        title={release.title}
-        subtitle={t('release_preview.subtitle', { source: release.source })}
-        actions={
-          <Button variant="neutral" onClick={openCollection} leftIcon={<BackIcon />} size="sm">
-            {t('common:button.back')}
-          </Button>
-        }
-      />
+      <div className="mb-6 flex justify-end">
+        <BackButton onClick={openCollection} label={t('common:button.back')} />
+      </div>
 
       <div className="flex flex-col gap-8 md:flex-row">
         {/* Cover */}
@@ -274,6 +259,7 @@ export function ReleasePreviewPage() {
               coverRemote={release.coverRemote}
               alt={release.title}
               size="full"
+              elevated={false}
               onClick={() => setLightboxTrigger((n) => n + 1)}
             />
           </div>
@@ -295,6 +281,9 @@ export function ReleasePreviewPage() {
             >
               {release.artist}
             </button>
+            <p className="text-fg-body-subtle mt-1 text-xs">
+              {t('release_preview.subtitle', { source: release.source })}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -330,7 +319,7 @@ export function ReleasePreviewPage() {
                         variant="neutral"
                         onClick={() => removeFromWantlist.mutate(inWantlist.id)}
                       >
-                        {t('wantlist:form.in_wantlist')}
+                        {t('wantlist:form.remove_from_wantlist')}
                       </Button>
                     ) : null}
                   </div>
@@ -393,7 +382,7 @@ export function ReleasePreviewPage() {
                         variant="neutral"
                         onClick={() => removeFromWantlist.mutate(inWantlist.id)}
                       >
-                        {t('wantlist:form.in_wantlist')}
+                        {t('wantlist:form.remove_from_wantlist')}
                       </Button>
                     ) : null}
                     <Button variant="ghost" onClick={openWantlist}>
@@ -411,7 +400,7 @@ export function ReleasePreviewPage() {
               <h3 className="text-fg-heading mb-3 text-sm font-semibold">
                 {t('release_preview.facts')}
               </h3>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <div className="rounded-base border-border-default bg-surface shadow-neu-inset grid border p-2 gap-x-6 md:grid-cols-2">
                 <Fact label={t('add:form.media_type')} value={typeLabels[type]} />
                 {release.year ? <Fact label={t('release_preview.year')} value={String(release.year)} /> : null}
                 {release.genres.length ? <Fact label={t('release_preview.genres')} value={release.genres.join(', ')} /> : null}
@@ -434,14 +423,14 @@ export function ReleasePreviewPage() {
                     value={release.numForSale.toLocaleString()}
                   />
                 ) : null}
-              </dl>
+              </div>
             </CardBody>
           </Card>
 
           {release.notes ? (
             <Card className="mt-2">
               <CardBody>
-                <h3 className="text-fg-body-subtle mb-2 text-xs font-medium uppercase tracking-wide">
+                <h3 className="text-fg-body-subtle mb-2 text-xs font-medium">
                   {t('detail:about.notes_discogs')}
                 </h3>
                 <p className="text-fg-body whitespace-pre-wrap text-sm leading-relaxed">
@@ -483,9 +472,9 @@ export function ReleasePreviewPage() {
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col">
-      <dt className="text-fg-body-subtle text-[11px] uppercase tracking-wide">{label}</dt>
-      <dd className="text-fg-heading mt-0.5 truncate text-sm">{value}</dd>
+    <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+      <span className="text-fg-body-subtle text-sm">{label}</span>
+      <span className="text-fg-heading truncate text-sm font-medium">{value}</span>
     </div>
   );
 }
@@ -498,14 +487,6 @@ function parseDuration(s: string | undefined): number | null {
   const sec = Number(m[2]);
   if (Number.isNaN(min) || Number.isNaN(sec)) return null;
   return (min * 60 + sec) * 1000;
-}
-
-function BackIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
-      <path d="M19 12H5m6-6-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 function PlusIcon() {

@@ -73,7 +73,7 @@ export function MasterVariants({ masterId, ownedItems, wantedReleases, currentSo
     <div className="rounded-base border-border-default bg-surface shadow-neu-inset border overflow-hidden">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-fg-body-subtle border-border-default border-b text-left text-xs uppercase tracking-wide">
+          <tr className="text-fg-body-subtle border-border-default border-b text-left text-xs">
             <th className="px-3 py-2 font-medium">{t('detail:variants.label')}</th>
             <th className="px-3 py-2 font-medium">{t('detail:variants.country')}</th>
             <th className="px-3 py-2 font-medium">{t('detail:variants.year')}</th>
@@ -97,7 +97,7 @@ export function MasterVariants({ masterId, ownedItems, wantedReleases, currentSo
               >
                 <td className="px-3 py-2">
                   <span className="block truncate">{v.label ?? '—'}</span>
-                  <span className="text-fg-body-subtle block truncate font-mono text-[11px]">
+                  <span className="text-fg-body-subtle block truncate font-mono text-xs">
                     {v.catno ?? '—'}
                   </span>
                 </td>
@@ -118,7 +118,7 @@ export function MasterVariants({ masterId, ownedItems, wantedReleases, currentSo
           })}
         </tbody>
       </table>
-      <div className="text-fg-body-subtle border-border-default border-t px-3 py-2 text-[11px]">
+      <div className="text-fg-body-subtle border-border-default border-t px-3 py-2 text-xs">
         {t('detail:variants.total', { count: state.versions.length })}
       </div>
     </div>

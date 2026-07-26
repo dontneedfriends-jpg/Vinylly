@@ -69,7 +69,7 @@ export function TagInput({ label, tags, onChange, placeholder, disabled, id }: T
               type="button"
               onClick={() => removeTag(tag)}
               disabled={disabled}
-              className="text-fg-body-subtle hover:text-fg-heading inline-flex h-3.5 w-3.5 items-center justify-center rounded-full transition-colors"
+              className="text-fg-body-subtle hover:text-fg-heading -m-1 inline-flex h-6 w-6 items-center justify-center rounded-full transition-colors"
               aria-label={`Remove tag ${tag}`}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5" aria-hidden>

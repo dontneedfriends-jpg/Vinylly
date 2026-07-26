@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SegmentedControl } from '@vinylly/ui';
 import { useItems } from '../lib/queries';
 import type { MediaType, ItemRecord } from '@vinylly/db';
 import { ArtistPackChart } from './ArtistPackChart';
@@ -13,17 +14,16 @@ import {
   computeMostValuable,
   computeRoiLeaders,
 } from '../lib/stats';
+import { formatMoney } from '../lib/format';
+import { useTypeLabels } from '../lib/type-labels';
+import { useChartColors } from '../lib/chart-colors';
 
 export function StatsPanel() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data: items = [] } = useItems({});
+  const chartColors = useChartColors();
 
-  const typeLabels: Record<string, string> = {
-    vinyl: t('common:media.vinyl'),
-    cd: t('common:media.cd'),
-    cassette: t('common:media.cassette'),
-    other: t('common:media.other'),
-  };
+  const typeLabels = useTypeLabels();
 
   const yearEntries = useMemo(() => {
     const yearMap: Record<string, number> = {};
@@ -130,19 +130,19 @@ export function StatsPanel() {
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const label = d.toLocaleDateString('en-US', { month: 'short' });
+      const label = d.toLocaleDateString(i18n.language, { month: 'short' });
       months.push({ key, count: counts[key] ?? 0, label });
     }
     const max = Math.max(...months.map((m) => m.count), 1);
     return { months, max };
-  }, [items]);
+  }, [items, i18n.language]);
 
   return (
     <div className="flex flex-col gap-6">
       {/* Charts — counts and finances live in the right rail */}
       {items.length > 0 ? (
         <div className="flex flex-col gap-6">
-          <h3 className="text-fg-heading text-lg font-semibold">{t('layout:rail.collection.about')}</h3>
+          <h3 className="text-fg-heading text-lg font-semibold">{t('stats:about.title')}</h3>
 
           <ArtistPackChart />
 
@@ -152,7 +152,7 @@ export function StatsPanel() {
 
           {genreEntries.length > 0 ? (
             <StatsPanelBlock label={t('layout:rail.collection.by_genre')}>
-              <BarChart data={genreEntries} maxBars={12} />
+              <BarChart data={genreEntries} maxBars={12} ariaLabel={t('stats:chart.bar_aria')} />
             </StatsPanelBlock>
           ) : null}
 
@@ -210,10 +210,7 @@ export function StatsPanel() {
               <div className="grid grid-cols-12 gap-1.5">
                 {activity.months.map((m) => {
                   const intensity = m.count === 0 ? 0 : Math.max(0.2, m.count / activity.max);
-                  const bg =
-                    m.count === 0
-                      ? 'bg-surface shadow-neu-2xs'
-                      : `bg-fg-brand/20`;
+                  const bg = m.count === 0 ? 'shadow-neu-2xs' : '';
                   return (
                     <div
                       key={m.key}
@@ -222,9 +219,13 @@ export function StatsPanel() {
                     >
                       <div
                         className={`rounded-base h-7 w-full ${bg}`}
-                        style={m.count > 0 ? { backgroundColor: `rgba(15, 98, 254, ${intensity})` } : undefined}
+                        style={
+                          m.count > 0
+                            ? { backgroundColor: chartColors.brand(intensity) }
+                            : { backgroundColor: chartColors.track }
+                        }
                       />
-                      <span className="text-fg-body-subtle text-[10px]">{m.label}</span>
+                      <span className="text-fg-body-subtle text-xs">{m.label}</span>
                     </div>
                   );
                 })}
@@ -317,7 +318,7 @@ export function StatsPanel() {
                           {t('stats:anniversaries.since', { year: it.release.year })}
                         </span>
                       </span>
-                      <span className="text-fg-body-subtle shrink-0 text-[10px]">→</span>
+                      <span className="text-fg-body-subtle shrink-0 text-xs">→</span>
                     </button>
                   );
                 })}
@@ -330,17 +331,16 @@ export function StatsPanel() {
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border p-4">
                 <DnaSection
                   title={t('stats:dna.decades')}
-                  segments={dna.decades.map((d) => ({ label: d.label, count: d.count, pct: d.pct }))}
-                  palette="decade"
+                  segments={dna.decades.map((d, i) => ({ label: d.label, count: d.count, pct: d.pct, color: chartColors.palette[i % chartColors.palette.length]! }))}
                 />
                 <DnaSection
                   title={t('stats:dna.formats')}
-                  segments={dna.formats.map((f) => ({
+                  segments={dna.formats.map((f, i) => ({
                     label: typeLabels[f.label as MediaType] ?? f.label,
                     count: f.count,
                     pct: f.pct,
+                    color: chartColors.palette[i % chartColors.palette.length]!,
                   }))}
-                  palette="format"
                 />
               </div>
             </StatsPanelBlock>
@@ -376,7 +376,7 @@ function StatsPanelBlock({
 }) {
   return (
     <section>
-      <div className="text-fg-heading mb-2 text-sm font-medium">{label}</div>
+      <h3 className="text-fg-heading mb-2 text-lg font-semibold">{label}</h3>
       <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
         {children}
       </div>
@@ -421,38 +421,20 @@ function YearDecadeSection({
   return (
     <section>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="text-fg-heading text-sm font-medium">{t('layout:rail.collection.by_year')}</div>
-        <div
-          role="radiogroup"
-          aria-label={t('layout:rail.collection.by_year')}
-          className="rounded-base bg-surface shadow-neu-inset flex items-center gap-0.5 p-0.5 text-[11px]"
-        >
-          <button
-            type="button"
-            role="radio"
-            aria-checked={mode === 'year'}
-            onClick={() => setMode('year')}
-            className={`rounded-base px-2.5 py-1 transition-[box-shadow,color] duration-200 ${
-              mode === 'year' ? 'bg-surface text-fg-heading shadow-neu-2xs' : 'text-fg-body-subtle hover:text-fg-body'
-            }`}
-          >
-            {t('stats:year_decade.year')}
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={mode === 'decade'}
-            onClick={() => setMode('decade')}
-            className={`rounded-base px-2.5 py-1 transition-[box-shadow,color] duration-200 ${
-              mode === 'decade' ? 'bg-surface text-fg-heading shadow-neu-2xs' : 'text-fg-body-subtle hover:text-fg-body'
-            }`}
-          >
-            {t('stats:year_decade.decade')}
-          </button>
-        </div>
+        <h3 className="text-fg-heading text-lg font-semibold">{t('layout:rail.collection.by_year')}</h3>
+        <SegmentedControl
+          options={[
+            { value: 'year', label: t('stats:year_decade.year') },
+            { value: 'decade', label: t('stats:year_decade.decade') },
+          ]}
+          value={mode}
+          onChange={(v) => setMode(v as 'year' | 'decade')}
+          size="sm"
+          ariaLabel={t('layout:rail.collection.by_year')}
+        />
       </div>
       <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
-        <BarChart data={data} maxBars={mode === 'year' ? 15 : 12} />
+        <BarChart data={data} maxBars={mode === 'year' ? 15 : 12} ariaLabel={t('stats:chart.bar_aria')} />
       </div>
     </section>
   );
@@ -461,40 +443,29 @@ function YearDecadeSection({
 function DnaSection({
   title,
   segments,
-  palette,
 }: {
   title: string;
-  segments: Array<{ label: string; count: number; pct: number }>;
-  palette: 'decade' | 'format';
+  segments: Array<{ label: string; count: number; pct: number; color: string }>;
 }) {
-  const decadeColors = ['#0f62fe', '#4589ff', '#0072c3', '#5b6677', '#8d8d8d', '#5e7c8b', '#9b82f3', '#b990ff'];
-  const formatColors: Record<string, string> = {
-    vinyl: '#0f62fe',
-    cd: '#4589ff',
-    cassette: '#b990ff',
-    other: '#8d8d8d',
-  };
-  const colorFor = (idx: number, label: string) =>
-    palette === 'format' ? formatColors[label] ?? '#8d8d8d' : decadeColors[idx % decadeColors.length]!;
   return (
     <div className="mb-4 last:mb-0">
-      <div className="text-fg-heading mb-2 text-xs font-medium">{title}</div>
+      <div className="text-fg-heading mb-2 text-sm font-medium">{title}</div>
       <div className="bg-surface shadow-neu-2xs flex h-3 w-full overflow-hidden rounded-base">
-        {segments.map((s, i) => (
+        {segments.map((s) => (
           <div
             key={s.label}
             className="h-full"
-            style={{ width: `${Math.max(s.pct * 100, 1.5)}%`, backgroundColor: colorFor(i, s.label) }}
+            style={{ width: `${Math.max(s.pct * 100, 1.5)}%`, backgroundColor: s.color }}
             title={`${s.label}: ${s.count} (${(s.pct * 100).toFixed(1)}%)`}
           />
         ))}
       </div>
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-        {segments.map((s, i) => (
+        {segments.map((s) => (
           <div key={s.label} className="flex items-center gap-1.5">
             <span
               className="inline-block h-2 w-2 rounded-sm"
-              style={{ backgroundColor: colorFor(i, s.label) }}
+              style={{ backgroundColor: s.color }}
             />
             <span className="text-fg-body">{s.label}</span>
             <span className="text-fg-body-subtle">{(s.pct * 100).toFixed(0)}%</span>
@@ -505,31 +476,26 @@ function DnaSection({
   );
 }
 
-function formatMoney(amount: number, { showSign = false }: { showSign?: boolean } = {}): string {
-  const sign = showSign ? (amount >= 0 ? '+' : '-') : '';
-  return `${sign}$${Math.abs(amount).toFixed(2)}`;
-}
-
-function BarChart({ data, maxBars }: { data: Array<[string, number]>; maxBars: number }) {
+function BarChart({ data, maxBars, ariaLabel }: { data: Array<[string, number]>; maxBars: number; ariaLabel: string }) {
   const sliced = data.slice(-maxBars);
   const maxVal = Math.max(...sliced.map(([, v]) => v), 1);
 
   return (
-    <div className="flex flex-col gap-2" role="img" aria-label="Bar chart">
+    <div className="flex flex-col gap-2" role="img" aria-label={ariaLabel}>
       {sliced.map(([label, val]) => {
         const pct = (val / maxVal) * 100;
         return (
           <div key={label} className="flex items-center gap-2">
-            <span className="text-fg-body-subtle w-10 shrink-0 text-right text-[10px] font-medium leading-none">
+            <span className="text-fg-body-subtle w-10 shrink-0 text-right text-xs font-medium leading-none">
               {label}
             </span>
             <div className="rounded-base bg-surface border-border-default shadow-neu-2xs relative h-5 flex-1 overflow-hidden border">
               <div
-                className="bg-surface border-border-default-medium shadow-neu-xs h-full rounded-DEFAULT border"
+                className="bg-surface border-border-default-medium shadow-neu-xs h-full rounded border"
                 style={{ width: `${Math.max(pct, 4)}%` }}
               />
             </div>
-            <span className="text-fg-heading w-5 shrink-0 text-[10px] font-semibold leading-none">
+            <span className="text-fg-heading w-5 shrink-0 text-xs font-semibold leading-none">
               {val}
             </span>
           </div>

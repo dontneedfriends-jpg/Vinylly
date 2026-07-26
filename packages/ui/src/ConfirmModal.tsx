@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
 import type { ButtonVariant } from './Button';
+import { useDialogA11y } from './useDialogA11y';
 
 export interface ConfirmModalProps {
   open: boolean;
@@ -30,20 +31,8 @@ export function ConfirmModal({
   loading = false,
 }: ConfirmModalProps) {
   const resolvedVariant: ButtonVariant = destructive ? 'danger' : variant ?? 'danger';
-  useEffect(() => {
-    if (!open) return;
-    const el = document.querySelector<HTMLButtonElement>('[data-confirm-cancel]');
-    el?.focus();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(dialogRef, open, onCancel);
 
   if (!open) return null;
 
@@ -51,11 +40,12 @@ export function ConfirmModal({
     <div
       className="fixed inset-0 z-40 flex items-center justify-center bg-overlay backdrop-blur-sm"
       onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className="mx-4 w-full max-w-sm rounded-base border-border-default bg-surface shadow-neu-xl border p-5"
         onClick={(e) => e.stopPropagation()}
       >
@@ -72,7 +62,6 @@ export function ConfirmModal({
             disabled={loading}
           >
             {cancelLabel}
-            <span data-confirm-cancel className="hidden" />
           </Button>
           <Button
             variant={resolvedVariant}

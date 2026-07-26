@@ -8,7 +8,7 @@ export interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
 
 const roundedMap = {
   sm: 'rounded-sm',
-  md: 'rounded-base',
+  md: 'rounded',
   lg: 'rounded-base',
   full: 'rounded-full',
 } as const;

@@ -10,6 +10,8 @@ export interface CoverImageProps {
   size?: 'thumb' | 'full';
   className?: string;
   onClick?: () => void;
+  /** Set false when an outer wrapper already carries border/shadow (avoids double elevation). */
+  elevated?: boolean;
 }
 
 function bytesToBlobUrl(bytes: Uint8Array): string {
@@ -25,6 +27,7 @@ export function CoverImage({
   size = 'thumb',
   className = '',
   onClick,
+  elevated = true,
 }: CoverImageProps) {
   const { t } = useTranslation();
   const [src, setSrc] = useState<string | null>(null);
@@ -70,9 +73,12 @@ export function CoverImage({
     };
   }, [releaseId, coverPath, coverRemote]);
 
-  const containerClass = `rounded-base border-border-default bg-surface relative flex h-full w-full items-center justify-center overflow-hidden border ${
-    size === 'thumb' ? 'shadow-neu-inset' : 'shadow-neu-md'
-  } ${onClick && src ? 'cursor-zoom-in transition-shadow duration-200 hover:shadow-neu-lg' : ''} ${className}`;
+  const frame = elevated
+    ? `border-border-default bg-surface border ${size === 'thumb' ? 'shadow-neu-inset' : 'shadow-neu-md'}`
+    : 'bg-surface';
+  const containerClass = `rounded-base relative flex h-full w-full items-center justify-center overflow-hidden ${frame} ${
+    onClick && src && elevated ? 'cursor-zoom-in transition-shadow duration-200 hover:shadow-neu-lg' : ''
+  } ${onClick && src && !elevated ? 'cursor-zoom-in' : ''} ${className}`;
 
   const inner = src ? (
     <img

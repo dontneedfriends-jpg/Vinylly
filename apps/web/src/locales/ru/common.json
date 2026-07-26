@@ -3,7 +3,10 @@
   "button.cancel": "Отмена",
   "button.close": "Закрыть",
   "button.delete": "Удалить",
+  "button.dismiss": "Скрыть",
   "button.save": "Сохранить",
+  "button.show_less": "Свернуть",
+  "button.show_more": "Ещё {{count}}",
   "button.undo": "Отменить",
   "button.saving": "Сохраняю…",
   "cover.no_cover": "Нет обложки",
@@ -20,5 +23,6 @@
   "media.label_cd": "CD",
   "media.label_vinyl": "Винил",
   "media.other": "Другое",
-  "media.vinyl": "Винил"
+  "media.vinyl": "Винил",
+  "shortcuts.help": "1 Коллекция · 2 Добавить · 3 Хочется · 4 Статистика · 5 Настройки · / Поиск · ? Помощь"
 }

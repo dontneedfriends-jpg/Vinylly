@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, ConfirmModal, Input } from '@vinylly/ui';
+import { Button, ConfirmModal, Input, useDialogA11y } from '@vinylly/ui';
 import { useProfileStore } from '../lib/profile-store';
 import { switchActiveProfile } from '../lib/db';
 import { ProfileSettings } from './ProfileSettings';
@@ -25,6 +25,8 @@ export function ProfileManager({ open, onClose }: ProfileManagerProps) {
   const [settingsFor, setSettingsFor] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(dialogRef, open, onClose);
 
   useEffect(() => {
     if (!open) {
@@ -92,7 +94,7 @@ export function ProfileManager({ open, onClose }: ProfileManagerProps) {
       aria-modal="true"
       aria-labelledby="profile-manager-title"
     >
-      <div className="rounded-base border-border-default bg-surface shadow-neu-xl relative isolate w-full max-w-lg overflow-hidden border">
+      <div ref={dialogRef} className="rounded-base border-border-default bg-surface shadow-neu-xl relative isolate w-full max-w-lg overflow-hidden border">
         <header className="border-border-default flex items-center justify-between border-b px-6 py-4">
           <h2 id="profile-manager-title" className="text-fg-heading text-lg font-semibold">
             {t('profile:manager.title')}

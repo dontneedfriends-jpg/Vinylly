@@ -30,7 +30,7 @@ export function Card({
 
 export function CardBody({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`p-12 ${className}`} {...rest}>
+    <div className={`p-6 ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -38,7 +38,7 @@ export function CardBody({ className = '', children, ...rest }: HTMLAttributes<H
 
 export function CardHeader({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`px-12 pb-10 pt-12 ${className}`} {...rest}>
+    <div className={`px-6 pb-4 pt-6 ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -46,7 +46,7 @@ export function CardHeader({ className = '', children, ...rest }: HTMLAttributes
 
 export function CardFooter({ className = '', children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`px-12 pb-12 pt-8 ${className}`} {...rest}>
+    <div className={`px-6 pb-6 pt-4 ${className}`} {...rest}>
       {children}
     </div>
   );

@@ -110,7 +110,7 @@ export function Layout({ children }: LayoutProps) {
           <ProfileSwitcher />
 
           {/* Navigation */}
-          <nav className="rounded-base bg-surface shadow-neu-inset scrollbar-neu flex flex-1 flex-col gap-1 overflow-y-auto p-2">
+          <nav className="rounded-base bg-surface shadow-neu-inset flex flex-1 flex-col gap-1 p-2">
             {navItems.map((it) => {
               const isActive = active === it.id;
               return (

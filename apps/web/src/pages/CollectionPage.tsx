@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -6,14 +6,17 @@ import {
   EmptyState,
   Button,
   PageHeader,
+  SegmentedControl,
 } from '@vinylly/ui';
 import { useUi } from '../lib/ui-store';
 import { useSettings } from '../lib/settings-store';
 import { useItems, useRemoveItem } from '../lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
-import type { MediaType, ItemRecord } from '@vinylly/db';
+import type { ItemRecord } from '@vinylly/db';
 import { CoverImage } from '../components/CoverImage';
 import { getProvidersRegistry } from '../lib/providers';
+import { useUndoableDelete } from '../lib/undo-delete';
+import { useTypeLabels } from '../lib/type-labels';
 
 export function CollectionPage() {
   const { t } = useTranslation();
@@ -27,12 +30,7 @@ export function CollectionPage() {
   const showToast = useUi((s) => s.showToast);
   const hideToast = useUi((s) => s.hideToast);
 
-  const typeLabels: Record<MediaType, string> = {
-    vinyl: t('common:media.vinyl'),
-    cd: t('common:media.cd'),
-    cassette: t('common:media.cassette'),
-    other: t('common:media.other'),
-  };
+  const typeLabels = useTypeLabels();
 
   const filterTags = useUi((s) => s.filterTags);
   const discogsUsername = useSettings((s) => s.discogsUsername);
@@ -54,33 +52,6 @@ export function CollectionPage() {
   const removeItem = useRemoveItem();
   const queryClient = useQueryClient();
 
-  const [scheduledId, setScheduledId] = useState<string | null>(null);
-  const [scheduledSnapshot, setScheduledSnapshot] = useState<ItemRecord | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Token incremented on every onDelete call; closures check their token to bail out
-  const deleteTokenRef = useRef(0);
-
-  const displayedItems = useMemo(
-    () => (scheduledId ? items.filter((it) => it.id !== scheduledId) : items),
-    [items, scheduledId],
-  );
-
-  // Clear scheduledId only after the unfiltered list confirms item is gone (no flash)
-  useEffect(() => {
-    if (scheduledId && !allItems.some((it) => it.id === scheduledId)) {
-      setScheduledId(null);
-      setScheduledSnapshot(null);
-    }
-  }, [allItems, scheduledId]);
-
-  // Cleanup timer on unmount
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
   const syncDiscogsDelete = useCallback(
     (snapshot: ItemRecord | null | undefined) => {
       if (!discogsUsername || !discogsSyncEnabled || !snapshot) return;
@@ -95,67 +66,44 @@ export function CollectionPage() {
     [discogsUsername, discogsSyncEnabled],
   );
 
-  const onDelete = useCallback(
-    (item: ItemRecord) => {
-      // Flush any pending deletion immediately
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-        const prevId = scheduledId;
-        const prevSnapshot = scheduledSnapshot;
-        if (prevId) {
-          setScheduledId(null);
-          setScheduledSnapshot(null);
-          removeItem.mutate(prevId, {
-            onSuccess: () => {
-              void queryClient.invalidateQueries({ queryKey: ['items'] });
-              void queryClient.invalidateQueries({ queryKey: ['item', prevId] });
-              syncDiscogsDelete(prevSnapshot);
-            },
-            onError: (err) => {
-              showToast(t('collection:item.delete_error', { error: String(err) }));
-            },
-          });
-        }
-      }
-      const myToken = ++deleteTokenRef.current;
-      setScheduledId(item.id);
-      setScheduledSnapshot(item);
-      const msg = t('collection:item.deleted_undo', { title: item.release.title });
-      showToast(msg, {
-        label: t('common:button.undo'),
-        onClick: () => {
-          if (timerRef.current) clearTimeout(timerRef.current);
-          timerRef.current = null;
-          deleteTokenRef.current++;
-          setScheduledId(null);
-          setScheduledSnapshot(null);
-          hideToast();
-        },
-      });
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        // Bail if another onDelete (flush path) overtook us
-        if (deleteTokenRef.current !== myToken) return;
+  const { schedule, pending, clearPending } = useUndoableDelete<ItemRecord>(
+    useCallback(
+      (item, clear) => {
         removeItem.mutate(item.id, {
           onSuccess: () => {
             hideToast();
             void queryClient.invalidateQueries({ queryKey: ['items'] });
             void queryClient.invalidateQueries({ queryKey: ['item', item.id] });
-            if (deleteTokenRef.current === myToken) syncDiscogsDelete(item);
+            syncDiscogsDelete(item);
           },
           onError: (err) => {
-            if (deleteTokenRef.current === myToken) {
-              setScheduledId(null);
-              setScheduledSnapshot(null);
-            }
+            clear();
             hideToast();
             showToast(t('collection:item.delete_error', { error: String(err) }));
           },
         });
-      }, 4000);
+      },
+      [removeItem, hideToast, showToast, queryClient, syncDiscogsDelete, t],
+    ),
+  );
+
+  const displayedItems = useMemo(
+    () => (pending ? items.filter((it) => it.id !== pending.id) : items),
+    [items, pending],
+  );
+
+  // Clear pending marker only after the unfiltered list confirms item is gone (no flash)
+  useEffect(() => {
+    if (pending && !allItems.some((it) => it.id === pending.id)) {
+      clearPending();
+    }
+  }, [allItems, pending, clearPending]);
+
+  const onDelete = useCallback(
+    (item: ItemRecord) => {
+      schedule(item, t('collection:item.deleted_undo', { title: item.release.title }));
     },
-    [t, showToast, hideToast, removeItem, scheduledId, scheduledSnapshot, queryClient, syncDiscogsDelete],
+    [schedule, t],
   );
 
   return (
@@ -169,40 +117,16 @@ export function CollectionPage() {
         }
         actions={
           <div className="flex items-center gap-3">
-            <div
-              role="radiogroup"
-              aria-label={t('collection:page.view_mode_aria')}
-              className="rounded-base border-border-default bg-surface shadow-neu-inset hidden items-center border sm:flex"
-            >
-              <button
-                type="button"
-                role="radio"
-                aria-checked={viewMode === 'grid'}
-                onClick={() => setViewMode('grid')}
-                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-base transition-[box-shadow,color] duration-200 ${
-                  viewMode === 'grid'
-                    ? 'bg-surface text-fg-brand-strong shadow-neu-xs'
-                    : 'text-fg-body-subtle hover:text-fg-body'
-                }`}
-                aria-label={t('collection:page.view_grid_aria')}
-              >
-                <GridViewIcon />
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={viewMode === 'list'}
-                onClick={() => setViewMode('list')}
-                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-base transition-[box-shadow,color] duration-200 ${
-                  viewMode === 'list'
-                    ? 'bg-surface text-fg-brand-strong shadow-neu-xs'
-                    : 'text-fg-body-subtle hover:text-fg-body'
-                }`}
-                aria-label={t('collection:page.view_list_aria')}
-              >
-                <ListViewIcon />
-              </button>
-            </div>
+            <SegmentedControl
+              value={viewMode}
+              onChange={setViewMode}
+              ariaLabel={t('collection:page.view_mode_aria')}
+              className="hidden sm:inline-flex"
+              options={[
+                { value: 'grid', label: t('collection:page.view_grid'), icon: <GridViewIcon /> },
+                { value: 'list', label: t('collection:page.view_list'), icon: <ListViewIcon /> },
+              ]}
+            />
             <Button onClick={() => openAdd()} leftIcon={<PlusIcon />}>
               {t('collection:page.add_button')}
             </Button>
@@ -227,7 +151,7 @@ export function CollectionPage() {
             ))}
           </div>
         )
-      ) : displayedItems.length === 0 && !scheduledId ? (
+      ) : displayedItems.length === 0 && !pending ? (
         <EmptyState
           title={t('collection:empty.title')}
           description={t('collection:empty.suggestion')}
@@ -237,7 +161,7 @@ export function CollectionPage() {
             </Button>
           }
         />
-      ) : displayedItems.length === 0 && scheduledId ? (
+      ) : displayedItems.length === 0 && pending ? (
         <div className="flex items-center justify-center py-20">
           <p className="text-fg-body-subtle text-sm">{t('common:loading.generic')}</p>
         </div>
