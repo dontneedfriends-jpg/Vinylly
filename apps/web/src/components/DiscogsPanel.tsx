@@ -176,18 +176,17 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
       for (const it of targets) {
         if (importId !== importCounterRef.current) return;
         await throttle();
-        try {
-          await registry.syncPriceToDiscogs(
-            username,
-            Number(it.release.sourceId),
-            it.discogsInstanceId!,
-            it.purchasePrice!,
-            priceFieldId,
-          );
-          done++;
-        } catch {
-          failed++;
-        }
+        // syncPriceToDiscogs returns false on API errors (e.g. 400 from a
+        // number-type field) — count them, they used to be swallowed.
+        const ok = await registry.syncPriceToDiscogs(
+          username,
+          Number(it.release.sourceId),
+          it.discogsInstanceId!,
+          it.purchasePrice!,
+          priceFieldId,
+        );
+        if (ok) done++;
+        else failed++;
         setImportProgress({ done: done + failed, total: targets.length });
       }
       setImportStatus({

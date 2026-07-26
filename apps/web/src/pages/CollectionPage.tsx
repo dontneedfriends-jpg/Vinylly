@@ -96,6 +96,15 @@ export function CollectionPage() {
     [items, pending],
   );
 
+  /** Copy counts per release — drives the ×N badge on tiles. */
+  const copiesByRelease = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const it of allItems) {
+      map.set(it.release.id, (map.get(it.release.id) ?? 0) + 1);
+    }
+    return map;
+  }, [allItems]);
+
   // Clear pending marker only after the unfiltered list confirms item is gone (no flash)
   useEffect(() => {
     if (pending && !allItems.some((it) => it.id === pending.id)) {
@@ -251,6 +260,7 @@ export function CollectionPage() {
                 selecting={selecting}
                 selected={selectedIds.has(it.id)}
                 showStatus={showTileStatus}
+                copiesCount={copiesByRelease.get(it.release.id) ?? 1}
               />
             </div>
           ))}
@@ -271,6 +281,7 @@ export function CollectionPage() {
                 selecting={selecting}
                 selected={selectedIds.has(it.id)}
                 showStatus={showTileStatus}
+                copiesCount={copiesByRelease.get(it.release.id) ?? 1}
               />
             </li>
           ))}
@@ -298,6 +309,7 @@ function ItemTile({
   selecting = false,
   selected = false,
   showStatus = false,
+  copiesCount = 1,
 }: {
   item: ItemRecord;
   onOpen: () => void;
@@ -306,6 +318,7 @@ function ItemTile({
   selecting?: boolean;
   selected?: boolean;
   showStatus?: boolean;
+  copiesCount?: number;
 }) {
   const { t } = useTranslation();
 
@@ -374,6 +387,24 @@ function ItemTile({
             <VinylIcon />
             <span>{typeLabels[item.type]}</span>
             {item.release.year ? <span>· {item.release.year}</span> : null}
+            {copiesCount > 1 ? (
+              <span className="text-fg-brand font-medium" title={t('collection:tile.copies', { count: copiesCount })}>
+                · ×{copiesCount}
+              </span>
+            ) : null}
+            {item.mediaCondition ? (
+              <span
+                className={`rounded-sm px-1.5 py-0.5 font-semibold shadow-neu-inset ${conditionTone(item.mediaCondition)}`}
+                title={
+                  [item.sleeveCondition && t('collection:tile.sleeve', { c: item.sleeveCondition }),
+                  t('collection:tile.media', { c: item.mediaCondition })]
+                    .filter(Boolean)
+                    .join(' · ')
+                }
+              >
+                {item.mediaCondition}
+              </span>
+            ) : null}
           </div>
           <h3 className="text-fg-heading mt-3 line-clamp-1 text-base font-semibold leading-tight">
             {item.release.title}
@@ -388,8 +419,16 @@ function ItemTile({
   );
 }
 
+function conditionTone(condition: string | null): string {
+  if (!condition) return '';
+  if (condition === 'M' || condition === 'NM') return 'text-fg-success-strong';
+  if (condition === 'VG+' || condition === 'VG') return 'text-fg-brand';
+  return 'text-fg-warning';
+}
+
 function TileStatus({ item, className = '' }: { item: ItemRecord; className?: string }) {
   const { t } = useTranslation();
+  const condition = [item.sleeveCondition, item.mediaCondition].filter(Boolean).join('/');
   return (
     <p className={`mt-1 flex flex-wrap items-center gap-x-2 text-xs leading-relaxed ${className}`}>
       {item.purchasePrice != null ? (
@@ -402,6 +441,7 @@ function TileStatus({ item, className = '' }: { item: ItemRecord; className?: st
       ) : (
         <span className="text-fg-warning">· {t('collection:tile.no_location')}</span>
       )}
+      {condition ? <span className="text-fg-body-subtle">· {condition}</span> : null}
     </p>
   );
 }
@@ -414,6 +454,7 @@ function ListItemTile({
   selecting = false,
   selected = false,
   showStatus = false,
+  copiesCount = 1,
 }: {
   item: ItemRecord;
   onOpen: () => void;
@@ -422,6 +463,7 @@ function ListItemTile({
   selecting?: boolean;
   selected?: boolean;
   showStatus?: boolean;
+  copiesCount?: number;
 }) {
   const { t } = useTranslation();
 
@@ -480,6 +522,24 @@ function ListItemTile({
             <VinylIcon />
             <span>{typeLabels[item.type]}</span>
             {item.release.year ? <span>· {item.release.year}</span> : null}
+            {copiesCount > 1 ? (
+              <span className="text-fg-brand font-medium" title={t('collection:tile.copies', { count: copiesCount })}>
+                · ×{copiesCount}
+              </span>
+            ) : null}
+            {item.mediaCondition ? (
+              <span
+                className={`rounded-sm px-1.5 py-0.5 font-semibold shadow-neu-inset ${conditionTone(item.mediaCondition)}`}
+                title={
+                  [item.sleeveCondition && t('collection:tile.sleeve', { c: item.sleeveCondition }),
+                  t('collection:tile.media', { c: item.mediaCondition })]
+                    .filter(Boolean)
+                    .join(' · ')
+                }
+              >
+                {item.mediaCondition}
+              </span>
+            ) : null}
           </span>
         </span>
       </button>

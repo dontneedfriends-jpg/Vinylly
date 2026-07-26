@@ -185,16 +185,26 @@ export class ProvidersRegistry {
     return this.discogs.getCollectionFields(username);
   }
 
-  /** Push purchase price into a user-mapped custom collection field. */
+  /**
+   * Push purchase price into a user-mapped custom collection field.
+   * Writes the BARE number ("25.00") — number-type fields reject "$25.00"
+   * with a 400. Returns false on failure so callers can count real errors.
+   */
   async syncPriceToDiscogs(
     username: string,
     discogsReleaseId: number,
     instanceId: number,
     price: number,
     fieldId: number,
-  ): Promise<void> {
-    if (!this.discogs?.isEnabled() || !username || !fieldId) return;
-    await this.discogs.updateCollectionField(username, discogsReleaseId, instanceId, fieldId, `$${price.toFixed(2)}`);
+  ): Promise<boolean> {
+    if (!this.discogs?.isEnabled() || !username || !fieldId) return false;
+    return this.discogs.updateCollectionField(
+      username,
+      discogsReleaseId,
+      instanceId,
+      fieldId,
+      price.toFixed(2),
+    );
   }
 
   async fetchDiscogsWantlist(username: string): Promise<DiscogsWantlistRelease[]> {

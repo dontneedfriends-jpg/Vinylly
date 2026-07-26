@@ -143,6 +143,7 @@ export function AddPage() {
 
   const onPickResult = async (res: SearchResult) => {
     setSelected(res.release);
+    setAllowCopy(false);
     const detected = res.release.mediaType as MediaType | undefined;
     if (detected && typeLabels[detected]) setType(detected);
     setLoadingDetail(true);
@@ -202,6 +203,7 @@ export function AddPage() {
     setReleaseDetail(null);
     setAddTracklist([], false);
     setAddReleaseMeta(null);
+    setAllowCopy(false);
   };
 
   const existingItem = useMemo(() => {
@@ -215,6 +217,9 @@ export function AddPage() {
     );
   }, [allItems, selected]);
 
+  /** Explicit "add as copy" — bypasses the duplicate block once per form session. */
+  const [allowCopy, setAllowCopy] = useState(false);
+
   const existingWantlist = useMemo(() => {
     if (!selected) return null;
     return wantlist.find((w) => w.release.source === selected.source && w.release.sourceId === selected.sourceId) ?? null;
@@ -225,11 +230,13 @@ export function AddPage() {
     setSaving(true);
     setError(null);
     try {
-      const existing = await itemRepo.findBySource(selected.source, selected.sourceId);
-      if (existing) {
-        setError(t('add:form.duplicate', { title: existing.release.title }));
-        setSaving(false);
-        return;
+      if (!allowCopy) {
+        const existing = await itemRepo.findBySource(selected.source, selected.sourceId);
+        if (existing) {
+          setError(t('add:form.duplicate', { title: existing.release.title }));
+          setSaving(false);
+          return;
+        }
       }
       const input: CreateItemInput = {
         collectionId: collection.id,
@@ -297,6 +304,7 @@ export function AddPage() {
         }
       }
       showToast(t('add:form.added_toast', { title: created.release.title }));
+      setAllowCopy(false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -560,21 +568,40 @@ export function AddPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <BackButton onClick={onBackToSearch} label={t('common:button.back')} />
-              {existingItem ? (
-                <Button
-                  variant="danger"
-                  onClick={onRemoveFromCollection}
-                  leftIcon={<TrashIcon />}
-                >
-                  {t('add:form.remove_from_collection')}
-                </Button>
+              {existingItem && !allowCopy ? (
+                <>
+                  <span className="text-fg-body-subtle inline-flex items-center text-xs">
+                    {t('add:form.owned_hint')}
+                    {existingItem.sleeveCondition || existingItem.mediaCondition
+                      ? ` · ${[existingItem.sleeveCondition, existingItem.mediaCondition].filter(Boolean).join('/')}`
+                      : ''}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setAllowCopy(true)}
+                    leftIcon={<PlusIcon />}
+                  >
+                    {t('add:form.add_copy')}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={onRemoveFromCollection}
+                    leftIcon={<TrashIcon />}
+                  >
+                    {t('add:form.remove_from_collection')}
+                  </Button>
+                </>
               ) : (
                 <Button
                   onClick={() => void onSave()}
                   disabled={saving}
                   leftIcon={saving ? undefined : <CheckIcon />}
                 >
-                  {saving ? t('common:button.saving') : t('add:form.save_to_collection')}
+                  {saving
+                    ? t('common:button.saving')
+                    : allowCopy
+                      ? t('add:form.save_copy')
+                      : t('add:form.save_to_collection')}
                 </Button>
               )}
               {existingWantlist ? (
@@ -717,6 +744,14 @@ function TrashIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M12 8v8M8 12h8" strokeLinecap="round" />
     </svg>
   );
 }

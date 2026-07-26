@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SegmentedControl } from '@vinylly/ui';
+import { Button, EmptyState, SegmentedControl } from '@vinylly/ui';
 import { useItems } from '../lib/queries';
 import type { MediaType, ItemRecord } from '@vinylly/db';
 import { ArtistPackChart } from './ArtistPackChart';
@@ -141,12 +141,21 @@ export function StatsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Charts — counts and finances live in the right rail */}
-      {items.length > 0 ? (
-        <div className="flex flex-col gap-6">
-          <h3 className="text-fg-heading text-lg font-semibold">{t('stats:about.title')}</h3>
-
-          <ArtistPackChart />
+      {items.length === 0 ? (
+        <EmptyState
+          title={t('stats:empty.title')}
+          description={t('stats:empty.suggestion')}
+          action={
+            <Button onClick={() => useUi.getState().openAdd()} variant="brand">
+              {t('collection:empty.add_release')}
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2">
+          <StatsPanelBlock label={t('layout:rail.collection.by_artist')} span>
+            <ArtistPackChart />
+          </StatsPanelBlock>
 
           {yearEntries.length > 0 || decadeEntries.length > 0 ? (
             <YearDecadeSection yearEntries={yearEntries} decadeEntries={decadeEntries} />
@@ -154,7 +163,53 @@ export function StatsPanel() {
 
           {genreEntries.length > 0 ? (
             <StatsPanelBlock label={t('layout:rail.collection.by_genre')}>
-              <BarChart data={genreEntries} maxBars={12} ariaLabel={t('stats:chart.bar_aria')} />
+              <GenreCloud data={genreEntries} max={16} />
+            </StatsPanelBlock>
+          ) : null}
+
+          {dna ? (
+            <StatsPanelBlock label={t('stats:dna.title')}>
+              <DnaSection
+                title={t('stats:dna.decades')}
+                segments={dna.decades.map((d, i) => ({ label: d.label, count: d.count, pct: d.pct, color: chartColors.palette[i % chartColors.palette.length]! }))}
+              />
+              <DnaSection
+                title={t('stats:dna.formats')}
+                segments={dna.formats.map((f, i) => ({
+                  label: typeLabels[f.label as MediaType] ?? f.label,
+                  count: f.count,
+                  pct: f.pct,
+                  color: chartColors.palette[i % chartColors.palette.length]!,
+                }))}
+              />
+            </StatsPanelBlock>
+          ) : null}
+
+          {activity ? (
+            <StatsPanelBlock label={t('stats:activity.title')}>
+              <div className="grid grid-cols-12 gap-1.5">
+                {activity.months.map((m) => {
+                  const intensity = m.count === 0 ? 0 : Math.max(0.2, m.count / activity.max);
+                  const bg = m.count === 0 ? 'shadow-neu-2xs' : '';
+                  return (
+                    <div
+                      key={m.key}
+                      className="flex flex-col items-center gap-1"
+                      title={`${m.label} ${m.key}: ${m.count}`}
+                    >
+                      <div
+                        className={`rounded-base h-7 w-full ${bg}`}
+                        style={
+                          m.count > 0
+                            ? { backgroundColor: chartColors.brand(intensity) }
+                            : { backgroundColor: chartColors.track }
+                        }
+                      />
+                      <span className="text-fg-body-subtle text-xs">{m.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </StatsPanelBlock>
           ) : null}
 
@@ -202,65 +257,6 @@ export function StatsPanel() {
                       {formatMoney(it.release.lowestPrice ?? 0)}
                     </span>
                   </button>
-                ))}
-              </div>
-            </StatsPanelBlock>
-          ) : null}
-
-          {activity ? (
-            <StatsPanelBlock label={t('stats:activity.title')}>
-              <div className="grid grid-cols-12 gap-1.5">
-                {activity.months.map((m) => {
-                  const intensity = m.count === 0 ? 0 : Math.max(0.2, m.count / activity.max);
-                  const bg = m.count === 0 ? 'shadow-neu-2xs' : '';
-                  return (
-                    <div
-                      key={m.key}
-                      className="flex flex-col items-center gap-1"
-                      title={`${m.label} ${m.key}: ${m.count}`}
-                    >
-                      <div
-                        className={`rounded-base h-7 w-full ${bg}`}
-                        style={
-                          m.count > 0
-                            ? { backgroundColor: chartColors.brand(intensity) }
-                            : { backgroundColor: chartColors.track }
-                        }
-                      />
-                      <span className="text-fg-body-subtle text-xs">{m.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </StatsPanelBlock>
-          ) : null}
-
-          {missing.length > 0 ? (
-            <StatsPanelBlock label={t('stats:missing.title')}>
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
-                {missing.map((r) => (
-                  <div key={r.key} className="flex items-center justify-between px-4 py-2 text-sm">
-                    <span className="text-fg-body">{t(r.labelKey)}</span>
-                    <span className="text-fg-warning text-xs font-medium">
-                      {t('stats:missing.count', { count: r.count })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </StatsPanelBlock>
-          ) : null}
-
-          {topWinners.length > 0 || topLosers.length > 0 ? (
-            <StatsPanelBlock label={t('stats:roi.title')}>
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
-                {topWinners.map(({ it, roi }) => (
-                  <RoiRow key={`w-${it.id}`} it={it} roi={roi} />
-                ))}
-                {topLosers.length > 0 && topWinners.length > 0 ? (
-                  <div className="bg-surface h-px w-full" />
-                ) : null}
-                {topLosers.map(({ it, roi }) => (
-                  <RoiRow key={`l-${it.id}`} it={it} roi={roi} />
                 ))}
               </div>
             </StatsPanelBlock>
@@ -325,6 +321,22 @@ export function StatsPanel() {
             </StatsPanelBlock>
           ) : null}
 
+          {topWinners.length > 0 || topLosers.length > 0 ? (
+            <StatsPanelBlock label={t('stats:roi.title')}>
+              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
+                {topWinners.map(({ it, roi }) => (
+                  <RoiRow key={`w-${it.id}`} it={it} roi={roi} />
+                ))}
+                {topLosers.length > 0 && topWinners.length > 0 ? (
+                  <div className="bg-surface h-px w-full" />
+                ) : null}
+                {topLosers.map(({ it, roi }) => (
+                  <RoiRow key={`l-${it.id}`} it={it} roi={roi} />
+                ))}
+              </div>
+            </StatsPanelBlock>
+          ) : null}
+
           {anniversaries.length > 0 ? (
             <StatsPanelBlock label={t('stats:anniversaries.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
@@ -354,26 +366,6 @@ export function StatsPanel() {
             </StatsPanelBlock>
           ) : null}
 
-          {dna ? (
-            <StatsPanelBlock label={t('stats:dna.title')}>
-              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border p-4">
-                <DnaSection
-                  title={t('stats:dna.decades')}
-                  segments={dna.decades.map((d, i) => ({ label: d.label, count: d.count, pct: d.pct, color: chartColors.palette[i % chartColors.palette.length]! }))}
-                />
-                <DnaSection
-                  title={t('stats:dna.formats')}
-                  segments={dna.formats.map((f, i) => ({
-                    label: typeLabels[f.label as MediaType] ?? f.label,
-                    count: f.count,
-                    pct: f.pct,
-                    color: chartColors.palette[i % chartColors.palette.length]!,
-                  }))}
-                />
-              </div>
-            </StatsPanelBlock>
-          ) : null}
-
           {topArtistSpend.length > 0 ? (
             <StatsPanelBlock label={t('stats:artist_spend.title')}>
               <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
@@ -389,25 +381,44 @@ export function StatsPanel() {
               </div>
             </StatsPanelBlock>
           ) : null}
+
+          {missing.length > 0 ? (
+            <StatsPanelBlock label={t('stats:missing.title')}>
+              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
+                {missing.map((r) => (
+                  <div key={r.key} className="flex items-center justify-between px-4 py-2 text-sm">
+                    <span className="text-fg-body">{t(r.labelKey)}</span>
+                    <span className="text-fg-warning text-xs font-medium">
+                      {t('stats:missing.count', { count: r.count })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </StatsPanelBlock>
+          ) : null}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
 
 function StatsPanelBlock({
   label,
+  span = false,
   children,
 }: {
   label: string;
+  span?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section>
-      <h3 className="text-fg-heading mb-2 text-lg font-semibold">{label}</h3>
-      <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
-        {children}
-      </div>
+    <section
+      className={`rounded-base border-border-default bg-surface shadow-neu-md border p-6 ${
+        span ? 'md:col-span-2' : ''
+      }`}
+    >
+      <h3 className="text-fg-heading mb-4 text-lg font-semibold">{label}</h3>
+      {children}
     </section>
   );
 }
@@ -447,8 +458,8 @@ function YearDecadeSection({
   const data = mode === 'year' ? yearEntries : decadeEntries;
   if (!data.length) return null;
   return (
-    <section>
-      <div className="mb-2 flex items-center justify-between gap-2">
+    <section className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="text-fg-heading text-lg font-semibold">{t('layout:rail.collection.by_year')}</h3>
         <SegmentedControl
           options={[
@@ -461,9 +472,7 @@ function YearDecadeSection({
           ariaLabel={t('layout:rail.collection.by_year')}
         />
       </div>
-      <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
-        <BarChart data={data} maxBars={mode === 'year' ? 15 : 12} ariaLabel={t('stats:chart.bar_aria')} />
-      </div>
+      <BarChart data={data} maxBars={mode === 'year' ? 15 : 12} ariaLabel={t('stats:chart.bar_aria')} />
     </section>
   );
 }
@@ -504,7 +513,36 @@ function DnaSection({
   );
 }
 
+/**
+ * Genre cloud — long genre names ("Folk, World, & Country") broke the bar
+ * chart's narrow label column. Chips wrap naturally; brand intensity ∝ count.
+ */
+function GenreCloud({ data, max }: { data: Array<[string, number]>; max: number }) {
+  const chartColors = useChartColors();
+  const sliced = data.slice(0, max);
+  const maxVal = Math.max(...sliced.map(([, v]) => v), 1);
+  return (
+    <div className="flex flex-wrap gap-1.5" role="img" aria-label="Genres">
+      {sliced.map(([label, val]) => {
+        const intensity = Math.max(0.15, val / maxVal);
+        return (
+          <span
+            key={label}
+            title={`${label}: ${val}`}
+            className="rounded-base inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium"
+            style={{ backgroundColor: chartColors.brand(intensity * 0.9) }}
+          >
+            <span className="text-fg-heading">{label}</span>
+            <span className="text-fg-heading/70 tabular-nums">{val}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function BarChart({ data, maxBars, ariaLabel }: { data: Array<[string, number]>; maxBars: number; ariaLabel: string }) {
+  const chartColors = useChartColors();
   const sliced = data.slice(-maxBars);
   const maxVal = Math.max(...sliced.map(([, v]) => v), 1);
 
@@ -517,13 +555,13 @@ function BarChart({ data, maxBars, ariaLabel }: { data: Array<[string, number]>;
             <span className="text-fg-body-subtle w-10 shrink-0 text-right text-xs font-medium leading-none">
               {label}
             </span>
-            <div className="rounded-base bg-surface border-border-default shadow-neu-2xs relative h-5 flex-1 overflow-hidden border">
+            <div className="rounded-base bg-surface border-border-default shadow-neu-inset relative h-5 flex-1 overflow-hidden border">
               <div
-                className="bg-surface border-border-default-medium shadow-neu-xs h-full rounded border"
-                style={{ width: `${Math.max(pct, 4)}%` }}
+                className="h-full rounded-base"
+                style={{ width: `${Math.max(pct, 4)}%`, backgroundColor: chartColors.brand(0.8) }}
               />
             </div>
-            <span className="text-fg-heading w-5 shrink-0 text-xs font-semibold leading-none">
+            <span className="text-fg-heading w-5 shrink-0 text-xs font-semibold leading-none tabular-nums">
               {val}
             </span>
           </div>

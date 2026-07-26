@@ -46,6 +46,7 @@
   "page.loading": "Loading…",
   "page.no_release": "No release selected",
   "page.to_collection": "To collection",
+  "page.copy_of": "Copy {{n}} of {{m}}",
   "hero.update_cover": "Update cover",
   "gallery.more_title": "{{count}} more",
   "gallery.more_aria": "Show {{count}} more images",

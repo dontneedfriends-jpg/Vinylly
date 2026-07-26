@@ -191,7 +191,10 @@ export function BulkAddPanel() {
   const onImport = useCallback(async () => {
     if (!collection) return;
     cancelRef.current = false;
-    const targets = rows.filter((r) => r.include && r.status === 'matched' && r.release);
+    // Included rows: matched = new, duplicate = intentionally added as a copy.
+    const targets = rows.filter(
+      (r) => r.include && (r.status === 'matched' || r.status === 'duplicate') && r.release,
+    );
     if (!targets.length) return;
     setPhase('importing');
     setProgress({ done: 0, total: targets.length });
@@ -301,7 +304,7 @@ export function BulkAddPanel() {
       if (r.status === 'duplicate') c.duplicate += 1;
       if (r.status === 'imported') c.imported += 1;
       if (r.status === 'failed') c.failed += 1;
-      if (r.include && r.status === 'matched') c.included += 1;
+      if (r.include && (r.status === 'matched' || r.status === 'duplicate')) c.included += 1;
     }
     return c;
   }, [rows]);
@@ -373,7 +376,7 @@ export function BulkAddPanel() {
             typeLabels={typeLabels}
             expanded={expandedRows.has(row.id)}
             onToggleExpand={
-              phase === 'review' && row.status === 'matched'
+              phase === 'review' && (row.status === 'matched' || row.status === 'duplicate')
                 ? () =>
                     setExpandedRows((prev) => {
                       const next = new Set(prev);
@@ -385,7 +388,7 @@ export function BulkAddPanel() {
             }
             onPatch={(patch) => patchRow(row.id, patch)}
             onToggle={
-              phase === 'review' && row.status === 'matched'
+              phase === 'review' && (row.status === 'matched' || row.status === 'duplicate')
                 ? () => patchRow(row.id, { include: !row.include })
                 : undefined
             }
@@ -549,7 +552,11 @@ function BulkRowView({
             checked={row.include}
             onChange={onToggle}
             className="h-4 w-4 shrink-0"
-            aria-label={t('add:bulk.include_aria', { title: rel?.title ?? row.line.raw })}
+            aria-label={
+              row.status === 'duplicate'
+                ? t('add:bulk.include_copy_aria', { title: rel?.title ?? row.line.raw })
+                : t('add:bulk.include_aria', { title: rel?.title ?? row.line.raw })
+            }
           />
         ) : null}
         <span className="rounded-base shadow-neu-inset block h-12 w-12 shrink-0 overflow-hidden">
@@ -578,6 +585,9 @@ function BulkRowView({
           </span>
           {row.error ? (
             <span className="text-fg-danger block truncate text-xs">{row.error}</span>
+          ) : null}
+          {row.status === 'duplicate' && row.include ? (
+            <span className="text-fg-brand block truncate text-xs">{t('add:bulk.will_add_copy')}</span>
           ) : null}
           {row.status === 'matched' && (row.sleeve || row.media || row.price != null) ? (
             <span className="text-fg-brand block truncate text-xs">

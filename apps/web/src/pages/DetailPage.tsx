@@ -319,6 +319,12 @@ export function DetailPage() {
     updateItem.mutate({ id: item.id, patch: { lentTo: null, lentAt: null } });
   };
 
+  // Copy identity: which of N copies of the same release this item is.
+  const copies = (allItemsQuery.data ?? [])
+    .filter((x) => x.release.id === item.release.id)
+    .sort((a, b) => String(a.acquiredAt ?? '').localeCompare(String(b.acquiredAt ?? '')));
+  const copyIndex = copies.findIndex((x) => x.id === item.id);
+
 
   return (
     <section className="animate-rise">
@@ -375,6 +381,11 @@ export function DetailPage() {
                 {g}
               </Badge>
             ))}
+            {copies.length > 1 ? (
+              <Badge tone="secondary">
+                {t('detail:page.copy_of', { n: copyIndex + 1, m: copies.length })}
+              </Badge>
+            ) : null}
             {extendedMeta?.discogsUrl ? (
               <ExternalLink
                 href={extendedMeta.discogsUrl}
