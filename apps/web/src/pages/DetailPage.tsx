@@ -574,7 +574,12 @@ export function DetailPage() {
 
         {/* Мои заметки */}
         <section>
-          <h2 className="text-fg-heading mb-5 text-lg font-semibold">{t('detail:my_notes.title')}</h2>
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <h2 className="text-fg-heading text-lg font-semibold">{t('detail:my_notes.title')}</h2>
+            <Button size="sm" onClick={onSaveMeta} disabled={updateItem.isPending}>
+              {updateItem.isPending ? t('common:button.saving') : t('common:button.save')}
+            </Button>
+          </div>
           <div className="rounded-base border-border-default bg-surface shadow-neu-md border p-6">
             <div className="grid gap-x-6 gap-y-5 md:grid-cols-3">
               <Input
@@ -665,11 +670,6 @@ export function DetailPage() {
                   </>
                 )}
               </div>
-            </div>
-            <div className="mt-5 flex justify-end">
-              <Button onClick={onSaveMeta} disabled={updateItem.isPending}>
-                {updateItem.isPending ? t('common:button.saving') : t('common:button.save')}
-              </Button>
             </div>
           </div>
         </section>

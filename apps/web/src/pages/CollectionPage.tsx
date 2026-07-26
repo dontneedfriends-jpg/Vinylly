@@ -441,6 +441,11 @@ function TileStatus({ item, className = '' }: { item: ItemRecord; className?: st
       ) : (
         <span className="text-fg-warning">· {t('collection:tile.no_location')}</span>
       )}
+      {item.release.lowestPrice != null ? (
+        <span className="text-fg-brand tabular-nums" title={t('collection:tile.market')}>
+          · ≈${item.release.lowestPrice.toFixed(2)}
+        </span>
+      ) : null}
       {condition ? <span className="text-fg-body-subtle">· {condition}</span> : null}
     </p>
   );

@@ -101,6 +101,8 @@ class TauriHostNet implements HostNet {
     if (!resp.ok) {
       throw new Error(`fetchJson failed: ${resp.status} ${url}`);
     }
+    // 204 No Content (e.g. Discogs field update) — empty body is success.
+    if (!resp.text || !resp.text.trim()) return null as T;
     return JSON.parse(resp.text) as T;
   }
   async fetchBinary(url: string, init?: RequestInit): Promise<Uint8Array> {

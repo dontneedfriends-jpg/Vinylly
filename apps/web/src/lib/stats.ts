@@ -270,3 +270,44 @@ export function computeDuplicates(items: ItemRecord[]): DuplicateGroup[] {
     .sort((a, b) => b.items.length - a.items.length);
 }
 
+
+/**
+ * Full collection valuation: one row per item with purchase vs market price
+ * and ROI. Items without market data sort last.
+ */
+export interface ValuationRow {
+  item: ItemRecord;
+  purchase: number | null;
+  market: number | null;
+  roi: number | null;
+  roiPct: number | null;
+}
+
+export type ValuationSort = 'market' | 'purchase' | 'roi' | 'title' | 'year';
+
+export function computeValuation(items: ItemRecord[], sort: ValuationSort = 'market'): ValuationRow[] {
+  const rows: ValuationRow[] = items.map((item) => {
+    const purchase = item.purchasePrice;
+    const market = item.release.lowestPrice;
+    const roi = purchase != null && market != null ? market - purchase : null;
+    const roiPct = roi != null && purchase! > 0 ? (roi / purchase!) * 100 : null;
+    return { item, purchase, market, roi, roiPct };
+  });
+  const num = (v: number | null, fallback: number) => (v == null ? fallback : v);
+  rows.sort((a, b) => {
+    switch (sort) {
+      case 'purchase':
+        return num(b.purchase, -1) - num(a.purchase, -1);
+      case 'roi':
+        return num(b.roi, -Infinity) - num(a.roi, -Infinity);
+      case 'title':
+        return a.item.release.title.localeCompare(b.item.release.title, 'ru');
+      case 'year':
+        return (b.item.release.year ?? 0) - (a.item.release.year ?? 0);
+      default:
+        return num(b.market, -1) - num(a.market, -1);
+    }
+  });
+  return rows;
+}
+

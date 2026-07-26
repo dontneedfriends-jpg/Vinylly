@@ -401,6 +401,10 @@ export const itemRepo: ItemRepository = {
     if (patch.tags !== undefined) data.tags = JSON.stringify(patch.tags);
     if (patch.acquiredAt !== undefined)
       data.acquiredAt = patch.acquiredAt ? new Date(patch.acquiredAt) : null;
+    if (patch.playCount !== undefined) data.playCount = patch.playCount;
+    if (patch.lastPlayedAt !== undefined) data.lastPlayedAt = patch.lastPlayedAt;
+    if (patch.lentTo !== undefined) data.lentTo = patch.lentTo;
+    if (patch.lentAt !== undefined) data.lentAt = patch.lentAt;
     const updated = await prisma.item.update({
       where: { id },
       data,
@@ -510,6 +514,10 @@ function itemFromRow(row: Record<string, unknown>): ItemRecord {
     acquiredAt: row.acquiredAt ? new Date(row.acquiredAt as string).toISOString() : null,
     location: (row.location as string | null) ?? null,
     tags: parseJsonArray<string>(row.tags as string | undefined, []),
+    playCount: (row.playCount as number | undefined) ?? 0,
+    lastPlayedAt: (row.lastPlayedAt as string | null) ?? null,
+    lentTo: (row.lentTo as string | null) ?? null,
+    lentAt: (row.lentAt as string | null) ?? null,
     release: {
       id: String(release.id ?? row.releaseId),
       source: (release.source as ReleaseRecord['source']) ?? 'manual',

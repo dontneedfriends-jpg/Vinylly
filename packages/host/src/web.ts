@@ -47,6 +47,8 @@ class WebHostNet implements HostNet {
   async fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     const res = await fetch(url, init);
     if (!res.ok) throw new Error(`fetchJson failed: ${res.status} ${url}`);
+    // 204 No Content — empty body is success, not a JSON error.
+    if (res.status === 204) return null as T;
     return (await res.json()) as T;
   }
   async fetchBinary(url: string, init?: RequestInit): Promise<Uint8Array> {

@@ -12,6 +12,9 @@ export interface RandomPickModalProps {
   onClose: () => void;
 }
 
+/** Decelerating slot-machine cadence — total ≈ 2.4 s. */
+const SPIN_DELAYS = [55, 65, 75, 85, 100, 115, 135, 160, 190, 230, 285, 360, 470];
+
 export function RandomPickModal({ open, items, onClose }: RandomPickModalProps) {
   const { t } = useTranslation();
   const openDetail = useUi((s) => s.openDetail);
@@ -19,26 +22,52 @@ export function RandomPickModal({ open, items, onClose }: RandomPickModalProps) 
   useDialogA11y(dialogRef, open, onClose);
   const [pickId, setPickId] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
   const roll = useCallback(() => {
     if (!items.length) return;
+    stopTimer();
+    const final = items[Math.floor(Math.random() * items.length)]!;
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      setPickId(final.id);
+      setSpinning(false);
+      return;
+    }
     setSpinning(true);
-    // Brief slot-machine flicker before settling on the pick.
-    let ticks = 0;
-    const timer = setInterval(() => {
+    let tick = 0;
+    const step = () => {
       setPickId(items[Math.floor(Math.random() * items.length)]!.id);
-      ticks += 1;
-      if (ticks >= 6) {
-        clearInterval(timer);
+      tick += 1;
+      if (tick < SPIN_DELAYS.length) {
+        timerRef.current = setTimeout(step, SPIN_DELAYS[tick]);
+      } else {
+        setPickId(final.id);
         setSpinning(false);
       }
-    }, 70);
-  }, [items]);
+    };
+    timerRef.current = setTimeout(step, SPIN_DELAYS[0]);
+  }, [items, stopTimer]);
 
   useEffect(() => {
-    if (open) roll();
-    else setPickId(null);
-  }, [open, roll]);
+    if (open) {
+      roll();
+    } else {
+      stopTimer();
+      setPickId(null);
+      setSpinning(false);
+    }
+    return stopTimer;
+  }, [open, roll, stopTimer]);
 
   if (!open) return null;
   const pick = items.find((it) => it.id === pickId) ?? null;
@@ -64,11 +93,14 @@ export function RandomPickModal({ open, items, onClose }: RandomPickModalProps) 
             <button
               type="button"
               onClick={() => {
+                if (spinning) return;
                 onClose();
                 openDetail(pick.id);
               }}
-              className={`rounded-base shadow-neu-xl aspect-square w-full max-w-[240px] overflow-hidden transition-neu hover:shadow-neu-2xl ${
-                spinning ? 'animate-pulse' : ''
+              className={`rounded-base aspect-square w-full max-w-[240px] overflow-hidden transition-all duration-300 ${
+                spinning
+                  ? 'shadow-neu-lg scale-[0.97] blur-[2px] saturate-50'
+                  : 'shadow-neu-2xl scale-100 blur-0 saturate-100'
               }`}
               aria-label={t('collection:item.open_aria', { title: pick.release.title })}
             >
@@ -81,16 +113,31 @@ export function RandomPickModal({ open, items, onClose }: RandomPickModalProps) 
                 elevated={false}
               />
             </button>
-            <div className="text-center">
-              <div className="text-fg-heading text-base font-semibold">{pick.release.title}</div>
-              <div className="text-fg-body-subtle mt-0.5 text-sm">
+
+            <div
+              key={spinning ? 'spin' : pick.id}
+              className={`text-center ${spinning ? '' : 'animate-rise'}`}
+            >
+              <div
+                className={`text-fg-heading text-base font-semibold transition-all duration-200 ${
+                  spinning ? 'blur-[1px] opacity-60' : ''
+                }`}
+              >
+                {pick.release.title}
+              </div>
+              <div
+                className={`text-fg-body-subtle mt-0.5 text-sm transition-all duration-200 ${
+                  spinning ? 'blur-[1px] opacity-60' : ''
+                }`}
+              >
                 {pick.release.artist}
                 {pick.release.year ? ` · ${pick.release.year}` : ''}
               </div>
             </div>
+
             <div className="flex w-full items-center justify-center gap-2">
               <Button onClick={roll} disabled={spinning || items.length < 2} leftIcon={<DiceIcon />}>
-                {t('collection:random.reroll')}
+                {spinning ? t('collection:random.spinning') : t('collection:random.reroll')}
               </Button>
               <Button variant="neutral" onClick={onClose}>
                 {t('common:button.close')}

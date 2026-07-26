@@ -8,6 +8,7 @@ import {
   computeHiddenGems,
   computeMostValuable,
   computeRoiLeaders,
+  computeValuation,
   computeYearStats,
 } from './stats';
 
@@ -222,3 +223,34 @@ describe('computeAnniversaries', () => {
     ).toEqual([]);
   });
 });
+
+describe('computeValuation', () => {
+  it('computes roi and pct when both prices known', () => {
+    const rows = computeValuation([makeItem({ id: 'a', purchasePrice: 10, lowestPrice: 25 })]);
+    expect(rows[0]!.roi).toBe(15);
+    expect(rows[0]!.roiPct).toBe(150);
+  });
+
+  it('roi is null without market price', () => {
+    const rows = computeValuation([makeItem({ id: 'a', purchasePrice: 10 })]);
+    expect(rows[0]!.roi).toBeNull();
+  });
+
+  it('sorts by market desc, unknowns last', () => {
+    const rows = computeValuation([
+      makeItem({ id: 'c' }),
+      makeItem({ id: 'b', lowestPrice: 50 }),
+      makeItem({ id: 'a', lowestPrice: 100 }),
+    ]);
+    expect(rows.map((r) => r.item.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('sorts by roi with unknown roi last', () => {
+    const rows = computeValuation(
+      [makeItem({ id: 'c' }), makeItem({ id: 'b', purchasePrice: 10, lowestPrice: 5 }), makeItem({ id: 'a', purchasePrice: 10, lowestPrice: 30 })],
+      'roi',
+    );
+    expect(rows.map((r) => r.item.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
