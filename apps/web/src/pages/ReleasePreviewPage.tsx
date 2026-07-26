@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, PageHeader, Badge, Card, CardBody, Input, Textarea, SegmentedControl } from '@vinylly/ui';
 import type { MediaType, ReleaseRecord } from '@vinylly/db';
 import { useUi } from '../lib/ui-store';
-import { useDefaultCollection, useCreateItem, useItems, useRemoveFromWantlist, useWantlist } from '../lib/queries';
+import { useDefaultCollection, useCreateItem, useItems, useRemoveFromWantlist, useWantlist, useUpdateWantlist } from '../lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { CoverImage } from '../components/CoverImage';
 import { Gallery } from '../components/Gallery';
@@ -44,7 +44,9 @@ export function ReleasePreviewPage() {
   const { data: collection } = useDefaultCollection();
   const createItem = useCreateItem();
   const removeFromWantlist = useRemoveFromWantlist();
+  const updateWantlist = useUpdateWantlist();
   const queryClient = useQueryClient();
+  const [targetPrice, setTargetPrice] = useState<number | null>(null);
 
   const [release, setRelease] = useState<ExtendedRelease | null>(null);
   const [loading, setLoading] = useState(false);
@@ -148,6 +150,11 @@ export function ReleasePreviewPage() {
     if (!release) return null;
     return wantlist.find((w) => w.release.source === release.source && w.release.sourceId === release.sourceId) ?? null;
   }, [wantlist, release]);
+
+  // Seed the target-price editor from the wantlist entry.
+  useEffect(() => {
+    setTargetPrice(inWantlist?.targetPrice ?? null);
+  }, [inWantlist?.id, inWantlist?.targetPrice]);
 
   const alreadyOwned = useMemo(() => {
     if (!release) return null;
@@ -389,10 +396,38 @@ export function ReleasePreviewPage() {
                       {t('release_preview.back_to_wantlist')}
                     </Button>
                   </div>
-                </>
-              )}
-            </CardBody>
-          </Card>
+              </>
+            )}
+          </CardBody>
+          {inWantlist ? (
+            <div className="border-border-default flex items-end gap-3 border-t px-6 py-4">
+              <Input
+                label={t('wantlist:prices.target_label')}
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={targetPrice ?? ''}
+                onChange={(e) => setTargetPrice(e.target.value ? Number(e.target.value) : null)}
+              />
+              <Button
+                size="sm"
+                variant="neutral"
+                disabled={updateWantlist.isPending}
+                onClick={() =>
+                  updateWantlist.mutate({ id: inWantlist.id, patch: { targetPrice } })
+                }
+              >
+                {t('common:button.save')}
+              </Button>
+              {release.lowestPrice != null ? (
+                <span className="text-fg-body-subtle pb-2 text-xs">
+                  {t('wantlist:prices.current', { price: `$${release.lowestPrice.toFixed(2)}` })}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </Card>
 
           {/* Snapshot facts */}
           <Card className="mt-2">

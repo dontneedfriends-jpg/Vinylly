@@ -51,10 +51,36 @@ interface DbSnapshot {
   profileSettings: { id: string; data: Record<string, unknown> } | null;
 }
 
+/* ─── Write coalescing ───
+ * Every mutation used to serialize the whole DB to localStorage AND push a
+ * full snapshot over IPC — hundreds of times during a bulk import. Now disk
+ * writes are debounced (400 ms trailing) while listeners still fire
+ * immediately (in-memory state is always current). Pending writes flush on
+ * page hide/close and before a profile switch re-reads from disk.
+ */
+const flushers = new Set<() => Promise<void>>();
+let flushBound = false;
+function bindGlobalFlush(): void {
+  if (flushBound || typeof window === 'undefined') return;
+  flushBound = true;
+  const run = () => {
+    for (const f of flushers) void f();
+  };
+  window.addEventListener('beforeunload', run);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') run();
+  });
+}
+async function flushAllWrites(): Promise<void> {
+  await Promise.all([...flushers].map((f) => f()));
+}
+
 class LocalStoragePrisma {
   private kv = new Map<string, unknown>();
   private listeners = new Set<() => void>();
   private storageKey: string;
+  private pendingWrite: ReturnType<typeof setTimeout> | null = null;
+  private writeChain: Promise<void> = Promise.resolve();
   constructor(initial: DbSnapshot | null, storageKey: string) {
     this.storageKey = storageKey;
     try {
@@ -65,6 +91,7 @@ class LocalStoragePrisma {
     } catch {
       /* ignore */
     }
+    flushers.add(this.flush);
   }
   private readFromStorage(): Array<[string, unknown]> {
     if (typeof localStorage === 'undefined') return [];
@@ -106,7 +133,7 @@ class LocalStoragePrisma {
         (this.kv.get('__profile_settings') as { id: string; data: Record<string, unknown> } | undefined) ?? null,
     };
   }
-  private async persist(profileId: string | null) {
+  private async writeToDisk() {
     try {
       const serialized = Array.from(this.kv.entries());
       localStorage.setItem(this.storageKey, JSON.stringify(serialized));
@@ -119,11 +146,35 @@ class LocalStoragePrisma {
     }
     if (isTauri()) {
       try {
-        await tauriSaveSnapshot(this.toSnapshot(), profileId);
+        await tauriSaveSnapshot(this.toSnapshot(), this.profileId || null);
       } catch (e) {
         console.error('Tauri snapshot save failed, data may not persist on reload', e);
       }
     }
+  }
+  private flush = async (): Promise<void> => {
+    if (this.pendingWrite) {
+      clearTimeout(this.pendingWrite);
+      this.pendingWrite = null;
+    }
+    this.writeChain = this.writeChain.then(() => this.writeToDisk());
+    await this.writeChain;
+  };
+  /** Stop tracking this client: cancel pending writes, drop global flush hook. */
+  dispose(): void {
+    if (this.pendingWrite) {
+      clearTimeout(this.pendingWrite);
+      this.pendingWrite = null;
+    }
+    flushers.delete(this.flush);
+  }
+  private async persist(_profileId: string | null) {
+    bindGlobalFlush();
+    if (this.pendingWrite) clearTimeout(this.pendingWrite);
+    this.pendingWrite = setTimeout(() => {
+      this.pendingWrite = null;
+      this.writeChain = this.writeChain.then(() => this.writeToDisk());
+    }, 400);
     for (const l of this.listeners) l();
   }
   subscribe(cb: () => void) {
@@ -353,6 +404,14 @@ class LocalStoragePrisma {
       await this.persist(this.profileId);
       return { ...row, release: this.kv.get(`release:${String(row.releaseId)}`) ?? null };
     },
+    update: async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+      const existing = (this.kv.get(`wantlist:${args.where.id}`) as Record<string, unknown>) ?? null;
+      if (!existing) throw new Error(`Wantlist entry not found: ${args.where.id}`);
+      const updated = { ...existing, ...args.data };
+      this.kv.set(`wantlist:${args.where.id}`, updated);
+      await this.persist(this.profileId);
+      return updated;
+    },
     delete: async (args: { where: { id: string } }) => {
       this.kv.delete(`wantlist:${args.where.id}`);
       await this.persist(this.profileId);
@@ -389,6 +448,10 @@ function storageKeyFor(profileId: string): string {
 
 async function bootstrapClient(profileId: string): Promise<LocalStoragePrisma> {
   if (currentProfileId === profileId && currentClient) return currentClient;
+  // Another profile's client may hold debounced writes — flush before any
+  // new client re-reads snapshots from disk.
+  await flushAllWrites();
+  if (currentClient && currentProfileId !== profileId) currentClient.dispose();
   if (isTauri()) {
     // Bound the Tauri snapshot load — if the bridge is missing or hung
     // (e.g. dev Vite where __TAURI_INTERNALS__ is a stub) we fall back
@@ -475,6 +538,16 @@ export async function restoreFromJsonFile(
     const created = await useProfileStore.getState().createProfile(options.targetProfileLabel);
     targetId = created.id;
     await switchActiveProfile(targetId);
+  }
+
+  // Flush pending writes of the CURRENT client, then drop it — otherwise a
+  // stale debounced flush would clobber the restored data, and the
+  // early-return in bootstrapClient would keep serving the old in-memory kv.
+  await flushAllWrites();
+  if (currentClient) {
+    currentClient.dispose();
+    currentClient = null;
+    currentProfileId = null;
   }
 
   localStorage.setItem(storageKeyFor(targetId!), JSON.stringify(entries));

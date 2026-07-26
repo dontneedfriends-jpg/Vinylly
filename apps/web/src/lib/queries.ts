@@ -125,3 +125,14 @@ export function useRemoveFromWantlist() {
     },
   });
 }
+
+export function useUpdateWantlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: { targetPrice?: number | null; notes?: string | null } }) =>
+      wantlistRepo.update(id, patch),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['wantlist'] });
+    },
+  });
+}

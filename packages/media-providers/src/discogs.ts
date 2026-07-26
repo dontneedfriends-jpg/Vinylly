@@ -14,6 +14,33 @@ const BASE = 'https://api.discogs.com';
 const TTL_SEARCH = 1000 * 60 * 60 * 24; // 24h
 const TTL_RELEASE = 1000 * 60 * 60 * 24 * 7; // 7d
 
+/** Internal condition codes → Discogs collection-field notation. */
+export const CONDITION_TO_DISCOGS: Record<string, string> = {
+  M: 'Mint (M)',
+  NM: 'Near Mint (NM or M-)',
+  'VG+': 'Very Good Plus (VG+)',
+  VG: 'Very Good (VG)',
+  'G+': 'Good Plus (G+)',
+  G: 'Good (G)',
+  F: 'Fair (F)',
+  P: 'Poor (P)',
+};
+
+/** Parse a Discogs condition string back to the internal code (null = not graded). */
+export function fromDiscogsCondition(value: string): string | null {
+  const v = value.trim().toLowerCase();
+  if (!v) return null;
+  if (v.startsWith('near mint')) return 'NM';
+  if (v.startsWith('mint')) return 'M';
+  if (v.startsWith('very good plus')) return 'VG+';
+  if (v.startsWith('very good')) return 'VG';
+  if (v.startsWith('good plus')) return 'G+';
+  if (v.startsWith('good')) return 'G';
+  if (v.startsWith('fair')) return 'F';
+  if (v.startsWith('poor')) return 'P';
+  return null;
+}
+
 export interface DiscogsConfig {
   token: string;
   /** Optional CORS proxy prefix prepended to every Discogs API URL (browser-only). */
@@ -49,6 +76,8 @@ interface DiscogsCollectionResponse {
     instance_id: number;
     id: number;
     rating: number;
+    /** Per-instance custom fields: 1 = Media Condition, 2 = Sleeve Condition, 3 = Notes. */
+    notes?: Array<{ field_id: number; value: string }>;
     basic_information: {
       id: number;
       master_id: number;
@@ -270,24 +299,24 @@ export class DiscogsProvider implements MediaProvider {
   async fetchCollection(username: string): Promise<DiscogsCollectionResponse['releases']> {
     if (!this.isEnabled() || !username) return [];
     const perPage = 100;
-    let page = 1;
-    let all: DiscogsCollectionResponse['releases'] = [];
-    let totalPages: number | null = null;
-    const MAX_PAGES = 100; // Discogs collection shouldn't exceed this; protects against bad response
-    while (totalPages === null || page <= totalPages) {
-      if (page > MAX_PAGES) break;
-      const url = `${BASE}/users/${encodeURIComponent(username)}/collection/folders/0/releases?page=${page}&per_page=${perPage}`;
-      const data = await withCache(`discogs:collection:${username}:${page}`, TTL_SEARCH, async () => {
-        return getHostShell().net().fetchJson<DiscogsCollectionResponse>(this.wrap(url), {
-          headers: this.headers(),
-        });
-      });
-      all = all.concat(data.releases ?? []);
-      const reported = data.pagination?.pages;
-      totalPages = typeof reported === 'number' && reported > 0 ? reported : page;
-      page++;
-    }
-    return all;
+    const fetchPage = (page: number) =>
+      withCache(`discogs:collection:${username}:${page}`, TTL_SEARCH, async () =>
+        getHostShell().net().fetchJson<DiscogsCollectionResponse>(
+          this.wrap(
+            `${BASE}/users/${encodeURIComponent(username)}/collection/folders/0/releases?page=${page}&per_page=${perPage}`,
+          ),
+          { headers: this.headers() },
+        ),
+      );
+    const first = await fetchPage(1);
+    const totalPages = first.pagination?.pages ?? 1;
+    if (totalPages <= 1) return first.releases ?? [];
+    // Remaining pages in parallel — sequential paging turned big collections
+    // into N round-trips of pure wait.
+    const rest = await Promise.all(
+      Array.from({ length: Math.min(totalPages, 100) - 1 }, (_, i) => fetchPage(i + 2)),
+    );
+    return (first.releases ?? []).concat(...rest.map((r) => r.releases ?? []));
   }
 
   async addToCollection(username: string, releaseId: number): Promise<number | null> {
@@ -320,27 +349,49 @@ export class DiscogsProvider implements MediaProvider {
     }
   }
 
+  /**
+   * Set a collection-instance field. Default Discogs field ids:
+   * 1 = Media Condition, 2 = Sleeve Condition, 3 = Notes.
+   */
+  async updateCollectionField(
+    username: string,
+    releaseId: number,
+    instanceId: number,
+    fieldId: number,
+    value: string,
+  ): Promise<boolean> {
+    if (!this.isEnabled() || !username) return false;
+    const url = `${BASE}/users/${encodeURIComponent(username)}/collection/folders/0/releases/${releaseId}/${instanceId}/fields/${fieldId}`;
+    try {
+      await getHostShell().net().fetchJson(this.wrap(url), {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({ value }),
+      });
+      return true;
+    } catch (err) {
+      console.warn(`[discogs] updateCollectionField(${username}, ${releaseId}, ${instanceId}, ${fieldId}) failed:`, err);
+      return false;
+    }
+  }
+
   async fetchWantlist(username: string): Promise<DiscogsWantlistResponse['wants']> {
     if (!this.isEnabled() || !username) return [];
     const perPage = 100;
-    let page = 1;
-    let all: DiscogsWantlistResponse['wants'] = [];
-    let totalPages: number | null = null;
-    const MAX_PAGES = 100;
-    while (totalPages === null || page <= totalPages) {
-      if (page > MAX_PAGES) break;
-      const url = `${BASE}/users/${encodeURIComponent(username)}/wants?page=${page}&per_page=${perPage}`;
-      const data = await withCache(`discogs:wantlist:${username}:${page}`, TTL_SEARCH, async () => {
-        return getHostShell().net().fetchJson<DiscogsWantlistResponse>(this.wrap(url), {
-          headers: this.headers(),
-        });
-      });
-      all = all.concat(data.wants ?? []);
-      const reported = data.pagination?.pages;
-      totalPages = typeof reported === 'number' && reported > 0 ? reported : page;
-      page++;
-    }
-    return all;
+    const fetchPage = (page: number) =>
+      withCache(`discogs:wantlist:${username}:${page}`, TTL_SEARCH, async () =>
+        getHostShell().net().fetchJson<DiscogsWantlistResponse>(
+          this.wrap(`${BASE}/users/${encodeURIComponent(username)}/wants?page=${page}&per_page=${perPage}`),
+          { headers: this.headers() },
+        ),
+      );
+    const first = await fetchPage(1);
+    const totalPages = first.pagination?.pages ?? 1;
+    if (totalPages <= 1) return first.wants ?? [];
+    const rest = await Promise.all(
+      Array.from({ length: Math.min(totalPages, 100) - 1 }, (_, i) => fetchPage(i + 2)),
+    );
+    return (first.wants ?? []).concat(...rest.map((r) => r.wants ?? []));
   }
 
   async addToWantlist(username: string, releaseId: number): Promise<boolean> {
@@ -391,24 +442,20 @@ export class DiscogsProvider implements MediaProvider {
   async getMasterVersions(masterId: number): Promise<DiscogsMasterVersionsResponse['versions']> {
     if (!this.isEnabled()) return [];
     const perPage = 100;
-    let page = 1;
-    let all: DiscogsMasterVersionsResponse['versions'] = [];
-    let totalPages: number | null = null;
-    const MAX_PAGES = 50;
-    while (totalPages === null || page <= totalPages) {
-      if (page > MAX_PAGES) break;
-      const url = `${BASE}/masters/${masterId}/versions?page=${page}&per_page=${perPage}`;
-      const data = await withCache(`discogs:master-versions:${masterId}:${page}`, TTL_RELEASE, async () => {
-        return getHostShell().net().fetchJson<DiscogsMasterVersionsResponse>(this.wrap(url), {
-          headers: this.headers(),
-        });
-      });
-      all = all.concat(data.versions ?? []);
-      const reported = data.pagination?.pages;
-      totalPages = typeof reported === 'number' && reported > 0 ? reported : page;
-      page++;
-    }
-    return all;
+    const fetchPage = (page: number) =>
+      withCache(`discogs:master-versions:${masterId}:${page}`, TTL_RELEASE, async () =>
+        getHostShell().net().fetchJson<DiscogsMasterVersionsResponse>(
+          this.wrap(`${BASE}/masters/${masterId}/versions?page=${page}&per_page=${perPage}`),
+          { headers: this.headers() },
+        ),
+      );
+    const first = await fetchPage(1);
+    const totalPages = first.pagination?.pages ?? 1;
+    if (totalPages <= 1) return first.versions ?? [];
+    const rest = await Promise.all(
+      Array.from({ length: Math.min(totalPages, 50) - 1 }, (_, i) => fetchPage(i + 2)),
+    );
+    return (first.versions ?? []).concat(...rest.map((r) => r.versions ?? []));
   }
 
   async getArtist(artistId: number): Promise<DiscogsArtistResponse | null> {

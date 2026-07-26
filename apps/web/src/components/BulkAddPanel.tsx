@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Card, CardBody, Badge, Textarea } from '@vinylly/ui';
-import { ensureReleaseAssets, type NormalizedRelease } from '@vinylly/media-providers';
+import { Button, Card, CardBody, Badge, Textarea, ConditionPicker } from '@vinylly/ui';
+import { ensureReleaseAssets, fromDiscogsCondition, type NormalizedRelease } from '@vinylly/media-providers';
 import type { MediaType } from '@vinylly/db';
 import { itemRepo } from '../lib/db';
 import { useDefaultCollection } from '../lib/queries';
@@ -10,6 +10,7 @@ import { useSettings } from '../lib/settings-store';
 import { useUi } from '../lib/ui-store';
 import { getProvidersRegistry } from '../lib/providers';
 import { createThrottle, parseBulkInput, type BulkLine } from '../lib/bulk-add';
+import { parseDiscogsCsv, type DiscogsCsvRow } from '../lib/discogs-csv';
 import { CoverImage } from './CoverImage';
 import { ImportProgress } from './ImportProgress';
 import { useTypeLabels } from '../lib/type-labels';
@@ -50,10 +51,15 @@ export function BulkAddPanel() {
   const [rawInput, setRawInput] = useState('');
   const [rows, setRows] = useState<BulkRow[]>([]);
   const [defaultType, setDefaultType] = useState<MediaType>('other');
+  const [bulkSleeve, setBulkSleeve] = useState('');
+  const [bulkMedia, setBulkMedia] = useState('');
   const [syncDiscogs, setSyncDiscogs] = useState(true);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [csvByRow, setCsvByRow] = useState<Map<number, DiscogsCsvRow>>(new Map());
+  const [csvError, setCsvError] = useState<string | null>(null);
   const cancelRef = useRef(false);
   const rowIdRef = useRef(0);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const canSync = Boolean(discogsUsername) && discogsSyncEnabled;
 
@@ -65,6 +71,7 @@ export function BulkAddPanel() {
     const lines = parseBulkInput(rawInput);
     if (!lines.length) return;
     cancelRef.current = false;
+    setCsvByRow(new Map());
     const initial: BulkRow[] = lines.map((line) => ({
       id: ++rowIdRef.current,
       line,
@@ -110,6 +117,68 @@ export function BulkAddPanel() {
     setPhase('review');
   }, [rawInput, patchRow]);
 
+  /** Discogs CSV export → rows with direct ids; conditions/type ride along. */
+  const onCsvFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file) return;
+      setCsvError(null);
+      const text = await file.text();
+      const parsed = parseDiscogsCsv(text);
+      if (!parsed) {
+        setCsvError(t('add:bulk.csv_error'));
+        return;
+      }
+      cancelRef.current = false;
+      const csv = new Map<number, DiscogsCsvRow>();
+      const initial: BulkRow[] = parsed.map((row) => {
+        const id = ++rowIdRef.current;
+        csv.set(id, row);
+        const line: BulkLine = row.releaseId
+          ? { raw: `${row.artist} — ${row.title}`, kind: 'discogs_id', query: {}, directId: row.releaseId }
+          : { raw: `${row.artist} — ${row.title}`, kind: 'text', query: { text: `${row.artist} ${row.title}` } };
+        return { id, line, status: 'pending', release: null, error: null, include: false };
+      });
+      setCsvByRow(csv);
+      setRows(initial);
+      setPhase('resolving');
+      const throttle = createThrottle(RESOLVE_INTERVAL_MS);
+      const registry = getProvidersRegistry();
+      for (const row of initial) {
+        if (cancelRef.current) {
+          patchRow(row.id, { status: 'skipped' });
+          continue;
+        }
+        patchRow(row.id, { status: 'searching' });
+        await throttle();
+        try {
+          let release: NormalizedRelease | null = null;
+          if (row.line.directId) {
+            release = (await registry.discogs?.getRelease(row.line.directId)) ?? null;
+          } else {
+            const hits = await registry.searchAll(row.line.query);
+            release = hits[0]?.release ?? null;
+          }
+          if (!release) {
+            patchRow(row.id, { status: 'not_found', include: false });
+            continue;
+          }
+          const existing = await itemRepo.findBySource(release.source, release.sourceId);
+          if (existing) {
+            patchRow(row.id, { status: 'duplicate', release, include: false });
+          } else {
+            patchRow(row.id, { status: 'matched', release, include: true });
+          }
+        } catch (err) {
+          patchRow(row.id, { status: 'not_found', error: String(err), include: false });
+        }
+      }
+      setPhase('review');
+    },
+    [patchRow, t],
+  );
+
   const onImport = useCallback(async () => {
     if (!collection) return;
     cancelRef.current = false;
@@ -126,7 +195,17 @@ export function BulkAddPanel() {
       const release = row.release!;
       patchRow(row.id, { status: 'importing' });
       try {
-        const type = (release.mediaType as MediaType | undefined) ?? defaultType;
+        const csv = csvByRow.get(row.id);
+        const type =
+          csv?.mediaType && csv.mediaType !== 'other'
+            ? csv.mediaType
+            : ((release.mediaType as MediaType | undefined) ?? defaultType);
+        const sleeveCondition = csv?.sleeveCondition
+          ? fromDiscogsCondition(csv.sleeveCondition)
+          : bulkSleeve || null;
+        const mediaCondition = csv?.mediaCondition
+          ? fromDiscogsCondition(csv.mediaCondition)
+          : bulkMedia || null;
         const created = await itemRepo.create({
           collectionId: collection.id,
           type,
@@ -146,7 +225,10 @@ export function BulkAddPanel() {
             duration: tr.durationMs ?? null,
           })),
           barcode: release.barcode?.[0] ?? (row.line.kind === 'barcode' ? row.line.raw : null),
-          catalogNumber: row.line.kind === 'catno' ? row.line.raw : null,
+          catalogNumber: csv?.catalogNumber ?? (row.line.kind === 'catno' ? row.line.raw : null),
+          sleeveCondition,
+          mediaCondition,
+          notes: csv?.notes ?? null,
         });
         const assets = await ensureReleaseAssets(release, created.release.id);
         if (assets.coverPath || assets.coverRemote) {
@@ -168,6 +250,12 @@ export function BulkAddPanel() {
           );
           if (instanceId != null) {
             await itemRepo.update(created.id, { discogsInstanceId: instanceId });
+            if (mediaCondition || sleeveCondition) {
+              void registry.syncConditionToDiscogs(discogsUsername!, Number(release.sourceId), instanceId, {
+                mediaCondition,
+                sleeveCondition,
+              });
+            }
           }
         }
         patchRow(row.id, { status: 'imported' });
@@ -179,7 +267,7 @@ export function BulkAddPanel() {
     }
     await queryClient.invalidateQueries({ queryKey: ['items'] });
     setPhase('done');
-  }, [rows, collection, defaultType, syncDiscogs, canSync, discogsUsername, patchRow, queryClient]);
+  }, [rows, collection, defaultType, bulkSleeve, bulkMedia, syncDiscogs, canSync, discogsUsername, patchRow, queryClient, csvByRow]);
 
   const counts = useMemo(() => {
     const c = { matched: 0, not_found: 0, duplicate: 0, imported: 0, failed: 0, included: 0 };
@@ -214,10 +302,15 @@ export function BulkAddPanel() {
             rows={8}
           />
           <p className="text-fg-body-subtle text-xs">{t('add:bulk.input_hint')}</p>
-          <div className="flex items-center gap-3">
+          {csvError ? <p className="text-fg-danger text-xs">{csvError}</p> : null}
+          <div className="flex flex-wrap items-center gap-3">
             <Button onClick={() => void onResolve()} disabled={!lineCount} leftIcon={<SearchIcon />}>
               {t('add:bulk.resolve_button', { count: lineCount })}
             </Button>
+            <Button variant="neutral" onClick={() => fileRef.current?.click()} leftIcon={<UploadIcon />}>
+              {t('add:bulk.csv_button')}
+            </Button>
+            <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={(e) => void onCsvFile(e)} className="hidden" />
           </div>
         </CardBody>
       </Card>
@@ -281,7 +374,7 @@ export function BulkAddPanel() {
       {phase === 'review' ? (
         <Card>
           <CardBody className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div>
                 <span className="text-fg-heading mb-2 block text-sm font-medium">
                   {t('add:bulk.default_type')}
@@ -304,6 +397,16 @@ export function BulkAddPanel() {
                   ))}
                 </div>
               </div>
+              <ConditionPicker
+                label={t('detail:my_notes.sleeve')}
+                value={bulkSleeve}
+                onChange={setBulkSleeve}
+              />
+              <ConditionPicker
+                label={t('detail:my_notes.media')}
+                value={bulkMedia}
+                onChange={setBulkMedia}
+              />
               {canSync ? (
                 <label className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-xs">
                   <input
@@ -451,6 +554,15 @@ function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-4 w-4" aria-hidden>
       <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M12 16V4M6 10l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 20h16" strokeLinecap="round" />
     </svg>
   );
 }

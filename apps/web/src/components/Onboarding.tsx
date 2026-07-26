@@ -4,6 +4,7 @@ import { Button, Input, Card, CardBody, CardHeader } from '@vinylly/ui';
 import { useLocale } from '../lib/locale-store';
 import { useSettings } from '../lib/settings-store';
 import { resetProvidersRegistry } from '../lib/providers';
+import { VinylMark } from './VinylMark';
 
 type Step = 'language' | 'token';
 
@@ -44,8 +45,8 @@ export function Onboarding() {
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="mb-10 text-center">
-          <div className="text-fg-brand mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
-            <VinylLogo />
+          <div className="text-fg-brand mx-auto mb-4 flex h-14 w-14 items-center justify-center">
+            <VinylMark className="h-14 w-14" />
           </div>
           <h1 className="text-fg-heading text-2xl font-semibold">{t('settings:onboarding.title')}</h1>
         </div>
@@ -147,17 +148,6 @@ export function Onboarding() {
         </Card>
       </div>
     </div>
-  );
-}
-
-function VinylLogo() {
-  return (
-    <svg viewBox="0 0 40 40" fill="none" className="h-14 w-14" aria-hidden>
-      <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="20" cy="20" r="10" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="20" cy="20" r="4" fill="currentColor" />
-      <circle cx="20" cy="20" r="1.5" fill="var(--color-surface)" />
-    </svg>
   );
 }
 

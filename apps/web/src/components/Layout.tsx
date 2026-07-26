@@ -5,6 +5,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { RightRail } from './RightRail';
 import { Titlebar } from './Titlebar';
 import { ProfileSwitcher } from './ProfileSwitcher';
+import { VinylMark } from './VinylMark';
 
 export interface LayoutProps {
   children?: ReactNode;
@@ -102,7 +103,7 @@ export function Layout({ children }: LayoutProps) {
         >
           {/* Brand */}
           <div className="flex items-center gap-2.5 px-2 py-1">
-            <VinylMark />
+            <VinylMark className="text-fg-brand h-5 w-5 shrink-0" />
             <span className="text-fg-heading text-sm font-semibold tracking-tight">Vinylly</span>
           </div>
 
@@ -140,30 +141,12 @@ export function Layout({ children }: LayoutProps) {
 
         {/* ─── Content area (main + right rail) ─── */}
         <div className="flex flex-1 min-w-0 overflow-hidden">
-          <main className="scrollbar-neu min-h-0 flex-1 overflow-y-auto px-8 py-10 sm:px-10 sm:py-12 md:px-12">
+          <main className="scrollbar-neu min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-10 md:px-12">
             {children}
           </main>
           {page !== 'settings' ? <RightRail /> : null}
         </div>
       </div>
     </div>
-  );
-}
-
-function VinylMark() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      className="text-fg-brand h-5 w-5 shrink-0"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="9.5" />
-      <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r="0.8" fill="var(--color-surface)" stroke="none" />
-      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" strokeLinecap="round" />
-    </svg>
   );
 }

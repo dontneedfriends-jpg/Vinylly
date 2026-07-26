@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
+import { CommandPalette } from './components/CommandPalette';
 import { CollectionPage } from './pages/CollectionPage';
 import { ReleasePreviewPage } from './pages/ReleasePreviewPage';
 import { AddPage } from './pages/AddPage';
@@ -116,6 +117,7 @@ export function App() {
   return (
     <>
       <KeyboardShortcuts />
+      <CommandPalette />
       <Layout>
         {page === 'collection' ? <CollectionPage /> : null}
         {page === 'add' ? <AddPage /> : null}

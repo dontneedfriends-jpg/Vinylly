@@ -67,5 +67,7 @@
   "bulk.summary_failed": "Ошибок",
   "bulk.summary_found": "Найдено",
   "bulk.summary_imported": "Добавлено",
+  "bulk.csv_button": "Discogs CSV",
+  "bulk.csv_error": "Не похоже на экспорт Discogs CSV — проверьте файл.",
   "bulk.summary_not_found": "Не найдено"
 }

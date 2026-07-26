@@ -38,6 +38,8 @@ export interface WantlistEntry {
   notes: string | null;
   addedAt: string;
   release: ReleaseRecord;
+  /** Price watch: alert when market price drops to/below this value ($). */
+  targetPrice?: number | null;
 }
 
 export interface ReleaseImage {
@@ -70,4 +72,10 @@ export interface ItemRecord {
   location: string | null;
   tags: string[];
   release: ReleaseRecord;
+  /** Play log: how many times the owner spun it + when last. */
+  playCount?: number;
+  lastPlayedAt?: string | null;
+  /** Loan tracking: who holds it right now + since when. */
+  lentTo?: string | null;
+  lentAt?: string | null;
 }

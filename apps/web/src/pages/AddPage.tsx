@@ -274,6 +274,13 @@ export function AddPage() {
         const instanceId = await registry.addToDiscogsCollection(discogsUsername, Number(selected.sourceId));
         if (instanceId != null) {
           await itemRepo.update(created.id, { discogsInstanceId: instanceId });
+          // Push condition fields entered in the form (1 = media, 2 = sleeve)
+          if (mediaCondition || sleeveCondition) {
+            void registry.syncConditionToDiscogs(discogsUsername, Number(selected.sourceId), instanceId, {
+              mediaCondition: mediaCondition || null,
+              sleeveCondition: sleeveCondition || null,
+            });
+          }
         } else {
           showToast(t('add:form.discogs_sync_failed'));
         }
@@ -404,7 +411,7 @@ export function AddPage() {
         </Card>
 
         {searching && results.length === 0 ? (
-          <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <li key={i}>
                 <SkeletonCard />
@@ -429,7 +436,7 @@ export function AddPage() {
           />
         ) : results.length > 0 ? (
           <>
-<ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+<ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {results.slice(0, 24).map((r, i) => (
               <li
                 key={`${r.provider}-${r.release.sourceId}-${i}`}

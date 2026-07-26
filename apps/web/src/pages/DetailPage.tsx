@@ -37,6 +37,7 @@ export function DetailPage() {
   const [sleeveCondition, setSleeveCondition] = useState(item?.sleeveCondition ?? '');
   const [mediaCondition, setMediaCondition] = useState(item?.mediaCondition ?? '');
   const [tags, setTags] = useState<string[]>(item?.tags ?? []);
+  const [lentToDraft, setLentToDraft] = useState('');
   const [lightboxTrigger, setLightboxTrigger] = useState(0);
   const [albumNotes, setAlbumNotes] = useState<string | null>(null);
   const [wikipediaHtml, setWikipediaHtml] = useState<string | null>(null);
@@ -241,21 +242,69 @@ export function DetailPage() {
 
   const onSaveMeta = () => {
     if (!item) return;
-    updateItem.mutate({
-      id: item.id,
-      patch: {
-        notes: notes || null,
-        location: location || null,
-        purchasePrice: purchasePrice,
-        sleeveCondition: sleeveCondition || null,
-        mediaCondition: mediaCondition || null,
-        tags,
+    updateItem.mutate(
+      {
+        id: item.id,
+        patch: {
+          notes: notes || null,
+          location: location || null,
+          purchasePrice: purchasePrice,
+          sleeveCondition: sleeveCondition || null,
+          mediaCondition: mediaCondition || null,
+          tags,
+        },
       },
-    });
+      {
+        onSuccess: () => {
+          // Push condition fields to the linked Discogs instance (1 = media, 2 = sleeve)
+          if (
+            item.discogsInstanceId != null &&
+            item.release.source === 'discogs' &&
+            discogsSyncEnabled &&
+            discogsUsername &&
+            (sleeveCondition || mediaCondition)
+          ) {
+            void getProvidersRegistry().syncConditionToDiscogs(
+              discogsUsername,
+              Number(item.release.sourceId),
+              item.discogsInstanceId,
+              {
+                mediaCondition: mediaCondition || null,
+                sleeveCondition: sleeveCondition || null,
+              },
+            );
+          }
+        },
+      },
+    );
   };
 
   const onDelete = () => {
     schedule(item, t('detail:page.deleted_undo', { title: item.release.title }));
+  };
+
+  const onPlayed = () => {
+    updateItem.mutate({
+      id: item.id,
+      patch: {
+        playCount: (item.playCount ?? 0) + 1,
+        lastPlayedAt: new Date().toISOString(),
+      },
+    });
+  };
+
+  const onLend = () => {
+    const name = lentToDraft.trim();
+    if (!name) return;
+    updateItem.mutate({
+      id: item.id,
+      patch: { lentTo: name, lentAt: new Date().toISOString() },
+    });
+    setLentToDraft('');
+  };
+
+  const onReturn = () => {
+    updateItem.mutate({ id: item.id, patch: { lentTo: null, lentAt: null } });
   };
 
 
@@ -343,8 +392,12 @@ export function DetailPage() {
             </div>
           ) : null}
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <BackButton onClick={openCollection} label={t('detail:page.to_collection')} />
+            <Button variant="neutral" onClick={onPlayed} leftIcon={<PlayIcon />}>
+              {t('detail:play.button')}
+              {item.playCount ? ` · ${item.playCount}` : ''}
+            </Button>
             <Button
               variant="danger"
               onClick={onDelete}
@@ -352,6 +405,11 @@ export function DetailPage() {
             >
               {t('detail:page.delete')}
             </Button>
+            {item.lentTo ? (
+              <Badge tone="warning" pill>
+                {t('detail:loan.badge', { name: item.lentTo })}
+              </Badge>
+            ) : null}
           </div>
         </div>
       </div>
@@ -536,6 +594,54 @@ export function DetailPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
+            </div>
+            <div className="mt-5 grid gap-x-6 gap-y-5 md:grid-cols-2">
+              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border px-4 py-3">
+                <span className="text-fg-body-subtle text-xs">{t('detail:play.last')}</span>
+                <div className="text-fg-heading mt-0.5 text-sm font-medium">
+                  {item.lastPlayedAt
+                    ? t('detail:play.last_value', {
+                        date: new Date(item.lastPlayedAt).toLocaleDateString(),
+                        count: item.playCount ?? 1,
+                      })
+                    : t('detail:play.never')}
+                </div>
+              </div>
+              <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex items-end gap-2 border px-4 py-3">
+                {item.lentTo ? (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-fg-body-subtle text-xs">{t('detail:loan.with')}</span>
+                      <div className="text-fg-heading mt-0.5 truncate text-sm font-medium">
+                        {item.lentTo}
+                        {item.lentAt ? (
+                          <span className="text-fg-body-subtle ml-2 text-xs font-normal">
+                            {t('detail:loan.since', { date: new Date(item.lentAt).toLocaleDateString() })}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="neutral" onClick={onReturn}>
+                      {t('detail:loan.return')}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      label={t('detail:loan.to')}
+                      placeholder={t('detail:loan.placeholder')}
+                      value={lentToDraft}
+                      onChange={(e) => setLentToDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') onLend();
+                      }}
+                    />
+                    <Button size="sm" variant="neutral" onClick={onLend} disabled={!lentToDraft.trim()}>
+                      {t('detail:loan.lend')}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
             <div className="mt-5 flex justify-end">
               <Button onClick={onSaveMeta} disabled={updateItem.isPending}>
@@ -727,6 +833,14 @@ function ChevronRightIcon() {
       aria-hidden
     >
       <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3" aria-hidden>
+      <path d="M6 3l15 9-15 9V3z" />
     </svg>
   );
 }

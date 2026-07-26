@@ -93,6 +93,9 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
               collectionId: collection.id,
               type: rel.type,
               discogsInstanceId: rel.instanceId,
+              sleeveCondition: rel.sleeveCondition,
+              mediaCondition: rel.mediaCondition,
+              notes: rel.notes,
               release: {
                 source: 'discogs',
                 sourceId: String(rel.discogsId),

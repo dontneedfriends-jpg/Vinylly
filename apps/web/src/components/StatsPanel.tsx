@@ -9,6 +9,7 @@ import { useUi } from '../lib/ui-store';
 import {
   computeAnniversaries,
   computeDecadeBreakdown,
+  computeDuplicates,
   computeFormatBreakdown,
   computeHiddenGems,
   computeMostValuable,
@@ -90,6 +91,7 @@ export function StatsPanel() {
     [items],
   );
   const hiddenGems = useMemo(() => computeHiddenGems(items), [items]);
+  const duplicates = useMemo(() => computeDuplicates(items), [items]);
 
   const dna = useMemo(() => {
     if (!items.length) return null;
@@ -290,6 +292,32 @@ export function StatsPanel() {
                     <span className="text-fg-heading shrink-0 text-xs font-medium">
                       ★ {rating.toFixed(2)}
                       <span className="text-fg-body-subtle ml-2 font-normal">{t('stats:hidden_gems.want', { count: want })}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </StatsPanelBlock>
+          ) : null}
+
+          {duplicates.length > 0 ? (
+            <StatsPanelBlock label={t('stats:duplicates.title')}>
+              <div className="rounded-base border-border-default bg-surface shadow-neu-inset border divide-border-default divide-y overflow-hidden">
+                {duplicates.slice(0, 8).map((g) => (
+                  <button
+                    key={g.key}
+                    type="button"
+                    onClick={() => useUi.getState().openDetail(g.items[0]!.id)}
+                    className="hover:shadow-neu-2xs flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-[box-shadow,background-color] duration-200"
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="text-fg-heading block truncate font-medium">{g.title}</span>
+                      <span className="text-fg-body-subtle block truncate text-xs">{g.artist}</span>
+                    </span>
+                    <span className="text-fg-warning shrink-0 text-xs font-medium">
+                      ×{g.items.length}
+                      <span className="text-fg-body-subtle ml-2 font-normal">
+                        {g.kind === 'master' ? t('stats:duplicates.pressings') : t('stats:duplicates.copies')}
+                      </span>
                     </span>
                   </button>
                 ))}

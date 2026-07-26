@@ -40,5 +40,8 @@
   "refresh.no_targets": "Нет релизов Discogs для обновления",
   "refresh.not_available": "Не в Tauri-среде",
   "about.title": "Обзор коллекции",
-  "chart.bar_aria": "Столбчатая диаграмма"
+  "chart.bar_aria": "Столбчатая диаграмма",
+  "duplicates.title": "Дубликаты",
+  "duplicates.pressings": "пресса",
+  "duplicates.copies": "копии"
 }

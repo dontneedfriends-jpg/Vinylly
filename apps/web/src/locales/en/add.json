@@ -67,5 +67,7 @@
   "bulk.summary_failed": "Failed",
   "bulk.summary_found": "Matched",
   "bulk.summary_imported": "Imported",
+  "bulk.csv_button": "Discogs CSV",
+  "bulk.csv_error": "This doesn't look like a Discogs CSV export — check the file.",
   "bulk.summary_not_found": "Not found"
 }

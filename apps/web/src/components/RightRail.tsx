@@ -532,6 +532,7 @@ function AddRail() {
             </li>
           </ul>
         </div>
+        <GradingGuide />
       </div>
     );
   }
@@ -605,11 +606,35 @@ function AddRail() {
           </nav>
         )}
       </div>
+
+      <GradingGuide />
     </div>
   );
 }
 
-/* ─────────── SETTINGS RAIL — App Info ─────────── */
+/* ─────────── ADD RAIL — Grading guide (Goldmine) ─────────── */
+
+function GradingGuide() {
+  const { t } = useTranslation();
+  const grades = ['m', 'nm', 'vgplus', 'vg', 'g', 'f_p'] as const;
+  return (
+    <div>
+      <h3 className="text-fg-heading mb-3 text-lg font-semibold">{t('layout:rail.grading.title')}</h3>
+      <div className="rounded-base border-border-default bg-surface shadow-neu-inset divide-border-default divide-y border">
+        {grades.map((g) => (
+          <div key={g} className="flex items-start gap-3 px-4 py-2.5">
+            <span className="text-fg-brand-strong w-12 shrink-0 text-xs font-semibold">
+              {t(`layout:rail.grading.${g}_label`)}
+            </span>
+            <span className="text-fg-body-subtle text-xs leading-relaxed">
+              {t(`layout:rail.grading.${g}`)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /* ─────────── EXPORT ─────────── */
 

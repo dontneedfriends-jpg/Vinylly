@@ -40,5 +40,8 @@
   "refresh.no_targets": "No Discogs releases to refresh",
   "refresh.not_available": "Not in Tauri environment",
   "about.title": "Collection overview",
-  "chart.bar_aria": "Bar chart"
+  "chart.bar_aria": "Bar chart",
+  "duplicates.title": "Duplicates",
+  "duplicates.pressings": "pressings",
+  "duplicates.copies": "copies"
 }

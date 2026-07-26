@@ -30,6 +30,7 @@ export interface WantlistRepository {
   list(): Promise<WantlistEntry[]>;
   contains(source: string, sourceId: string): Promise<boolean>;
   add(input: CreateWantlistInput): Promise<WantlistEntry>;
+  update(id: string, patch: { targetPrice?: number | null; notes?: string | null }): Promise<void>;
   remove(id: string): Promise<void>;
 }
 
@@ -50,6 +51,7 @@ export const wantlistRepo: WantlistRepository = {
         id: String(r.id),
         notes: (r.notes as string | null) ?? null,
         addedAt: new Date(r.addedAt as string).toISOString(),
+        targetPrice: (r.targetPrice as number | null | undefined) ?? null,
         release: releaseFromRow(release),
       };
     });
@@ -132,6 +134,15 @@ export const wantlistRepo: WantlistRepository = {
     };
   },
 
+  async update(id, patch) {
+    const prisma = getPrismaClient() as unknown as {
+      wantlistEntry: {
+        update: (a: unknown) => Promise<unknown>;
+      };
+    };
+    await prisma.wantlistEntry.update({ where: { id }, data: patch });
+  },
+
   async remove(id) {
     const prisma = getPrismaClient() as unknown as {
       wantlistEntry: { delete: (a: unknown) => Promise<unknown> };
@@ -169,6 +180,10 @@ export interface CreateItemInput {
   location?: string | null;
   tags?: string[];
   acquiredAt?: string | null;
+  playCount?: number;
+  lastPlayedAt?: string | null;
+  lentTo?: string | null;
+  lentAt?: string | null;
 }
 
 function genId(prefix: string): string {

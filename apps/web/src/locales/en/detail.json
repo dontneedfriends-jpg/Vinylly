@@ -52,5 +52,16 @@
   "gallery.preview_aria": "Image preview",
   "gallery.prev_aria": "Previous image",
   "gallery.next_aria": "Next image",
-  "tracklist.title": "Tracklist"
+  "tracklist.title": "Tracklist",
+  "play.button": "Played",
+  "play.last": "Last played",
+  "play.last_value": "{{date}} · {{count}} total",
+  "play.never": "Never played",
+  "loan.badge": "With {{name}}",
+  "loan.with": "Lent to",
+  "loan.since": "since {{date}}",
+  "loan.return": "Returned",
+  "loan.to": "Lend to",
+  "loan.placeholder": "Name",
+  "loan.lend": "Lend"
 }

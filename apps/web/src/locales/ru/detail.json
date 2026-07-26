@@ -52,5 +52,16 @@
   "gallery.preview_aria": "Просмотр изображения",
   "gallery.prev_aria": "Предыдущее изображение",
   "gallery.next_aria": "Следующее изображение",
-  "tracklist.title": "Треклист"
+  "tracklist.title": "Треклист",
+  "play.button": "Играл",
+  "play.last": "Последний раз",
+  "play.last_value": "{{date}} · всего {{count}}",
+  "play.never": "Ещё не играл",
+  "loan.badge": "У {{name}}",
+  "loan.with": "Отдан",
+  "loan.since": "с {{date}}",
+  "loan.return": "Вернулся",
+  "loan.to": "Одолжить",
+  "loan.placeholder": "Имя",
+  "loan.lend": "Отдать"
 }

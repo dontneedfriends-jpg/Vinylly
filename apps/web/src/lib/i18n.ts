@@ -13,6 +13,7 @@ import ruWantlist from '../locales/ru/wantlist.json';
 import ruArtist from '../locales/ru/artist.json';
 import ruReleasePreview from '../locales/ru/release_preview.json';
 import ruProfile from '../locales/ru/profile.json';
+import ruPalette from '../locales/ru/palette.json';
 
 import enCommon from '../locales/en/common.json';
 import enLayout from '../locales/en/layout.json';
@@ -25,6 +26,7 @@ import enWantlist from '../locales/en/wantlist.json';
 import enArtist from '../locales/en/artist.json';
 import enReleasePreview from '../locales/en/release_preview.json';
 import enProfile from '../locales/en/profile.json';
+import enPalette from '../locales/en/palette.json';
 
 const resources = {
   ru: {
@@ -39,6 +41,7 @@ const resources = {
     artist: ruArtist,
     release_preview: ruReleasePreview,
     profile: ruProfile,
+    palette: ruPalette,
   },
   en: {
     common: enCommon,
@@ -52,6 +55,7 @@ const resources = {
     artist: enArtist,
     release_preview: enReleasePreview,
     profile: enProfile,
+    palette: enPalette,
   },
 };
 
@@ -61,7 +65,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'ru',
-    ns: ['common', 'layout', 'collection', 'add', 'detail', 'settings', 'stats', 'wantlist', 'artist', 'release_preview', 'profile'],
+    ns: ['common', 'layout', 'collection', 'add', 'detail', 'settings', 'stats', 'wantlist', 'artist', 'release_preview', 'profile', 'palette'],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
     detection: {

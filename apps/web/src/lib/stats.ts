@@ -229,3 +229,44 @@ export function computeAnniversaries(items: ItemRecord[], nowYear: number, topN 
     })
     .slice(0, topN);
 }
+
+/**
+ * Duplicate detection: items sharing a release id (same pressing twice)
+ * or a Discogs master id (different pressings of the same album).
+ */
+export interface DuplicateGroup {
+  key: string;
+  kind: 'release' | 'master';
+  title: string;
+  artist: string;
+  items: ItemRecord[];
+}
+
+export function computeDuplicates(items: ItemRecord[]): DuplicateGroup[] {
+  const groups = new Map<string, DuplicateGroup>();
+  for (const it of items) {
+    const masterKey = it.release.masterId ? `master:${it.release.masterId}` : null;
+    const keys: Array<{ key: string; kind: 'release' | 'master' }> = [
+      { key: `release:${it.release.id}`, kind: 'release' },
+      ...(masterKey ? [{ key: masterKey, kind: 'master' as const }] : []),
+    ];
+    for (const { key, kind } of keys) {
+      const g = groups.get(key) ?? {
+        key,
+        kind,
+        title: it.release.title,
+        artist: it.release.artist,
+        items: [],
+      };
+      if (!g.items.some((x) => x.id === it.id)) g.items.push(it);
+      groups.set(key, g);
+    }
+  }
+  // master-groups that are fully covered by a single release-group are noise
+  // only when they span 2+ distinct releases do they mean 'pressings'.
+  return [...groups.values()]
+    .filter((g) => g.items.length > 1)
+    .filter((g) => g.kind === 'release' || new Set(g.items.map((i) => i.release.id)).size > 1)
+    .sort((a, b) => b.items.length - a.items.length);
+}
+

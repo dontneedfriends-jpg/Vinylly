@@ -1,4 +1,4 @@
-import { DiscogsProvider, type DiscogsConfig } from './discogs';
+import { DiscogsProvider, CONDITION_TO_DISCOGS, fromDiscogsCondition, type DiscogsConfig } from './discogs';
 import { MusicBrainzProvider } from './musicbrainz';
 import { LastFmProvider, type LastFmConfig } from './lastfm';
 import { GeniusProvider, type GeniusConfig } from './genius';
@@ -16,6 +16,11 @@ export interface DiscogsCollectionRelease {
   coverUrl: string | null;
   thumbUrl: string | null;
   type: 'vinyl' | 'cd' | 'cassette' | 'other';
+  /** Per-instance data from the owner's collection fields. */
+  mediaCondition: string | null;
+  sleeveCondition: string | null;
+  notes: string | null;
+  rating: number | null;
 }
 
 export interface DiscogsWantlistRelease {
@@ -99,6 +104,7 @@ export class ProvidersRegistry {
             : fmt.includes('cassette') || fmt.includes('tape')
               ? ('cassette' as const)
               : ('other' as const);
+        const field = (id: number) => r.notes?.find((n) => n.field_id === id)?.value ?? null;
         return {
           instanceId: r.instance_id,
           discogsId: bi.id,
@@ -110,6 +116,10 @@ export class ProvidersRegistry {
           coverUrl: bi.cover_image ?? null,
           thumbUrl: bi.thumb ?? null,
           type: detectedType,
+          mediaCondition: field(1) ? fromDiscogsCondition(field(1)!) : null,
+          sleeveCondition: field(2) ? fromDiscogsCondition(field(2)!) : null,
+          notes: field(3),
+          rating: r.rating > 0 ? r.rating : null,
         };
       });
     } catch (err) {
@@ -136,6 +146,32 @@ export class ProvidersRegistry {
       console.warn(`[discogs] removeFromDiscogsCollection(${username}, ${discogsReleaseId}, ${instanceId}) failed:`, err);
       return false;
     }
+  }
+
+  /**
+   * Push condition/notes to the owner's Discogs collection instance.
+   * Field ids: 1 = Media Condition, 2 = Sleeve Condition, 3 = Notes.
+   */
+  async syncConditionToDiscogs(
+    username: string,
+    discogsReleaseId: number,
+    instanceId: number,
+    fields: { mediaCondition?: string | null; sleeveCondition?: string | null; notes?: string | null },
+  ): Promise<void> {
+    if (!this.discogs?.isEnabled() || !username) return;
+    const jobs: Array<Promise<boolean>> = [];
+    if (fields.mediaCondition) {
+      const v = CONDITION_TO_DISCOGS[fields.mediaCondition];
+      if (v) jobs.push(this.discogs.updateCollectionField(username, discogsReleaseId, instanceId, 1, v));
+    }
+    if (fields.sleeveCondition) {
+      const v = CONDITION_TO_DISCOGS[fields.sleeveCondition];
+      if (v) jobs.push(this.discogs.updateCollectionField(username, discogsReleaseId, instanceId, 2, v));
+    }
+    if (fields.notes) {
+      jobs.push(this.discogs.updateCollectionField(username, discogsReleaseId, instanceId, 3, fields.notes));
+    }
+    if (jobs.length) await Promise.all(jobs);
   }
 
   async fetchDiscogsWantlist(username: string): Promise<DiscogsWantlistRelease[]> {
@@ -306,6 +342,7 @@ export class ProvidersRegistry {
 
 export * from './types';
 export { DiscogsProvider, MusicBrainzProvider, LastFmProvider, GeniusProvider, LrclibProvider };
+export { CONDITION_TO_DISCOGS, fromDiscogsCondition } from './discogs';
 export type { DiscogsConfig, LastFmConfig, GeniusConfig };
 export {
   cacheCover,

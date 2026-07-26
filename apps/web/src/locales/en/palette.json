@@ -1,0 +1,6 @@
+{
+  "title": "Quick search",
+  "placeholder": "Release, artist or action…",
+  "empty": "Nothing found",
+  "action.theme": "Toggle theme"
+}
