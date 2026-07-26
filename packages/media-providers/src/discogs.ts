@@ -41,6 +41,15 @@ export function fromDiscogsCondition(value: string): string | null {
   return null;
 }
 
+/** Parse a price from a free-form custom-field value ("$25.00", "25", "25,00 €"). */
+export function parseFieldPrice(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const m = /(\d+(?:[.,]\d+)?)/.exec(value);
+  if (!m) return null;
+  const n = Number(m[1]!.replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export interface DiscogsConfig {
   token: string;
   /** Optional CORS proxy prefix prepended to every Discogs API URL (browser-only). */
@@ -346,6 +355,26 @@ export class DiscogsProvider implements MediaProvider {
     } catch (err) {
       console.warn(`[discogs] removeFromCollection(${username}, ${releaseId}, ${instanceId}) failed:`, err);
       return false;
+    }
+  }
+
+  /**
+   * List the owner's collection fields (built-in 1-3 + custom fields 4+).
+   * Used to map a custom field for purchase-price sync.
+   */
+  async getCollectionFields(
+    username: string,
+  ): Promise<Array<{ id: number; name: string; type: string; position: number }>> {
+    if (!this.isEnabled() || !username) return [];
+    const url = `${BASE}/users/${encodeURIComponent(username)}/collection/fields`;
+    try {
+      const data = await getHostShell().net().fetchJson<{
+        fields: Array<{ id: number; name: string; type: string; position: number }>;
+      }>(this.wrap(url), { headers: this.headers() });
+      return data.fields ?? [];
+    } catch (err) {
+      console.warn(`[discogs] getCollectionFields(${username}) failed:`, err);
+      return [];
     }
   }
 

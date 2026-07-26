@@ -8,6 +8,7 @@ import { getHostShell } from '@vinylly/host';
 import { ExternalLink } from './ExternalLink';
 import { collectionRepo, itemRepo, wantlistRepo } from '@vinylly/db';
 import { ImportProgress } from './ImportProgress';
+import { createThrottle } from '../lib/bulk-add';
 
 interface DiscogsPanelProps {
   /** True when this panel belongs to the active profile; controls/imports require it. */
@@ -20,10 +21,11 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
   const token = useSettings((s) => s.discogsToken);
   const username = useSettings((s) => s.discogsUsername);
   const syncEnabled = useSettings((s) => s.discogsSyncEnabled);
+  const priceFieldId = useSettings((s) => s.discogsPriceFieldId);
   const setUsername = useSettings((s) => s.setDiscogsUsername);
   const setSync = useSettings((s) => s.setDiscogsSyncEnabled);
 
-  const [busy, setBusy] = useState<'test' | 'import' | 'importWantlist' | null>(null);
+  const [busy, setBusy] = useState<'test' | 'import' | 'importWantlist' | 'pushPrices' | null>(null);
   const [testResult, setTestResult] = useState<{ kind: 'idle' | 'ok' | 'error'; message: string } | null>(null);
   const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
   const [importStatus, setImportStatus] = useState<{ kind: 'idle' | 'ok' | 'error'; message: string } | null>(null);
@@ -64,7 +66,7 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
     try {
       const collection = await collectionRepo.ensureDefault();
       const registry = getProvidersRegistry();
-      const releases = await registry.fetchDiscogsCollection(username);
+      const releases = await registry.fetchDiscogsCollection(username, priceFieldId);
       let imported = 0;
       let skipped = 0;
       setImportProgress({ done: 0, total: releases.length });
@@ -79,6 +81,10 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
           const exists = await itemRepo.findBySource('discogs', String(rel.discogsId));
           if (exists) {
             skipped++;
+            // Backfill price into previously imported items that lack it
+            if (rel.purchasePrice != null && exists.purchasePrice == null) {
+              await itemRepo.update(exists.id, { purchasePrice: rel.purchasePrice });
+            }
           } else {
             let tracklist:
               | Array<{ position: string; title: string; duration?: number | null }>
@@ -96,6 +102,7 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
               sleeveCondition: rel.sleeveCondition,
               mediaCondition: rel.mediaCondition,
               notes: rel.notes,
+              purchasePrice: rel.purchasePrice,
               release: {
                 source: 'discogs',
                 sourceId: String(rel.discogsId),
@@ -142,8 +149,65 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
     }
   };
 
-  const onImportWantlist = async () => {
-    if (!username) return;
+  /** One-time migration: push all locally known purchase prices into the mapped field. */
+  const onPushPrices = async () => {
+    if (!username || priceFieldId == null) return;
+    setBusy('pushPrices');
+    setImportStatus(null);
+    const importId = ++importCounterRef.current;
+    try {
+      const registry = getProvidersRegistry();
+      const items = await itemRepo.list({});
+      const targets = items.filter(
+        (it) =>
+          it.release.source === 'discogs' &&
+          it.discogsInstanceId != null &&
+          it.purchasePrice != null,
+      );
+      if (!targets.length) {
+        setImportStatus({ kind: 'ok', message: t('settings:discogs.price_push_empty') });
+        setBusy(null);
+        return;
+      }
+      setImportProgress({ done: 0, total: targets.length });
+      const throttle = createThrottle(1100);
+      let done = 0;
+      let failed = 0;
+      for (const it of targets) {
+        if (importId !== importCounterRef.current) return;
+        await throttle();
+        try {
+          await registry.syncPriceToDiscogs(
+            username,
+            Number(it.release.sourceId),
+            it.discogsInstanceId!,
+            it.purchasePrice!,
+            priceFieldId,
+          );
+          done++;
+        } catch {
+          failed++;
+        }
+        setImportProgress({ done: done + failed, total: targets.length });
+      }
+      setImportStatus({
+        kind: failed > 0 ? 'error' : 'ok',
+        message: t('settings:discogs.price_push_done', { done, total: targets.length, failed }),
+      });
+    } catch (err) {
+      setImportStatus({
+        kind: 'error',
+        message: t('settings:discogs.import_error', { error: String(err) }),
+      });
+    } finally {
+      if (importId === importCounterRef.current) {
+        setBusy(null);
+        setImportProgress(null);
+      }
+    }
+  };
+
+  const onImportWantlist = async () => {    if (!username) return;
     setBusy('importWantlist');
     setImportStatus(null);
     const importId = ++importCounterRef.current;
@@ -257,6 +321,30 @@ export function DiscogsPanel({ isActive }: DiscogsPanelProps) {
         />
       </div>
 
+      <PriceFieldRow isActive={isActive} username={username} />
+
+      {priceFieldId != null ? (
+        <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.price_push_label')}</div>
+            <div className="text-fg-body-subtle text-xs">{t('settings:discogs.price_push_desc')}</div>
+            {busy === 'pushPrices' && importProgress ? (
+              <ImportProgress done={importProgress.done} total={importProgress.total} className="mt-2" />
+            ) : null}
+          </div>
+          <Button
+            size="sm"
+            variant="neutral"
+            disabled={busy === 'pushPrices' || !username || !isActive}
+            onClick={() => void onPushPrices()}
+            leftIcon={busy === 'pushPrices' ? undefined : <UploadIcon />}
+            className="self-start sm:self-auto"
+          >
+            {busy === 'pushPrices' ? t('common:loading.generic') : t('settings:discogs.price_push_button')}
+          </Button>
+        </div>
+      ) : null}
+
       <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0 flex-1">
           <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.import_label')}</div>
@@ -361,10 +449,102 @@ function ToggleSwitch({
   );
 }
 
+interface DiscogsField {
+  id: number;
+  name: string;
+  type: string;
+  position: number;
+}
+
+function PriceFieldRow({ isActive, username }: { isActive: boolean; username: string }) {
+  const { t } = useTranslation();
+  const priceFieldId = useSettings((s) => s.discogsPriceFieldId);
+  const setPriceFieldId = useSettings((s) => s.setDiscogsPriceFieldId);
+  const [fields, setFields] = useState<DiscogsField[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  const selected = fields?.find((f) => f.id === priceFieldId) ?? null;
+
+  const load = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const registry = getProvidersRegistry();
+      const all = await registry.getDiscogsCollectionFields(username);
+      // Only custom fields (id ≥ 4) — 1/2/3 are condition/notes.
+      const custom = all.filter((f) => f.id >= 4).sort((a, b) => a.position - b.position);
+      setFields(custom);
+      // Auto-select an obvious price field when nothing is mapped yet.
+      if (priceFieldId == null) {
+        const guess = custom.find((f) => /price|цена|cost|стоимость/i.test(f.name));
+        if (guess) await setPriceFieldId(guess.id);
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-base border-border-default bg-surface shadow-neu-inset flex flex-col gap-3 border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="min-w-0 flex-1">
+        <div className="text-fg-heading text-sm font-medium">{t('settings:discogs.price_field_label')}</div>
+        <div className="text-fg-body-subtle text-xs">
+          {priceFieldId != null
+            ? t('settings:discogs.price_field_set', {
+                name: selected?.name ?? `#${priceFieldId}`,
+              })
+            : t('settings:discogs.price_field_desc')}
+        </div>
+        {error ? (
+          <div className="text-fg-danger text-xs">{t('settings:discogs.price_field_error')}</div>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
+        {fields ? (
+          <select
+            value={priceFieldId ?? ''}
+            onChange={(e) => void setPriceFieldId(e.target.value ? Number(e.target.value) : null)}
+            aria-label={t('settings:discogs.price_field_label')}
+            disabled={!isActive}
+            className="rounded-base border-border-default bg-surface text-fg-heading shadow-neu-inset border px-3 py-2 text-xs transition-neu"
+          >
+            <option value="">{t('settings:discogs.price_field_none')}</option>
+            {fields.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <Button size="sm" variant="neutral" onClick={() => void load()} disabled={loading || !username || !isActive}>
+            {loading ? t('common:loading.generic') : t('settings:discogs.price_field_pick')}
+          </Button>
+        )}
+        {fields && priceFieldId != null ? (
+          <Button size="sm" variant="ghost" onClick={() => void setPriceFieldId(null)} disabled={!isActive}>
+            {t('settings:discogs.price_field_clear')}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function DownloadIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
       <path d="M12 4v12m-5-5 5 5 5-5M5 20h14" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden>
+      <path d="M12 20V8m-5 5 5-5 5 5M5 4h14" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

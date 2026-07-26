@@ -61,6 +61,7 @@ export function DetailPage() {
   const hideToast = useUi((s) => s.hideToast);
   const discogsUsername = useSettings((s) => s.discogsUsername);
   const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
+  const discogsPriceFieldId = useSettings((s) => s.discogsPriceFieldId);
 
   const syncDiscogsDelete = (itemArg: ItemRecord | undefined | null) => {
     if (!itemArg || !discogsUsername || !discogsSyncEnabled) return;
@@ -256,23 +257,34 @@ export function DetailPage() {
       },
       {
         onSuccess: () => {
-          // Push condition fields to the linked Discogs instance (1 = media, 2 = sleeve)
           if (
             item.discogsInstanceId != null &&
             item.release.source === 'discogs' &&
             discogsSyncEnabled &&
-            discogsUsername &&
-            (sleeveCondition || mediaCondition)
+            discogsUsername
           ) {
-            void getProvidersRegistry().syncConditionToDiscogs(
-              discogsUsername,
-              Number(item.release.sourceId),
-              item.discogsInstanceId,
-              {
-                mediaCondition: mediaCondition || null,
-                sleeveCondition: sleeveCondition || null,
-              },
-            );
+            // Push condition fields to the linked Discogs instance (1 = media, 2 = sleeve)
+            if (sleeveCondition || mediaCondition) {
+              void getProvidersRegistry().syncConditionToDiscogs(
+                discogsUsername,
+                Number(item.release.sourceId),
+                item.discogsInstanceId,
+                {
+                  mediaCondition: mediaCondition || null,
+                  sleeveCondition: sleeveCondition || null,
+                },
+              );
+            }
+            // Push purchase price into the mapped custom field
+            if (purchasePrice != null && discogsPriceFieldId != null) {
+              void getProvidersRegistry().syncPriceToDiscogs(
+                discogsUsername,
+                Number(item.release.sourceId),
+                item.discogsInstanceId,
+                purchasePrice,
+                discogsPriceFieldId,
+              );
+            }
           }
         },
       },

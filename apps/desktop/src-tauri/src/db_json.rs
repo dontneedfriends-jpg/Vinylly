@@ -52,6 +52,9 @@ pub struct ProfileConfig {
     pub discogs_username: String,
     #[serde(default = "default_sync_enabled")]
     pub discogs_sync_enabled: bool,
+    /// Custom collection field mapped for purchase-price sync.
+    #[serde(default)]
+    pub discogs_price_field_id: Option<i64>,
 }
 
 fn default_sync_enabled() -> bool {
@@ -287,6 +290,9 @@ pub fn db_set_profile_config(
         }
         if let Some(v) = obj.get("discogs_sync_enabled").and_then(|v| v.as_bool()) {
             cfg.discogs_sync_enabled = v;
+        }
+        if let Some(v) = obj.get("discogs_price_field_id") {
+            cfg.discogs_price_field_id = v.as_i64();
         }
     }
     write_config(&path, &cfg)?;

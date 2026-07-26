@@ -57,6 +57,7 @@ export function AddPage() {
   const wantlistRemove = useRemoveFromWantlist();
   const discogsUsername = useSettings((s) => s.discogsUsername);
   const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
+  const discogsPriceFieldId = useSettings((s) => s.discogsPriceFieldId);
 
   const typeLabels = useTypeLabels();
 
@@ -280,6 +281,16 @@ export function AddPage() {
               mediaCondition: mediaCondition || null,
               sleeveCondition: sleeveCondition || null,
             });
+          }
+          // Push purchase price into the mapped custom field
+          if (purchasePrice != null && discogsPriceFieldId != null) {
+            void registry.syncPriceToDiscogs(
+              discogsUsername,
+              Number(selected.sourceId),
+              instanceId,
+              purchasePrice,
+              discogsPriceFieldId,
+            );
           }
         } else {
           showToast(t('add:form.discogs_sync_failed'));

@@ -13,11 +13,13 @@ interface SettingsState {
   discogsToken: string;
   discogsUsername: string;
   discogsSyncEnabled: boolean;
+  discogsPriceFieldId: number | null;
   setOnboardingDone(): void;
   setDiscogsToken(token: string): Promise<void>;
   clearDiscogsToken(): Promise<void>;
   setDiscogsUsername(username: string): Promise<void>;
   setDiscogsSyncEnabled(enabled: boolean): Promise<void>;
+  setDiscogsPriceFieldId(fieldId: number | null): Promise<void>;
   /** Reload profile settings (call after a profile switch). */
   reload(): Promise<void>;
 }
@@ -84,6 +86,7 @@ export const useSettings = create<SettingsState>((set) => ({
   discogsToken: '',
   discogsUsername: '',
   discogsSyncEnabled: true,
+  discogsPriceFieldId: null,
   setOnboardingDone() {
     writeLocalOnboarding(true);
     void writeHostConfig({ onboardingDone: true });
@@ -92,52 +95,37 @@ export const useSettings = create<SettingsState>((set) => ({
   async setDiscogsToken(token) {
     const trimmed = token.trim();
     const next = await setProfileSettings({ discogsToken: trimmed });
-    set({
-      discogsToken: next.discogsToken,
-      discogsUsername: next.discogsUsername,
-      discogsSyncEnabled: next.discogsSyncEnabled,
-    });
+    set({ ...next });
   },
   async clearDiscogsToken() {
     const next = await setProfileSettings({
       discogsToken: '',
       discogsUsername: '',
       discogsSyncEnabled: true,
+      discogsPriceFieldId: null,
     });
-    set({
-      discogsToken: next.discogsToken,
-      discogsUsername: next.discogsUsername,
-      discogsSyncEnabled: next.discogsSyncEnabled,
-    });
+    set({ ...next });
   },
   async setDiscogsUsername(username) {
     const next = await setProfileSettings({ discogsUsername: username });
-    set({
-      discogsToken: next.discogsToken,
-      discogsUsername: next.discogsUsername,
-      discogsSyncEnabled: next.discogsSyncEnabled,
-    });
+    set({ ...next });
   },
   async setDiscogsSyncEnabled(enabled) {
     const next = await setProfileSettings({ discogsSyncEnabled: enabled });
-    set({
-      discogsToken: next.discogsToken,
-      discogsUsername: next.discogsUsername,
-      discogsSyncEnabled: next.discogsSyncEnabled,
-    });
+    set({ ...next });
+  },
+  async setDiscogsPriceFieldId(fieldId) {
+    const next = await setProfileSettings({ discogsPriceFieldId: fieldId });
+    set({ ...next });
   },
   async reload() {
     const settings = await getProfileSettings().catch<DbProfileSettings>(() => ({
       discogsToken: '',
       discogsUsername: '',
       discogsSyncEnabled: true,
+      discogsPriceFieldId: null,
     }));
-    set({
-      discogsToken: settings.discogsToken,
-      discogsUsername: settings.discogsUsername,
-      discogsSyncEnabled: settings.discogsSyncEnabled,
-      ready: true,
-    });
+    set({ ...settings, ready: true });
   },
 }));
 

@@ -12,12 +12,15 @@ export interface ProfileSettings {
   discogsToken: string;
   discogsUsername: string;
   discogsSyncEnabled: boolean;
+  /** Custom Discogs collection field used for purchase-price sync (null = off). */
+  discogsPriceFieldId: number | null;
 }
 
 const DEFAULTS: ProfileSettings = {
   discogsToken: '',
   discogsUsername: '',
   discogsSyncEnabled: true,
+  discogsPriceFieldId: null,
 };
 
 interface ProfileSettingsRow {

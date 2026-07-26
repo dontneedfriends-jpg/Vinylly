@@ -1,4 +1,4 @@
-import { DiscogsProvider, CONDITION_TO_DISCOGS, fromDiscogsCondition, type DiscogsConfig } from './discogs';
+import { DiscogsProvider, CONDITION_TO_DISCOGS, fromDiscogsCondition, parseFieldPrice, type DiscogsConfig } from './discogs';
 import { MusicBrainzProvider } from './musicbrainz';
 import { LastFmProvider, type LastFmConfig } from './lastfm';
 import { GeniusProvider, type GeniusConfig } from './genius';
@@ -21,6 +21,8 @@ export interface DiscogsCollectionRelease {
   sleeveCondition: string | null;
   notes: string | null;
   rating: number | null;
+  /** Purchase price from the user-mapped custom field (when priceFieldId passed). */
+  purchasePrice: number | null;
 }
 
 export interface DiscogsWantlistRelease {
@@ -90,7 +92,7 @@ export class ProvidersRegistry {
     return [this.lrclib, this.genius].filter((p) => p?.isEnabled()) as MediaProvider[];
   }
 
-  async fetchDiscogsCollection(username: string): Promise<DiscogsCollectionRelease[]> {
+  async fetchDiscogsCollection(username: string, priceFieldId?: number | null): Promise<DiscogsCollectionRelease[]> {
     if (!this.discogs?.isEnabled()) return [];
     try {
       const releases = await this.discogs.fetchCollection(username);
@@ -120,6 +122,7 @@ export class ProvidersRegistry {
           sleeveCondition: field(2) ? fromDiscogsCondition(field(2)!) : null,
           notes: field(3),
           rating: r.rating > 0 ? r.rating : null,
+          purchasePrice: priceFieldId ? parseFieldPrice(field(priceFieldId)) : null,
         };
       });
     } catch (err) {
@@ -172,6 +175,26 @@ export class ProvidersRegistry {
       jobs.push(this.discogs.updateCollectionField(username, discogsReleaseId, instanceId, 3, fields.notes));
     }
     if (jobs.length) await Promise.all(jobs);
+  }
+
+  /** List the owner's collection fields (for mapping a price field). */
+  async getDiscogsCollectionFields(
+    username: string,
+  ): Promise<Array<{ id: number; name: string; type: string; position: number }>> {
+    if (!this.discogs?.isEnabled() || !username) return [];
+    return this.discogs.getCollectionFields(username);
+  }
+
+  /** Push purchase price into a user-mapped custom collection field. */
+  async syncPriceToDiscogs(
+    username: string,
+    discogsReleaseId: number,
+    instanceId: number,
+    price: number,
+    fieldId: number,
+  ): Promise<void> {
+    if (!this.discogs?.isEnabled() || !username || !fieldId) return;
+    await this.discogs.updateCollectionField(username, discogsReleaseId, instanceId, fieldId, `$${price.toFixed(2)}`);
   }
 
   async fetchDiscogsWantlist(username: string): Promise<DiscogsWantlistRelease[]> {
@@ -342,7 +365,7 @@ export class ProvidersRegistry {
 
 export * from './types';
 export { DiscogsProvider, MusicBrainzProvider, LastFmProvider, GeniusProvider, LrclibProvider };
-export { CONDITION_TO_DISCOGS, fromDiscogsCondition } from './discogs';
+export { CONDITION_TO_DISCOGS, fromDiscogsCondition, parseFieldPrice } from './discogs';
 export type { DiscogsConfig, LastFmConfig, GeniusConfig };
 export {
   cacheCover,

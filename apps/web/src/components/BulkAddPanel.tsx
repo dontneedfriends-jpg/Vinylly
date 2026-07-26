@@ -49,6 +49,7 @@ export function BulkAddPanel() {
   const { data: collection } = useDefaultCollection();
   const discogsUsername = useSettings((s) => s.discogsUsername);
   const discogsSyncEnabled = useSettings((s) => s.discogsSyncEnabled);
+  const discogsPriceFieldId = useSettings((s) => s.discogsPriceFieldId);
   const queryClient = useQueryClient();
 
   const [phase, setPhase] = useState<Phase>('input');
@@ -270,6 +271,15 @@ export function BulkAddPanel() {
                 sleeveCondition,
               });
             }
+            if (row.price != null && discogsPriceFieldId != null) {
+              void registry.syncPriceToDiscogs(
+                discogsUsername!,
+                Number(release.sourceId),
+                instanceId,
+                row.price,
+                discogsPriceFieldId,
+              );
+            }
           }
         }
         patchRow(row.id, { status: 'imported' });
@@ -281,7 +291,7 @@ export function BulkAddPanel() {
     }
     await queryClient.invalidateQueries({ queryKey: ['items'] });
     setPhase('done');
-  }, [rows, collection, defaultType, bulkSleeve, bulkMedia, syncDiscogs, canSync, discogsUsername, patchRow, queryClient, csvByRow]);
+  }, [rows, collection, defaultType, bulkSleeve, bulkMedia, syncDiscogs, canSync, discogsUsername, patchRow, queryClient, csvByRow, discogsPriceFieldId]);
 
   const counts = useMemo(() => {
     const c = { matched: 0, not_found: 0, duplicate: 0, imported: 0, failed: 0, included: 0 };
